@@ -3,7 +3,7 @@
 ## Not released yet
 
 **Changed**
-- **Layers page**: the OpenXR API layers have their own page in the menu, with the list always open. The Status page keeps a one-line summary that links to it.
+- **Layers page**: the OpenXR API layers have their own page in the menu, with the list always open. The Status page keeps a one-line summary that links to it, and now lists every part at all times (no Details button).
 - **Mirror window button** above the picture on the Mirror page: Open mirror window / Close mirror window. Its monitor, size and rate stay in the Mirror window section.
 - **Updating**: the update banner and the installer's first screen say in bold to close your VR game and OBS first.
 - **SteamVR helper without SteamVR**: on a PC without SteamVR the helper's status is grey, not orange, and says it has nothing to do there. The app no longer tries to register it with SteamVR at every start.

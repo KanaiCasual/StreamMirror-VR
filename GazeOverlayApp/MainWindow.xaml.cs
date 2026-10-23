@@ -999,16 +999,10 @@ public partial class MainWindow : Window
         var layerActive = status.GazeMirror.Health == LayerHealth.Active;
         var obsReady = status.ObsPath != null && status.ObsPluginPresent;
         var marker = _values.GetValueOrDefault("headset_marker") == "1";
-        // While all is well, one line says so and the rows wait behind "Details"; with anything amiss they all show.
+        // While all is well, one line on top says so; the parts follow, always listed.
         var allWell = layerActive && obsReady && (helper.Color == Colors.SeaGreen || helper.Color == Colors.Gray) && status.QuadViews.Health != LayerHealth.Duplicate && !marker && status.OrderCorrect != false;
         _statusRowsInto = StatusRows;
-        if (allWell)
-        {
-            var details = new StackPanel { Margin = new Thickness(0, 4, 0, 0), Visibility = _statusDetailsOpen ? Visibility.Visible : Visibility.Collapsed };
-            AddStatusSummary(details);
-            StatusRows.Children.Add(details);
-            _statusRowsInto = details;
-        }
+        if (allWell) AddStatusSummary();
         // An active layer needs no more than the word; where it is installed is its tooltip.
         AddStatusRow("Mirror layer", layerActive ? "Active." : status.GazeMirror.Detail, layerActive ? Colors.SeaGreen : Colors.Firebrick, tip: layerActive ? status.GazeMirror.Detail : null);
         AddStatusRow("OBS plugin",
@@ -1029,7 +1023,7 @@ public partial class MainWindow : Window
         if (status.OrderCorrect == false)
         {
             AddStatusRow("Layer order",
-                "The mirror layer sits above Quad-Views-Foveated, so it sees the wrong picture. Press \"Fix order\" in the layer list below.", Colors.Firebrick);
+                "The mirror layer sits above Quad-Views-Foveated, so it sees the wrong picture. Press \"Fix order\" on the Layers page.", Colors.Firebrick);
         }
 
         BuildLayerRows(status.Layers);
@@ -1221,17 +1215,15 @@ public partial class MainWindow : Window
     };
 
     /// <summary>One line: health dot, name, what is known about it, and a button when there is something to do.</summary>
-    private Panel _statusRowsInto = null!; // The card itself, or the part of it behind "Details".
-    private bool _statusDetailsOpen;
+    private Panel _statusRowsInto = null!; // Where the part rows go: the card.
 
-    /// <summary>All is well: one line that says so, and a button that shows the parts one by one.</summary>
-    private void AddStatusSummary(StackPanel details)
+    /// <summary>All is well: one line that says so, above the parts.</summary>
+    private void AddStatusSummary()
     {
         var row = new Grid { Margin = new Thickness(0, 2, 0, 4) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.Children.Add(new Ellipse { Width = 8, Height = 8, Fill = (Brush)FindResource("Good"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 0, 0) });
         var name = new TextBlock { Text = "All parts working", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
         Grid.SetColumn(name, 1);
@@ -1239,15 +1231,6 @@ public partial class MainWindow : Window
         var text = new TextBlock { Text = MirrorLive.SteamVrInstalled() ? "The mirror layer, the OBS plugin and the SteamVR helper are in place." : "The mirror layer and the OBS plugin are in place. No SteamVR here, so no helper needed.", Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         Grid.SetColumn(text, 2);
         row.Children.Add(text);
-        var toggle = new Button { Content = _statusDetailsOpen ? "Hide details" : "Details", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
-        toggle.Click += (_, _) =>
-        {
-            _statusDetailsOpen = !_statusDetailsOpen;
-            details.Visibility = _statusDetailsOpen ? Visibility.Visible : Visibility.Collapsed;
-            toggle.Content = _statusDetailsOpen ? "Hide details" : "Details";
-        };
-        Grid.SetColumn(toggle, 3);
-        row.Children.Add(toggle);
         StatusRows.Children.Add(row);
     }
 

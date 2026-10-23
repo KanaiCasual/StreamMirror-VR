@@ -143,7 +143,7 @@ public static class LayerStatus
         if (active.Count == 0)
         {
             return new LayerReport(LayerHealth.NotActive, layers.Any(l => l.LayerName == layerName)
-                ? $"Installed but switched off, so games do not load it (see the layer list below)."
+                ? $"Installed but switched off, so games do not load it (see the Layers page)."
                 : notInstalled);
         }
         if (active.Count > 1)
