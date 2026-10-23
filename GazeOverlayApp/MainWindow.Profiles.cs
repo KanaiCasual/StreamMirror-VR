@@ -437,6 +437,8 @@ public partial class MainWindow
     {
         if (MirrorLive.FindHelper() == null) return ("GazeMirrorHelper.exe is missing next to this app.", System.Windows.Media.Colors.Firebrick);
         if (MirrorLive.IsHelperRunning()) return ("The helper is running next to SteamVR.", System.Windows.Media.Colors.SeaGreen);
+        // No SteamVR, nothing for the helper to do: not a fault, so grey, not orange.
+        if (!MirrorLive.SteamVrInstalled()) return ("SteamVR is not installed, so the helper has nothing to do. Not needed for OpenXR games.", System.Windows.Media.Colors.Gray);
         if (_appSettings.HelperRegisteredPath.Length > 0) return ("The helper starts with SteamVR and leaves with it. Not running now.", System.Windows.Media.Colors.SeaGreen);
         return ("SteamVR does not know the helper yet (is Steam installed?). The app tries again at its next start.", System.Windows.Media.Colors.DarkOrange);
     }
@@ -522,6 +524,12 @@ public partial class MainWindow
     {
         var helper = MirrorLive.FindHelper();
         if (helper == null) { AppLog.Write("SteamVR helper: GazeMirrorHelper.exe not found next to the app."); return; }
+        if (!MirrorLive.SteamVrInstalled())
+        {
+            AppLog.Write("SteamVR helper: SteamVR is not installed - not registered, not started.");
+            RefreshMirrorLive();
+            return;
+        }
         // A manifest left by the 1.9 dev builds under the old data folder name makes SteamVR start the old binary; the
         // helper removes it while registering, so register again as long as it is there.
         // The 1.9.x builds' manifest in our own data folder is the same story: the manifest now sits next to the exe.

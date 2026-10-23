@@ -83,6 +83,26 @@ public static class MirrorLive
     /// <summary>Next to this app when installed; in the repository's 2.0 build folder when run from there.</summary>
     public static string? FindHelper() => FindBeside("GazeMirrorHelper.exe", Path.Combine("v2", "bin", "helper"));
 
+    /// <summary>
+    /// Whether SteamVR is installed: OpenVR's own record of its runtime (%LOCALAPPDATA%\openvr\openvrpaths.vrpath, what
+    /// SteamVR writes on its first start and VR_IsRuntimeInstalled reads) names a folder that exists.
+    /// </summary>
+    public static bool SteamVrInstalled()
+    {
+        try
+        {
+            var record = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "openvr", "openvrpaths.vrpath");
+            if (!File.Exists(record)) return false;
+            using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(record));
+            return json.RootElement.TryGetProperty("runtime", out var runtimes) && runtimes.ValueKind == System.Text.Json.JsonValueKind.Array &&
+                   runtimes.EnumerateArray().Any(r => r.ValueKind == System.Text.Json.JsonValueKind.String && Directory.Exists(r.GetString()));
+        }
+        catch
+        {
+            return true; // Unreadable: assume it is there, and let the helper's own registration say what is wrong.
+        }
+    }
+
     public static bool IsHelperRunning()
     {
         if (!Mutex.TryOpenExisting(HelperRunningMutex, out var mutex)) return false;

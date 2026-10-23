@@ -1000,7 +1000,7 @@ public partial class MainWindow : Window
         var obsReady = status.ObsPath != null && status.ObsPluginPresent;
         var marker = _values.GetValueOrDefault("headset_marker") == "1";
         // While all is well, one line says so and the rows wait behind "Details"; with anything amiss they all show.
-        var allWell = layerActive && obsReady && helper.Color == Colors.SeaGreen && status.QuadViews.Health != LayerHealth.Duplicate && !marker && status.OrderCorrect != false;
+        var allWell = layerActive && obsReady && (helper.Color == Colors.SeaGreen || helper.Color == Colors.Gray) && status.QuadViews.Health != LayerHealth.Duplicate && !marker && status.OrderCorrect != false;
         _statusRowsInto = StatusRows;
         if (allWell)
         {
@@ -1236,7 +1236,7 @@ public partial class MainWindow : Window
         var name = new TextBlock { Text = "All parts working", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
         Grid.SetColumn(name, 1);
         row.Children.Add(name);
-        var text = new TextBlock { Text = "The mirror layer, the OBS plugin and the SteamVR helper are in place.", Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+        var text = new TextBlock { Text = MirrorLive.SteamVrInstalled() ? "The mirror layer, the OBS plugin and the SteamVR helper are in place." : "The mirror layer and the OBS plugin are in place. No SteamVR here, so no helper needed.", Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         Grid.SetColumn(text, 2);
         row.Children.Add(text);
         var toggle = new Button { Content = _statusDetailsOpen ? "Hide details" : "Details", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
