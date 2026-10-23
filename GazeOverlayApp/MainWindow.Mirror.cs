@@ -107,6 +107,8 @@ public partial class MainWindow
         var running = program != null && MirrorWindowControl.IsRunning();
         MirrorOpen.IsEnabled = program != null && !running;
         MirrorClose.IsEnabled = running;
+        MirrorToggle.Content = running ? "Close mirror window" : "Open mirror window";
+        MirrorToggle.IsEnabled = program != null;
         MirrorWindowExpander.Header = "Mirror window: " + (running ? "open" : "closed");
         MirrorStatus.Text = note ?? (program == null ? "MirrorWindow.exe is missing next to this app."
             : running ? "The mirror window is open. Capture \"VR Gaze Mirror - Mirror\" with OBS Window Capture or Discord."
@@ -122,16 +124,25 @@ public partial class MainWindow
             return;
         }
         AppLog.Write("Mirror window: opened (" + MirrorWindowControl.Arguments(_appSettings) + ").");
-        MirrorOpen.IsEnabled = false;
+        MirrorOpen.IsEnabled = MirrorToggle.IsEnabled = false;
         // A new, unsigned program is scanned by antivirus software on its first start; that can take several seconds.
         for (var attempt = 0; attempt < 40 && !MirrorWindowControl.IsRunning(); attempt++)
         {
             RefreshMirrorState("Starting the mirror window...");
-            MirrorOpen.IsEnabled = false;
+            MirrorOpen.IsEnabled = MirrorToggle.IsEnabled = false;
             await Task.Delay(500);
         }
         RefreshMirrorState();
     }
+
+    // The button above the picture: opens the window, or closes it while it is open.
+    private void OnMirrorToggle(object sender, RoutedEventArgs e)
+    {
+        if (MirrorWindowControl.IsRunning()) OnMirrorClose(sender, e);
+        else OnMirrorOpen(sender, e);
+    }
+
+    private void OnShowLayersPage(object sender, RoutedEventArgs e) => Tabs.SelectedItem = LayersTab;
 
     private async void OnMirrorClose(object sender, RoutedEventArgs e)
     {

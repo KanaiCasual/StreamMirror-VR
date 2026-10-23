@@ -115,7 +115,7 @@ public partial class MainWindow : Window
     private static readonly Dictionary<string, string> PageIcons = new()
     {
         ["Status"] = "\uE9D9", ["Mirror"] = "\uE7A8", ["Gaze"] = "\uE890", ["Ring"] = "\uEA3A",
-        ["Desktop cover"] = "\uE7F4", ["Quad Views"] = "\uE8A9", ["About"] = "\uE946",
+        ["Desktop cover"] = "\uE7F4", ["Quad Views"] = "\uE8A9", ["Layers"] = "\uE81E", ["About"] = "\uE946",
     };
 
     private NavItem? _statusNav; // The Status page's line: it carries the dot that says a game is being mirrored.
@@ -1084,10 +1084,11 @@ public partial class MainWindow : Window
             : "No automatic fix: a rule involves a layer registered for this user alone, or two rules contradict each other. Arrange them by hand.";
         LayerApply.Visibility = LayerCancel.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
 
-        // The list is folded away while there is nothing to do in it; a problem or an order not yet applied opens it.
-        LayerExpander.Header = "OpenXR API layers: " + (shown.Count == 0 ? "none"
-            : shown.Count + (pending ? ", new order not applied yet" : problems.Count > 0 ? ", order problem" : shown.Count > 1 ? ", order fine" : ""));
-        if (problems.Count > 0 || pending) LayerExpander.IsExpanded = true;
+        // The summary on this page and, as a link to it, on the Status page.
+        LayerSummary.Text = shown.Count == 0 ? "none"
+            : shown.Count + (shown.Count == 1 ? " layer" : " layers") + (pending ? ", new order not applied yet" : problems.Count > 0 ? ", order problem" : shown.Count > 1 ? ", order fine" : "");
+        LayerSummaryLinkText.Text = "OpenXR API layers: " + LayerSummary.Text;
+        LayerSummaryLinkText.Foreground = problems.Count > 0 || pending ? Brushes.Orange : (Brush)FindResource("Muted");
 
         if (pending) LayerNote.Text = "Order changed, not applied yet. Apply asks Windows for permission once.";
         else if (LayerNote.Text.StartsWith("Order changed", StringComparison.Ordinal) || LayerNote.Text.Length == 0)
@@ -1591,7 +1592,7 @@ public partial class MainWindow : Window
             ? $"A beta version is available: {update.Version.ToString(3)}"
             : $"A new version is available: {update.Version.ToString(3)}";
         UpdateDetail.Text = update.CanInstall
-            ? $"You have {UpdateChecker.CurrentVersionText}. \"{update.Title}\" upgrades in place; close the game and OBS first."
+            ? $"You have {UpdateChecker.CurrentVersionText}. \"{update.Title}\" upgrades in place."
             : $"You have {UpdateChecker.CurrentVersionText}. \"{update.Title}\": download the .msi from the release page and run it. It upgrades in place.";
         UpdateInstallButton.Visibility = update.CanInstall ? Visibility.Visible : Visibility.Collapsed;
         UpdateBanner.Visibility = Visibility.Visible;

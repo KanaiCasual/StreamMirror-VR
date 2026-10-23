@@ -44,7 +44,9 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock x:Name="UpdateTitle" FontWeight="SemiBold" />
-                        <TextBlock x:Name="UpdateDetail" Style="{StaticResource Hint}" />
+                        <TextBlock x:Name="UpdateWarning" FontWeight="Bold" Foreground="#FFC35A" Margin="0,2,0,2" TextWrapping="Wrap"
+                                   Text="Close your VR game and OBS first. The installer replaces files they keep open." />
+                        <TextBlock x:Name="UpdateDetail" Style="{StaticResource Hint}" TextWrapping="Wrap" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="UpdateInstallButton" Content="Download and install" Style="{DynamicResource AccentButtonStyle}" Margin="12,0,8,0" Click="OnInstallUpdate"
@@ -106,23 +108,11 @@
                         <TextBlock x:Name="StatusReadyHint" Style="{StaticResource Hint}" FontSize="12" Margin="2,10,0,0" TextWrapping="Wrap" Visibility="Collapsed"
                                    Text="Ready for a game. Start one and the mirror picks it up: the Mirror page then shows its picture, and OBS gets it." />
 
-                        <!-- The layers tool: folded away while the order is fine. -->
-                        <Expander x:Name="LayerExpander" Header="OpenXR API layers" Margin="0,10,0,0">
-                            <StackPanel Margin="0,2,0,0">
-                                <TextBlock x:Name="LayerHint" Style="{StaticResource Hint}" FontSize="12" Margin="0,0,0,6"
-                                           Text="The order games load them in: the top one loads closest to the game. A tick box switches a layer on or off; the arrows reorder. Windows asks for permission." />
-                                <StackPanel x:Name="LayerRows" />
-                                <TextBlock x:Name="LayerProblems" Foreground="Orange" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0" Visibility="Collapsed" />
-                                <DockPanel Margin="0,6,0,0">
-                                    <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
-                                        <Button x:Name="LayerFix" Content="Fix order" Style="{DynamicResource AccentButtonStyle}" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerFixOrder" />
-                                        <Button x:Name="LayerApply" Content="Apply order" Style="{DynamicResource AccentButtonStyle}" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerApplyOrder" />
-                                        <Button x:Name="LayerCancel" Content="Cancel" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerCancelOrder" />
-                                    </WrapPanel>
-                                    <TextBlock x:Name="LayerNote" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" />
-                                </DockPanel>
-                            </StackPanel>
-                        </Expander>
+                        <!-- The OpenXR layers: a summary here, the list on its own page. -->
+                        <Button x:Name="LayerSummaryLink" Style="{StaticResource FlatButton}" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnShowLayersPage"
+                                ToolTip="Opens the Layers page: the OpenXR API layers, their order, and switches for each">
+                            <TextBlock x:Name="LayerSummaryLinkText" TextDecorations="Underline" FontSize="12" />
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -224,6 +214,9 @@
                                         <TextBlock Style="{StaticResource Icon}" Text="&#xE70D;" FontSize="9" Margin="7,2,0,0" />
                                     </StackPanel>
                                 </Button>
+                                <!-- The mirror window: open or close it from here; its settings are in the Mirror window section. -->
+                                <Button x:Name="MirrorToggle" Content="Open mirror window" Margin="12,2,0,2" Click="OnMirrorToggle"
+                                        ToolTip="A window with the mirror picture, cropped and with the ring, for OBS Window Capture or Discord.&#10;&#10;Its monitor, size and rate are in the Mirror window section." />
                                 <Popup x:Name="ShowMenu" PlacementTarget="{Binding ElementName=ShowMenuButton}" Placement="Bottom" VerticalOffset="4" StaysOpen="False" AllowsTransparency="True">
                                     <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,8,14,8">
                                         <StackPanel>
@@ -510,6 +503,35 @@
                         <StackPanel x:Name="PanelQuadViews" Margin="20,10,20,14" />
                     </ScrollViewer>
                 </DockPanel>
+            </TabItem>
+
+            <!-- The OpenXR API layers: what loads into OpenXR games, in which order, each with a switch. -->
+            <TabItem x:Name="LayersTab" Header="Layers">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="{StaticResource PageMargin}">
+                        <DockPanel Margin="0,0,0,10">
+                            <Button DockPanel.Dock="Right" Content="Refresh" VerticalAlignment="Center" Click="OnRefresh" />
+                            <TextBlock Style="{StaticResource PageTitle}" Text="OpenXR API layers" />
+                            <TextBlock x:Name="LayerSummary" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" Margin="12,0,10,0" TextWrapping="Wrap" />
+                        </DockPanel>
+                        <Border Style="{StaticResource Card}">
+                        <StackPanel Margin="0,2,0,0">
+                            <TextBlock x:Name="LayerHint" Style="{StaticResource Hint}" FontSize="12" Margin="0,0,0,6"
+                                       Text="The order games load them in: the top one loads closest to the game. A tick box switches a layer on or off; the arrows reorder. Windows asks for permission." />
+                            <StackPanel x:Name="LayerRows" />
+                            <TextBlock x:Name="LayerProblems" Foreground="Orange" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0" Visibility="Collapsed" />
+                            <DockPanel Margin="0,6,0,0">
+                                <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                                    <Button x:Name="LayerFix" Content="Fix order" Style="{DynamicResource AccentButtonStyle}" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerFixOrder" />
+                                    <Button x:Name="LayerApply" Content="Apply order" Style="{DynamicResource AccentButtonStyle}" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerApplyOrder" />
+                                    <Button x:Name="LayerCancel" Content="Cancel" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerCancelOrder" />
+                                </WrapPanel>
+                                <TextBlock x:Name="LayerNote" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <TabItem x:Name="AboutTab" Header="About">

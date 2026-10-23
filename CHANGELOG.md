@@ -1,5 +1,12 @@
 # Changelog
 
+## Not released yet
+
+**Changed**
+- **Layers page**: the OpenXR API layers have their own page in the menu, with the list always open. The Status page keeps a one-line summary that links to it.
+- **Mirror window button** above the picture on the Mirror page: Open mirror window / Close mirror window. Its monitor, size and rate stay in the Mirror window section.
+- **Updating**: the update banner and the installer's first screen say in bold to close your VR game and OBS first.
+
 ## 2.3.1 - 2026-10-23
 
 **New**

@@ -66,7 +66,9 @@
         <Control Id="Bitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no" Text="WixUI_Bmp_Dialog" />
         <Control Id="Title" Type="Text" X="130" Y="6" Width="225" Height="30" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Bigger}Install [ProductName] [ProductVersion]" />
         <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
-        <Control Id="LicenseText" Type="ScrollableText" X="130" Y="38" Width="226" Height="138" Sunken="yes" TabSkip="no">
+        <Control Id="CloseFirst" Type="Text" X="130" Y="38" Width="226" Height="26" Transparent="yes" NoPrefix="yes"
+                 Text="{\WixUI_Font_Title}Close your VR game and OBS first. This setup replaces files they keep open." />
+        <Control Id="LicenseText" Type="ScrollableText" X="130" Y="68" Width="226" Height="108" Sunken="yes" TabSkip="no">
           <Text SourceFile="License.rtf" />
         </Control>
         <Control Id="LicenseAcceptedCheckBox" Type="CheckBox" X="130" Y="182" Width="226" Height="18" CheckBoxValue="1" Property="LicenseAccepted" Text="I &amp;accept the terms in the License Agreement" />

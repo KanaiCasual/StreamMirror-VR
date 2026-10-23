@@ -397,7 +397,7 @@ public partial class MainWindow
         CropEnabled.IsChecked = true;
         _values["crop_follow"] = "vertical";
         // GAZE_SCREENSHOT_EXPANDED=1 shows the folded sections open, to look at their rows.
-        CropFollowExpander.IsExpanded = StabilizeExpander.IsExpanded = MirrorWindowExpander.IsExpanded = LayerExpander.IsExpanded =
+        CropFollowExpander.IsExpanded = StabilizeExpander.IsExpanded = MirrorWindowExpander.IsExpanded =
             Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_EXPANDED") == "1";
         _values["stabilize"] = "1";
         _crop.MoveTo(0, _crop.CenterY); // against the left wall: the steadying room has to hold it off
