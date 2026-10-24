@@ -548,6 +548,8 @@
                                         <Button x:Name="ReleasesButton" Content="Releases" Margin="0,2,6,2" Click="OnOpenReleases" />
                                         <Button Content="Licences" ToolTip="Opens the folder with the licence texts" Margin="0,2,6,2" Click="OnOpenLicences" />
                                         <Button Content="Logs" ToolTip="Opens the folder with the logs of this app, the layer and the helper" Margin="0,2,6,2" Click="OnOpenLogs" />
+                            <Button x:Name="TourButton" Content="Take the tour" ToolTip="A short guided tour of the pages and their main controls" Margin="0,2,6,2" Click="OnTakeTour" />
+                            <Button x:Name="GuideButton" Content="Getting started" ToolTip="Opens the step-by-step guide to a first setup, on GitHub" Margin="0,2,6,2" Click="OnOpenGuide" />
                                     </WrapPanel>
                                     <!-- The settings file of the ring and the mirror: for a look at it, or after an edit by hand. -->
                                     <WrapPanel Margin="0,2,0,0">
@@ -640,5 +642,7 @@
             </Border>
             </Grid>
         </Grid>
+        <!-- The guided tour (MainWindow.Tour.cs): over everything while it runs. -->
+        <Canvas x:Name="TourLayer" Grid.ColumnSpan="2" Panel.ZIndex="100" Visibility="Collapsed" />
     </Grid>
 </Window>

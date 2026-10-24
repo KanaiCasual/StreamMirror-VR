@@ -47,6 +47,7 @@ public partial class MainWindow : Window
         BuildMirrorUi();
         BuildCoverUi();
         BuildExplanations();
+        BuildTourLayer();
         LoadQuadViews();
         AboutText.Text =
             "VR Gaze Mirror mirrors your VR view for OBS and window capture, with a ring that shows where you look.\n\n" +
@@ -1369,6 +1370,11 @@ public partial class MainWindow : Window
     private void OnOpenRepo(object sender, RoutedEventArgs e)
     {
         if (UpdateChecker.IsConfigured) OpenInBrowser($"https://github.com/{UpdateChecker.Repository}");
+    }
+
+    private void OnOpenGuide(object sender, RoutedEventArgs e)
+    {
+        if (UpdateChecker.IsConfigured) OpenInBrowser($"https://github.com/{UpdateChecker.Repository}/blob/main/docs/GETTING-STARTED.md");
     }
 
     /// <summary>

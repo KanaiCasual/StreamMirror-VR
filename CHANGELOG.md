@@ -2,6 +2,10 @@
 
 ## Not released yet
 
+**New**
+- **A guided tour** of the pages and their main controls. It starts the first time the app opens, and About > **Take the tour** brings it back. Esc ends it, the arrow keys step through it.
+- **A getting-started guide** on GitHub (docs/GETTING-STARTED.md) walks from the download to a framed, steady picture in OBS. About > **Getting started** opens it.
+
 **Fixed**
 - **The Mirror page's saved picture was replaced by itself.** Opening the Mirror page or coming back to the app took a fresh picture, so with SteamVR running and no game in it, SteamVR's empty home replaced the last game's picture. Now a saved picture stays until you press Refresh picture or Capture from headset. The app takes a picture by itself only while it has none, and only from a running game.
 

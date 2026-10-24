@@ -51,10 +51,14 @@ optional extra.*
 **Download:** the latest `VR-Gaze-Mirror-<version>.msi` is on the
 [Releases page](../../releases/latest); the release notes list the changes.
 
+**New here?** The [getting-started guide](docs/GETTING-STARTED.md) takes you from the download to a framed, steady
+picture in OBS, step by step. The rest of this page is the full reference.
+
 ---
 
 ## Contents
 
+- [Getting started, step by step](docs/GETTING-STARTED.md) (separate page)
 - [What you need](#what-you-need)
 - [Installing, updating, removing](#installing-updating-removing)
 - [Recording and streaming: two ways](#recording-and-streaming-two-ways)
@@ -119,7 +123,8 @@ OBS reads the picture from the graphics card. While OBS does not show the source
 
 ### 2. The mirror window: for Discord and other programs that capture windows
 
-This way needs no OBS plugin. On the **Mirror** page press **Open**: a window with the mirror picture appears on the
+This way needs no OBS plugin. On the **Mirror** page press **Open mirror window**, in the row above the picture: a
+window with the mirror picture appears on the
 monitor you chose, **behind the other windows** (behind a borderless game too), and it leaves the focus alone. Window
 capture still sees it there.
 
@@ -141,8 +146,8 @@ there); a mark at the foot of the page list says when the app last saved. The ap
 OBS while you tune, and the keyboard reaches all of it.
 
 The page list follows the program's purpose: **Status** and **Mirror** first, and most people need no more than those.
-Then come the two pages of the **gaze ring** (Gaze and Ring), the **extras** (Desktop cover, and Quad Views
-while Quad-Views-Foveated is installed), and About. Each page has an icon, and a narrow window shows the icons alone. A
+Then come the two pages of the **gaze ring** (Gaze and Ring), the **extras** (Desktop cover, Quad Views while
+Quad-Views-Foveated is installed, and Layers), and About. Each page has an icon, and a narrow window shows the icons alone. A
 green dot on Status means the mirror shows a game right now.
 
 ### Status
@@ -151,13 +156,20 @@ green dot on Status means the mirror shows a game right now.
 
 - **Three steps to your mirror:** add the source in OBS, start your VR game, frame the picture. Each step ticks
   itself off once the app has seen it happen, and the card goes away after the third (or at **Hide**).
-- **Parts:** the mirror layer, the OBS plugin, the SteamVR helper and (optional) Quad-Views-Foveated. While all is
-  well the card says so in one line, and **Details** lists the parts; with a fault it lists them at once, each with
-  what to do about it. The line at the top names the game the mirror shows and says whether gaze arrives.
-- **OpenXR API layers:** folded away while the order is fine; an order problem opens it. It lists the layers on your
-  PC in the order games load them, with a tick box to switch each on or off and arrows to **reorder**. Windows asks
-  for permission for that one change; the app itself runs without administrator rights. The app knows the ordering
-  rules of common layers and offers **Fix order** for an order that breaks one.
+- **Parts:** the mirror layer, the OBS plugin, the SteamVR helper and (optional) Quad-Views-Foveated, each with a
+  coloured dot and, with a fault, what to do about it. While all is well, "All parts working" stands on top. The
+  SteamVR helper is grey on a PC without SteamVR: it has nothing to do there. The line at the top of the page names the
+  game the mirror shows and says whether gaze arrives.
+- **OpenXR API layers:** one line sums up the layers and their order and turns orange on a problem; a click opens the
+  **Layers** page.
+
+### Layers
+
+The OpenXR API layers on your PC, in the order games load them: the top one loads closest to the game. A tick box
+switches each on or off and arrows **reorder** them. Windows asks for permission for that one change; the app itself
+runs without administrator rights. The app knows the ordering rules of common layers (the mirror layer has to sit below
+anything that draws into the picture, such as OpenKneeboard or OpenXR Toolkit) and offers **Fix order** for an order
+that breaks one. A game takes a change at its next start.
 
 ### Mirror
 
@@ -520,7 +532,7 @@ File locations:
   see the known limit under Gaze source.
 - **The crop does nothing**: press Ctrl+F once on the OBS source.
 - **Quad Views changes do nothing**: press Apply and restart the game; check the Render load line after the next start.
-- **A layer is red or the order is wrong**: Status page > Fix order, or run the installer again > Repair.
+- **A layer is red or the order is wrong**: Layers page > Fix order, or run the installer again > Repair.
 - **The mirror window takes ten seconds to appear the first time**: antivirus software is looking at a new, unsigned
   program.
 - **Discord does not list the mirror window**: tick "Title bar".

@@ -116,6 +116,8 @@ public sealed class AppSettings
     public bool SetupSawGame { get; set; }
     public bool SetupSawReader { get; set; }
     public bool SetupDismissed { get; set; }
+    /// <summary>The guided tour has run (or was skipped) once: it no longer starts by itself.</summary>
+    public bool TourSeen { get; set; }
     /// <summary>The pages whose explanation the user has folded away (see MainWindow.Explain.cs).</summary>
     public List<string> FoldedExplanations { get; set; } = [];
     /// <summary>The explanations the user opened by hand (they stay open), and the pages that have been looked at once:

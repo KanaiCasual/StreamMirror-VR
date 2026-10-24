@@ -101,6 +101,17 @@ public partial class App : Application
                         $"tab{i}: window {window.ActualWidth:0}x{window.ActualHeight:0}, root {root.ActualWidth:0}, tabs {window.Tabs.ActualWidth:0}, preview {window.RingPanel.Visibility} {window.RingPanel.ActualWidth:0}, column {window.PreviewColumn.ActualWidth:0} ({window.PreviewColumn.Width}), inner grid {((FrameworkElement)window.Tabs.Parent).ActualWidth:0}, tabs margin {window.Tabs.Margin}\n");
                     Snapshot($"tab{i}");
                 }
+                // GAZE_SCREENSHOT_TOUR=1: the guided tour, one picture per step.
+                if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_TOUR") == "1")
+                {
+                    window.StartTour();
+                    for (var step = 0; step < window.TourStepCount; step++)
+                    {
+                        window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                        Snapshot($"tour{step:00}");
+                        window.TourNext();
+                    }
+                }
                 // GAZE_SCREENSHOT_PROFILES=1 (with GAZE_MIRROR_PROFILES_FILE pointing at a scratch file): exercise the crop profiles on the Mirror tab.
                 if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_PROFILES") == "1")
                 {
