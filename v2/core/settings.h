@@ -88,7 +88,7 @@ namespace gaze_mirror {
         bool showPanels = true;
         // New in 2.0.
         int eye = 1;                // mirror_eye=left|right. The right eye unless told otherwise.
-        uint32_t outputMaxSide = 3840; // output_max_side: the published picture's longest side is never more.
+        uint32_t outputMaxSide = 3840; // output_max_side: the published picture fits inside this width by its 16:9 height (0 = no limit).
         float outputFps = 0.f;      // output_fps: 0 = every frame the game makes.
         int gazeSource = 0;         // gaze_source=auto|headset|vrchat|sranibro|fixed: 0 headset, else SRanibro raw, else VRChat; 1/2/3 that
                                     // one only; 4 a fixed centre (headsets without eye tracking).

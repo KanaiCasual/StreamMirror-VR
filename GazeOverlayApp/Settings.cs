@@ -474,8 +474,8 @@ public static class Settings
         new()
         {
             Key = "output_max_side", Group = GroupCrop, Kind = SettingKind.Choice, Default = "3840",
-            Label = "Picture size", Description = "Caps the longest side of the picture for OBS and the mirror window; the mirror scales a larger crop box down to it.\n\nSmaller saves video memory and work in OBS. The box itself stays as it is.",
-            Choices = [new("3840", "Up to 3840 (4K)"), new("2560", "Up to 2560"), new("1920", "Up to 1920 (1080p)"), new("0", "As large as the box")],
+            Label = "Picture size", Description = "The resolution of the picture the mirror sends to OBS and the mirror window.\n\n**Up to 3840 x 2160, 2560 x 1440, 1920 x 1080:** the mirror scales the crop box down until it fits inside that resolution, keeping its shape. A 16:9 box comes out at exactly that resolution; a box of another shape fits inside it (a square box at 3840 x 2160 comes out 2160 x 2160). A box that is already smaller is sent as it is: nothing is scaled up.\n\n**As large as the box:** no scaling. The picture has as many pixels as the box covers in the headset's image, which on a high-resolution headset is often more than 4K. The sharpest picture, and the most work for the graphics card and OBS.\n\nPick the resolution you record or stream at: OBS scales anything larger down anyway, so more only costs more. The crop box itself does not change.",
+            Choices = [new("3840", "Up to 3840 x 2160 (4K)"), new("2560", "Up to 2560 x 1440 (1440p)"), new("1920", "Up to 1920 x 1080 (1080p)"), new("0", "As large as the box")],
         },
         new()
         {

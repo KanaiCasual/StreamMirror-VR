@@ -311,13 +311,15 @@ namespace gaze_mirror {
         if (!_renderDue) return output;
         _renderDue = false;
 
-        // The published size: the crop's own, unless that is more than anybody records.
-        const uint32_t maxSide = s.outputMaxSide >= 64 ? s.outputMaxSide : 16384;
+        // The published size: the crop's own, scaled down to fit inside the 16:9 frame output_max_side names by its width
+        // (3840 = 3840 x 2160), which is what a 16:9 recording or stream holds. 0 = no limit.
+        const uint32_t maxWidth = s.outputMaxSide >= 64 ? s.outputMaxSide : 16384;
+        const uint32_t maxHeight = s.outputMaxSide >= 64 ? std::max(64u, s.outputMaxSide * 9 / 16) : 16384;
         uint32_t outWidth = static_cast<uint32_t>(crop.width), outHeight = static_cast<uint32_t>(crop.height);
-        const uint32_t longest = std::max(outWidth, outHeight);
-        if (longest > maxSide) {
-            outWidth = std::max(64u, (outWidth * maxSide / longest) & ~1u);
-            outHeight = std::max(64u, (outHeight * maxSide / longest) & ~1u);
+        if (outWidth > maxWidth || outHeight > maxHeight) {
+            const double scale = std::min(double(maxWidth) / outWidth, double(maxHeight) / outHeight);
+            outWidth = std::max(64u, static_cast<uint32_t>(outWidth * scale) & ~1u);
+            outHeight = std::max(64u, static_cast<uint32_t>(outHeight * scale) & ~1u);
         }
         RingConstants ring;
         const bool drawRing = _ring.visible(s);

@@ -57,7 +57,7 @@ public partial class MainWindow
             new(CropTab, () => ViewEdgesCard, "View edges",
                 "The headset draws more than your eye sees through the lens. Measure where your view ends once, in the headset, then Crop to view edges makes the largest box that fits: no black lens corners."),
             new(CropTab, () => Ancestor<Border>(PanelOutput), "What goes out",
-                "Which eye, how the picture is taken, the largest size and the most pictures a second. Pick 1920 if OBS records 1080p: it saves work. Show tool panels brings kneeboards such as OpenKneeboard along."),
+                "Which eye, how the picture is taken, the resolution OBS gets and the most pictures a second. Pick the resolution you record or stream at, 1920 x 1080 for 1080p: more only costs more. Show tool panels brings kneeboards such as OpenKneeboard along."),
             new(CropTab, () => StabilizeExpander, "A calm picture",
                 "Steady the picture takes small head movement and tracking jitter out; Tilt set to Level keeps the horizon level when you lean. Follow my gaze, just above, moves the box up and down after your eyes."),
             new(CropTab, () => Ancestor<WrapPanel>(CropProfile), "Profiles",

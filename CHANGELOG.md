@@ -10,6 +10,7 @@
 - **The Mirror page's saved picture was replaced by itself.** Opening the Mirror page or coming back to the app took a fresh picture, so with SteamVR running and no game in it, SteamVR's empty home replaced the last game's picture. Now a saved picture stays until you press Refresh picture or Capture from headset. The app takes a picture by itself only while it has none, and only from a running game.
 
 **Changed**
+- **Picture size** names whole resolutions: Up to 3840 x 2160 (4K), 2560 x 1440 (1440p), 1920 x 1080 (1080p), or As large as the box. The crop box is scaled down until it fits inside that resolution; before, only its longest side was capped, so a square box at "3840" came out 3840 pixels tall. A 16:9 box comes out as before. The info text says what each choice sends to OBS.
 - **Layers page**: the OpenXR API layers have their own page in the menu, with the list always open. The Status page keeps a one-line summary that links to it, and now lists every part at all times (no Details button).
 - **Mirror window button** above the picture on the Mirror page: Open mirror window / Close mirror window. Its monitor, size and rate stay in the Mirror window section.
 - **Updating**: the update banner and the installer's first screen say in bold to close your VR game and OBS first.

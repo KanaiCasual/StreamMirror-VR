@@ -106,8 +106,8 @@ Your head moves all the time, and a raw headset view on stream is restless. Open
   board or up at the canopy leaves the frame. With this on, the box glides up or down after your eyes. It needs eye
   tracking.
 
-The **Picture** card sets what goes out: which eye, the largest **Picture size** (3840 for 4K; pick 1920 if OBS
-records 1080p, it saves work) and the **Picture rate**.
+The **Picture** card sets what goes out: which eye, the **Picture size** (the resolution OBS gets: pick the one you
+record or stream at, such as 1920 x 1080 for 1080p; more only costs more) and the **Picture rate**.
 
 ## 7. The gaze ring
 
