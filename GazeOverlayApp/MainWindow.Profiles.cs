@@ -79,8 +79,24 @@ public partial class MainWindow
         try { _profiles = CropProfiles.Load(); }
         catch (Exception e) { _profiles = []; CropProfileStatus.Text = "The profiles file could not be read: " + e.Message; AppLog.Write("The crop profiles could not be read", e); }
         _selectedProfile = _profiles.FirstOrDefault(p => p.Name == selectedName);
+        MarkProfileBaseline();
         RefreshProfileList();
     }
+
+    /// <summary>
+    /// The open profile as it was when it was opened (or last saved by hand): what Revert goes back to while edits save
+    /// themselves, since the profile itself follows every edit then.
+    /// </summary>
+    private Dictionary<string, string> _profileBaseline = new(StringComparer.Ordinal);
+
+    private void MarkProfileBaseline() =>
+        _profileBaseline = _selectedProfile == null ? new(StringComparer.Ordinal) : new(_selectedProfile.Values, StringComparer.Ordinal);
+
+    /// <summary>With automatic saving: whether the framing moved away from the profile as it was opened.</summary>
+    private bool ProfileChangedSinceOpened() =>
+        _selectedProfile != null && _appSettings.ProfileAutoSave &&
+        Settings.All.Where(d => CropProfiles.IsProfileKey(d.Key))
+            .Any(d => (_values.GetValueOrDefault(d.Key) ?? d.Default) != (_profileBaseline.GetValueOrDefault(d.Key) ?? d.Default));
 
     /// <summary>Rebuilds the list from scratch (a fresh ItemsSource, so the drop-down always matches what is there).</summary>
     private void RefreshProfileList()
@@ -122,11 +138,15 @@ public partial class MainWindow
     private void UpdateProfileState()
     {
         var unsaved = ProfileHasUnsavedChanges();
+        var changedSinceOpened = ProfileChangedSinceOpened();
         CropProfileSave.IsEnabled = _selectedProfile != null && unsaved;
         CropProfileSave.Visibility = _appSettings.ProfileAutoSave ? Visibility.Collapsed : Visibility.Visible;
         // Accent while something waits to be saved; otherwise the theme's own button look (a null Style would drop the theme).
         CropProfileSave.Style = (Style)FindResource(unsaved ? "AccentButtonStyle" : typeof(Button));
-        CropProfileRevert.Visibility = unsaved ? Visibility.Visible : Visibility.Collapsed;
+        CropProfileRevert.Visibility = unsaved || changedSinceOpened ? Visibility.Visible : Visibility.Collapsed;
+        CropProfileRevert.ToolTip = WrappedToolTip(_appSettings.ProfileAutoSave
+            ? "Back to this profile as it was when you opened it.\n\nCtrl+Z undoes one change at a time, Ctrl+Y redoes it; Revert itself can be undone too."
+            : "Drops the unsaved changes: back to this profile as saved.\n\nCtrl+Z undoes one change at a time, Ctrl+Y redoes it; Revert itself can be undone too.");
         var game = _selectedProfile?.Game ?? "";
         var start = game.Length > 0 ? $"when {game} starts" : "at the start of the game you name under For game";
         CropProfileStatus.Foreground = unsaved ? Brushes.Orange : (Brush)FindResource("Muted");
@@ -134,9 +154,9 @@ public partial class MainWindow
             ? (MirrorLive.Read() is { Producing: true } live
                 ? $"Running now: {live.Program}. Save as... or New makes a profile, and the mirror applies it at each start of that game."
                 : "No profile open: edits change the settings as they are. Save as... or New makes a profile, and the mirror applies it at a game's start.")
-            : unsaved ? $"Unsaved changes to \"{_selectedProfile.Name}\". The stream shows them now; Save keeps them in the profile, Revert goes back. Unsaved, the saved profile comes back {start}."
-            : _appSettings.ProfileAutoSave ? $"Edits save into \"{_selectedProfile.Name}\" as you make them. The mirror applies it {start}."
-            : $"\"{_selectedProfile.Name}\" is saved. Edits show on the stream at once, and Save keeps them. The mirror applies it {start}.";
+            : unsaved ? $"Unsaved changes to \"{_selectedProfile.Name}\". The stream shows them now; Save keeps them in the profile, Revert goes back, Ctrl+Z undoes one change. Unsaved, the saved profile comes back {start}."
+            : _appSettings.ProfileAutoSave ? $"Edits save into \"{_selectedProfile.Name}\" as you make them" + (changedSinceOpened ? "; Revert goes back to how it was when you opened it" : "") + $", and Ctrl+Z undoes one change. The mirror applies it {start}."
+            : $"\"{_selectedProfile.Name}\" is saved. Edits show on the stream at once, Save keeps them and Ctrl+Z undoes one. The mirror applies it {start}.";
     }
 
     private void OnProfileSelected()
@@ -155,6 +175,7 @@ public partial class MainWindow
         AppLog.Write(_selectedProfile == null ? "Crop profile: none chosen." : $"Crop profile \"{_selectedProfile.Name}\" chosen (game \"{_selectedProfile.Game}\").");
         // Show it: its values become the current settings (and reach a running game like any change).
         if (_selectedProfile != null) ShowProfileFraming(_selectedProfile);
+        MarkProfileBaseline();
         RefreshProfileList();
     }
 
@@ -226,9 +247,10 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>A profile's framing onto the page (and to a running game, like any change).</summary>
+    /// <summary>A profile's framing onto the page (and to a running game, like any change). A new framing: undo starts afresh.</summary>
     private void ShowProfileFraming(CropProfile profile)
     {
+        ForgetUndo();
         if (profile.Values.Count == 0) return;
         ApplyValues(profile.Values);
         ApplyCropMargin(moveBox: false);
@@ -254,15 +276,22 @@ public partial class MainWindow
         if (_selectedProfile == null) return;
         CopyFramingInto(_selectedProfile);
         SaveProfiles();
+        MarkProfileBaseline();
         AppLog.Write($"Crop profile \"{_selectedProfile.Name}\" saved.");
         UpdateProfileState();
     }
 
+    /// <summary>
+    /// Back to the profile as saved - or, while edits save themselves, as it was when it was opened. One undoable step:
+    /// Ctrl+Z brings the changes back.
+    /// </summary>
     private void OnProfileRevert(object sender, RoutedEventArgs e)
     {
         if (_selectedProfile == null) return;
-        ShowProfileFraming(_selectedProfile);
-        AppLog.Write($"Crop profile \"{_selectedProfile.Name}\": unsaved changes dropped.");
+        var target = _appSettings.ProfileAutoSave ? _profileBaseline : _selectedProfile.Values;
+        ApplyAsUndoableStep(Settings.All.Where(d => CropProfiles.IsProfileKey(d.Key))
+            .ToDictionary(d => d.Key, d => target.GetValueOrDefault(d.Key) ?? d.Default));
+        AppLog.Write($"Crop profile \"{_selectedProfile.Name}\": reverted {(_appSettings.ProfileAutoSave ? "to how it was when opened" : "to the saved profile")}.");
         UpdateProfileState();
     }
 
@@ -275,6 +304,7 @@ public partial class MainWindow
         if (on && ProfileHasUnsavedChanges()) OnProfileSave(sender, e);
         _appSettings.ProfileAutoSave = on;
         if (!App.Headless) _appSettings.Save();
+        MarkProfileBaseline();
         UpdateProfileState();
     }
 
@@ -445,6 +475,23 @@ public partial class MainWindow
         OnProfileSave(this, new RoutedEventArgs());
         report.Append($"after Save: unsaved {ProfileHasUnsavedChanges()} (expect False), profile has 0.31 {_selectedProfile?.Values.GetValueOrDefault("crop_height") == "0.31"} (expect True)\n");
         snapshot("profiles-saved");
+        // With automatic saving: an edit goes into the profile, Revert goes back to how it was opened (saved too), undo restores the edit.
+        _appSettings.ProfileAutoSave = true;
+        MarkProfileBaseline();
+        _undoOpen = null;
+        OnValueChanged("crop_height", "0.42");
+        report.Append($"automatic saving, edit: profile has 0.42 {_selectedProfile?.Values.GetValueOrDefault("crop_height") == "0.42"} (expect True), changed since opened {ProfileChangedSinceOpened()} (expect True)\n");
+        OnProfileRevert(this, new RoutedEventArgs());
+        report.Append($"after Revert: crop_height {_values.GetValueOrDefault("crop_height")} (expect 0.31), profile {_selectedProfile?.Values.GetValueOrDefault("crop_height")} (expect 0.31)\n");
+        var undone = Step(_undo, _redo, back: true);
+        report.Append($"after undo: {undone} (expect True), crop_height {_values.GetValueOrDefault("crop_height")} (expect 0.42)\n");
+        Step(_undo, _redo, back: true);
+        report.Append($"after a second undo: crop_height {_values.GetValueOrDefault("crop_height")} (expect 0.31)\n");
+        Step(_redo, _undo, back: false);
+        report.Append($"after redo: crop_height {_values.GetValueOrDefault("crop_height")} (expect 0.42)\n");
+        _appSettings.ProfileAutoSave = false;
+        _selectedProfile!.Values["crop_height"] = "0.31";
+        ApplyAsSetting(new Dictionary<string, string> { ["crop_height"] = "0.31" });
         _profileNaming = ProfileNaming.New;
         CropProfileName.Text = "Fresh";
         OnProfileSaveConfirm(this, new RoutedEventArgs());

@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         BuildCoverUi();
         BuildExplanations();
         BuildTourLayer();
+        BuildUndo();
         LoadQuadViews();
         AboutText.Text =
             "VR Gaze Mirror mirrors your VR view for OBS and window capture, with a ring that shows where you look.\n\n" +
@@ -801,6 +802,7 @@ public partial class MainWindow : Window
     private void OnValueChanged(string key, string value)
     {
         if (_loading) return;
+        RecordUndo(key, _values.GetValueOrDefault(key), value);
         _values[key] = value;
         _dirtyKeys.Add(key);
         if (key == "headset_marker") RefreshStatus();

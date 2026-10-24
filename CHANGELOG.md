@@ -3,6 +3,7 @@
 ## Not released yet
 
 **New**
+- **Undo and redo**: Ctrl+Z takes back the last change made on the page you look at (a whole drag of the crop box or a slider counts as one), Ctrl+Y or Ctrl+Shift+Z redoes it. Revert can be undone too.
 - **A guided tour** of the pages and their main controls. It starts the first time the app opens, and About > **Take the tour** brings it back. Esc ends it, the arrow keys step through it.
 - **A getting-started guide** on GitHub (docs/GETTING-STARTED.md) walks from the download to a framed, steady picture in OBS. About > **Getting started** opens it.
 
@@ -10,7 +11,7 @@
 - **The Mirror page's saved picture was replaced by itself.** Opening the Mirror page or coming back to the app took a fresh picture, so with SteamVR running and no game in it, SteamVR's empty home replaced the last game's picture. Now a saved picture stays until you press Refresh picture or Capture from headset. The app takes a picture by itself only while it has none, and only from a running game.
 
 **Changed**
-- **Crop profiles: changes wait for Save.** Changes on the Mirror page reach the stream at once, but go into the open profile only when you press **Save**. An orange line says what is unsaved, **Revert** goes back, and switching profiles with unsaved changes asks first. **Save edits automatically** brings back the old behaviour. **New** starts a profile from the default framing, **Rename** and **Delete** sit under the "⋯" button, and Delete asks first.
+- **Crop profiles: changes wait for Save.** Changes on the Mirror page reach the stream at once, but go into the open profile only when you press **Save**. An orange line says what is unsaved, **Revert** goes back, and switching profiles with unsaved changes asks first. **Save edits automatically** brings back the old behaviour, and Revert then goes back to the profile as it was when you opened it. **New** starts a profile from the default framing, **Rename** and **Delete** sit under the "⋯" button, and Delete asks first.
 - **Picture size** names whole resolutions, worked out for your crop box: with a 4:3 box the choices read 2880 x 2160 (4K), 1920 x 1440 (1440p), 1440 x 1080 (1080p) and As large as the box with its own size. The box is scaled down until it fits a 4K, 1440p or 1080p frame turned its way, so a vertical 9:16 box gets 2160 x 3840. Before, only the longest side was capped, so a square box at "3840" came out 3840 x 3840. A 16:9 box comes out at exactly 3840 x 2160 now, where a box a hair off 16:9 used to lose two pixels (3840 x 2158). The readout under the picture says what OBS gets, and the info text explains each choice.
 - **Layers page**: the OpenXR API layers have their own page in the menu, with the list always open. The Status page keeps a one-line summary that links to it, and now lists every part at all times (no Details button).
 - **Mirror window button** above the picture on the Mirror page: Open mirror window / Close mirror window. Its monitor, size and rate stay in the Mirror window section.

@@ -133,7 +133,8 @@ that profile by itself whenever that game starts. Make one per game that needs a
 
 Changes you make afterwards show on the stream at once, but the profile keeps them only when you press **Save**. An
 orange line under the bar tells you something is unsaved, and **Revert** goes back. That way trying something out never
-spoils a profile by accident. Prefer every change saved as you go? Tick **Save edits automatically**.
+spoils a profile by accident. Prefer every change saved as you go? Tick **Save edits automatically**; **Revert** then
+takes you back to how the profile was when you opened it. And on any page, **Ctrl+Z** undoes your last change there.
 
 ## 9. Before you go live
 
