@@ -8,6 +8,7 @@
 - **A getting-started guide** on GitHub (docs/GETTING-STARTED.md) walks from the download to a framed, steady picture in OBS. About > **Getting started** opens it.
 
 **Fixed**
+- **The app noticed the mirror window closing only when you clicked in it.** Closed with its own close button (or Alt+F4), the window left the app saying "Close mirror window". The app now hears the window end and switches to "Open mirror window" at once.
 - **The Mirror page's saved picture was replaced by itself.** Opening the Mirror page or coming back to the app took a fresh picture, so with SteamVR running and no game in it, SteamVR's empty home replaced the last game's picture. Now a saved picture stays until you press Refresh picture or Capture from headset. The app takes a picture by itself only while it has none, and only from a running game.
 
 **Changed**

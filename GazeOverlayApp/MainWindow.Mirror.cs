@@ -109,6 +109,8 @@ public partial class MainWindow
         MirrorClose.IsEnabled = running;
         MirrorToggle.Content = running ? "Close mirror window" : "Open mirror window";
         MirrorToggle.IsEnabled = program != null;
+        // Closed from its own close button (or any other way): the buttons and the section follow at once.
+        if (running) MirrorWindowControl.WatchExit(() => Dispatcher.InvokeAsync(() => RefreshMirrorState()));
         MirrorWindowExpander.Header = "Mirror window: " + (running ? "open" : "closed");
         MirrorStatus.Text = note ?? (program == null ? "MirrorWindow.exe is missing next to this app."
             : running ? "The mirror window is open. Capture \"VR Gaze Mirror - Mirror\" with OBS Window Capture or Discord."

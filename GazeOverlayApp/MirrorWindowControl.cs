@@ -36,6 +36,61 @@ public static class MirrorWindowControl
         return true;
     }
 
+    private static Process? _watched;
+
+    /// <summary>
+    /// Calls `closed` when the mirror window ends, however it ends - its own close button, Alt+F4, this app's Close, a
+    /// crash: the process's exit event, nothing is polled. The window's process is the oldest MirrorWindow; a second
+    /// start only hands its arguments to the running window and leaves at once. Call it while the window runs; a call
+    /// while it is already watched does nothing.
+    /// </summary>
+    public static void WatchExit(Action closed)
+    {
+        if (_watched is { } watched)
+        {
+            try
+            {
+                if (!watched.HasExited) return;
+            }
+            catch
+            {
+                // Not ours to ask any more: watch afresh.
+            }
+            watched.Dispose();
+            _watched = null;
+        }
+        Process? window = null;
+        foreach (var process in Process.GetProcessesByName("MirrorWindow"))
+        {
+            try
+            {
+                if (window == null || process.StartTime < window.StartTime)
+                {
+                    window?.Dispose();
+                    window = process;
+                    continue;
+                }
+            }
+            catch
+            {
+                // Gone in the meantime, or not readable.
+            }
+            process.Dispose();
+        }
+        if (window == null) return;
+        try
+        {
+            window.EnableRaisingEvents = true;
+            window.Exited += (_, _) => closed();
+            _watched = window;
+            if (window.HasExited) closed(); // It ended between finding and watching.
+        }
+        catch
+        {
+            window.Dispose();
+        }
+    }
+
     public static string Arguments(AppSettings settings)
     {
         var placement = settings.MirrorMonitor > 0 ? $"--monitor {settings.MirrorMonitor} --titled {(settings.MirrorTitled ? 1 : 0)}" : "--windowed";
