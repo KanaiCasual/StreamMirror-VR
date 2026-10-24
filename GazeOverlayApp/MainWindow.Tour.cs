@@ -14,7 +14,8 @@ namespace GazeOverlay;
 /// </summary>
 public partial class MainWindow
 {
-    private sealed record TourStep(TabItem? Page, Func<FrameworkElement?> Target, string Title, string Text);
+    /// <summary>A step: its page, its control, its card, and the section it opens while it shows (put back after).</summary>
+    private sealed record TourStep(TabItem? Page, Func<FrameworkElement?> Target, string Title, string Text, Expander? Opens = null);
 
     private List<TourStep> _tour = [];
     private int _tourIndex = -1;
@@ -27,6 +28,10 @@ public partial class MainWindow
     private readonly Button _tourBack = new() { Content = "Back", Margin = new Thickness(0, 0, 6, 0) };
     private readonly Button _tourNext = new() { MinWidth = 76 };
     private readonly Button _tourSkip = new() { Content = "Skip the tour" };
+    // The step's control while it shows: its size and the scrolling around it place the ring and the card again.
+    private FrameworkElement? _tourTarget;
+    private ScrollViewer? _tourScroller;
+    private bool _tourOpenedSection;
 
     /// <summary>The nearest T around a control, by the page's own structure (works before the page was ever shown).</summary>
     private static T? Ancestor<T>(DependencyObject? item) where T : DependencyObject
@@ -59,13 +64,17 @@ public partial class MainWindow
             new(CropTab, () => Ancestor<Border>(PanelOutput), "What goes out",
                 "Which eye, how the picture is taken, the resolution OBS gets and the most pictures a second. Each Picture size choice names the resolution your crop box gets; pick the one you record or stream at, 1920 x 1080 for 1080p: more only costs more. Show tool panels brings kneeboards such as OpenKneeboard along."),
             new(CropTab, () => StabilizeExpander, "A calm picture",
-                "Steady the picture takes small head movement and tracking jitter out; Tilt set to Level keeps the horizon level when you lean. Follow my gaze, just above, moves the box up and down after your eyes."),
+                "Steady the picture takes small head movement and tracking jitter out; Tilt set to Level keeps the horizon level when you lean. The green band on the picture is the room the box may move in. Follow my gaze, just above, moves the box up and down after your eyes.",
+                StabilizeExpander),
             new(CropTab, () => Ancestor<WrapPanel>(CropProfile), "Profiles",
                 "A profile keeps a framing under a name. New starts one from the default framing, Save as... copies the current one, and the ... button renames or deletes it. Give it a game's program file under For game (DCS.exe, say) and the mirror switches to it by itself when that game starts."),
             new(CropTab, () => Ancestor<DockPanel>(CropProfileAutoSave), "Saving a profile",
                 "Changes show on the stream at once, but go into the profile only when you press Save, so trying something out never spoils it. This line turns orange while something is unsaved, and Revert goes back. Tick Save edits automatically to save every change as you make it."),
             new(CropTab, () => MirrorToggle, "The mirror window",
-                "For Discord and other programs that capture windows: a window with the same picture, behind your other windows. With the Gaze Mirror source in OBS you do not need it."),
+                "For Discord and other programs that capture windows: a window with the same picture, behind your other windows. This button opens and closes it. With the Gaze Mirror source in OBS you do not need it."),
+            new(CropTab, () => MirrorWindowExpander, "Mirror window settings",
+                "At the foot of this column: the monitor the window fills (or a set size, for Discord 1920 x 1080 say), the most pictures a second it draws, and a title bar for capture tools that only list windows with one.",
+                MirrorWindowExpander),
             new(GazeTab, () => Ancestor<Border>(PanelGaze), "Where the gaze comes from",
                 "The ring shows your viewers where you look. The headset's own eye tracking comes first; this sets the fallbacks. No eye tracking? Choose Fixed centre, or switch the ring off on the Ring page. Further down, a marker in the headset lets you check where the ring lands."),
             new(LookTab, () => LookHeaderBar, "The ring's look",
@@ -145,9 +154,16 @@ public partial class MainWindow
     private void TourGo(int index)
     {
         if (index < 0 || index >= _tour.Count) return;
+        LeaveTourStep();
         _tourIndex = index;
         var step = _tour[index];
         if (step.Page != null) Tabs.SelectedItem = step.Page;
+        // A folded section the step is about opens while the step shows.
+        if (step.Opens is { IsExpanded: false } section)
+        {
+            section.IsExpanded = true;
+            _tourOpenedSection = true;
+        }
         _tourCount.Text = index == 0 ? "Tour" : $"{index} of {_tour.Count - 1}";
         _tourTitle.Text = step.Title;
         _tourText.Text = step.Text;
@@ -156,12 +172,54 @@ public partial class MainWindow
         _tourSkip.Visibility = index == _tour.Count - 1 ? Visibility.Collapsed : Visibility.Visible;
         // The page has to be laid out before the control can be found on it.
         step.Target()?.BringIntoView();
-        Dispatcher.InvokeAsync(PlaceTour, System.Windows.Threading.DispatcherPriority.Loaded);
+        Dispatcher.InvokeAsync(() => FollowTourTarget(step.Target()), System.Windows.Threading.DispatcherPriority.Loaded);
         _tourNext.Focus();
+    }
+
+    /// <summary>
+    /// Watches the step's control: while a section unfolds it grows, and the column scrolls to show it; both place the
+    /// ring and the card again, so they end on the whole section.
+    /// </summary>
+    private void FollowTourTarget(FrameworkElement? target)
+    {
+        if (_tourIndex < 0) return;
+        _tourTarget = target;
+        if (target != null)
+        {
+            target.SizeChanged += OnTourTargetSizeChanged;
+            _tourScroller = null;
+            for (DependencyObject? at = VisualTreeHelper.GetParent(target); at != null && _tourScroller == null; at = VisualTreeHelper.GetParent(at))
+            {
+                _tourScroller = at as ScrollViewer;
+            }
+            if (_tourScroller != null) _tourScroller.ScrollChanged += OnTourScrolled;
+            target.BringIntoView();
+        }
+        PlaceTour();
+    }
+
+    private void OnTourTargetSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        _tourTarget?.BringIntoView();
+        PlaceTour();
+    }
+
+    private void OnTourScrolled(object sender, ScrollChangedEventArgs e) => PlaceTour();
+
+    /// <summary>Lets go of the step's control, and folds again the section it opened.</summary>
+    private void LeaveTourStep()
+    {
+        if (_tourTarget != null) _tourTarget.SizeChanged -= OnTourTargetSizeChanged;
+        if (_tourScroller != null) _tourScroller.ScrollChanged -= OnTourScrolled;
+        _tourTarget = null;
+        _tourScroller = null;
+        if (_tourOpenedSection && _tourIndex >= 0 && _tourIndex < _tour.Count && _tour[_tourIndex].Opens is { } section) section.IsExpanded = false;
+        _tourOpenedSection = false;
     }
 
     private void EndTour()
     {
+        LeaveTourStep();
         _tourIndex = -1;
         TourLayer.Visibility = Visibility.Collapsed;
         if (_appSettings.TourSeen || App.Headless) return;

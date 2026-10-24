@@ -107,6 +107,12 @@ public partial class App : Application
                     window.StartTour();
                     for (var step = 0; step < window.TourStepCount; step++)
                     {
+                        // A section the step opens unfolds with a short animation: wait for it to end.
+                        var settle = new System.Windows.Threading.DispatcherFrame();
+                        var settleTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
+                        settleTimer.Tick += (_, _) => { settleTimer.Stop(); settle.Continue = false; };
+                        settleTimer.Start();
+                        System.Windows.Threading.Dispatcher.PushFrame(settle);
                         window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                         Snapshot($"tour{step:00}");
                         window.TourNext();
