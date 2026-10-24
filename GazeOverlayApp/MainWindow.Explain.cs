@@ -40,7 +40,7 @@ public partial class MainWindow
             new("Follow my gaze.", "A 16:9 box covers about half the height of the eye image, so a look down at your knees leaves the frame. With this on, the box glides up or down to keep your target in it."),
             new("Steady the picture.", "The box moves against small head movement and tracking jitter, and turns against a sideways tilt of your head, which takes them out of the picture. It holds back no frames, so it adds no delay."),
             new("Mirror window.", "A window with the same picture for programs that capture windows, such as Discord. With the Gaze Mirror source in OBS you do not need it."),
-            new("Profile.", "A profile keeps this framing under a name. Give it a game's program file and the mirror applies it at that game's start."),
+            new("Profile.", "A profile keeps a framing under a name. Give it a game's program file and the mirror applies it at that game's start. New starts one from the default framing, Save as copies the current one. Changes reach the stream at once and go into the profile at Save; Revert goes back. Save edits automatically saves every change as you make it."),
             AboutSliders);
 
         AddExplanation(GazeTab, ExplainGaze, "gaze", HowThisPageWorks,

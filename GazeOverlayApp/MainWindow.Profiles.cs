@@ -102,15 +102,41 @@ public partial class MainWindow
     private void RefreshProfileUi()
     {
         _profileLoading = true;
-        CropProfileDelete.IsEnabled = _selectedProfile != null;
+        CropProfileDelete.IsEnabled = CropProfileRename.IsEnabled = _selectedProfile != null;
+        CropProfileAutoSave.IsChecked = _appSettings.ProfileAutoSave;
         if (!CropProfileGame.IsKeyboardFocusWithin) CropProfileGame.Text = _selectedProfile?.Game ?? CropProfileGame.Text;
         _profileLoading = false;
-        var live = MirrorLive.Read();
-        var running = live is { Producing: true } ? live.Program : null;
+        UpdateProfileState();
+    }
+
+    /// <summary>
+    /// Whether the framing on the page differs from the open profile as saved. Worked out each time, so it holds
+    /// through a restart and cannot go stale. With automatic saving there is nothing unsaved.
+    /// </summary>
+    private bool ProfileHasUnsavedChanges() =>
+        _selectedProfile != null && !_appSettings.ProfileAutoSave &&
+        Settings.All.Where(d => CropProfiles.IsProfileKey(d.Key))
+            .Any(d => (_values.GetValueOrDefault(d.Key) ?? d.Default) != (_selectedProfile.Values.GetValueOrDefault(d.Key) ?? d.Default));
+
+    /// <summary>The buttons and the line under the profile bar: what happens to an edit, and what is unsaved.</summary>
+    private void UpdateProfileState()
+    {
+        var unsaved = ProfileHasUnsavedChanges();
+        CropProfileSave.IsEnabled = _selectedProfile != null && unsaved;
+        CropProfileSave.Visibility = _appSettings.ProfileAutoSave ? Visibility.Collapsed : Visibility.Visible;
+        // Accent while something waits to be saved; otherwise the theme's own button look (a null Style would drop the theme).
+        CropProfileSave.Style = (Style)FindResource(unsaved ? "AccentButtonStyle" : typeof(Button));
+        CropProfileRevert.Visibility = unsaved ? Visibility.Visible : Visibility.Collapsed;
+        var game = _selectedProfile?.Game ?? "";
+        var start = game.Length > 0 ? $"when {game} starts" : "at the start of the game you name under For game";
+        CropProfileStatus.Foreground = unsaved ? Brushes.Orange : (Brush)FindResource("Muted");
         CropProfileStatus.Text = _selectedProfile == null
-            ? (running != null ? $"Running now: {running}. Save the framing as a profile and the mirror applies it at each start of that game." : "Save the framing as a profile and the mirror applies it at a game's start. You can fill in \"For game\" first.")
-            : _selectedProfile.Game.Length == 0 ? "Your edits go into this profile. Choose or type a game (its program file, for example DCS.exe) and the mirror applies the profile at that game's start."
-            : $"Your edits go into this profile. The mirror applies it when {_selectedProfile.Game} starts" + (running != null && !string.Equals(running, _selectedProfile.Game, StringComparison.OrdinalIgnoreCase) ? $" (running now: {running})." : ".");
+            ? (MirrorLive.Read() is { Producing: true } live
+                ? $"Running now: {live.Program}. Save as... or New makes a profile, and the mirror applies it at each start of that game."
+                : "No profile open: edits change the settings as they are. Save as... or New makes a profile, and the mirror applies it at a game's start.")
+            : unsaved ? $"Unsaved changes to \"{_selectedProfile.Name}\". The stream shows them now; Save keeps them in the profile, Revert goes back. Unsaved, the saved profile comes back {start}."
+            : _appSettings.ProfileAutoSave ? $"Edits save into \"{_selectedProfile.Name}\" as you make them. The mirror applies it {start}."
+            : $"\"{_selectedProfile.Name}\" is saved. Edits show on the stream at once, and Save keeps them. The mirror applies it {start}.";
     }
 
     private void OnProfileSelected()
@@ -118,17 +144,17 @@ public partial class MainWindow
         if (_profileLoading) return;
         var chosen = CropProfile.SelectedItem is ProfileItem item ? item.Profile : null;
         if (ReferenceEquals(chosen, _selectedProfile)) return;
+        if (!AskAboutUnsavedChanges())
+        {
+            RefreshProfileList(); // Cancelled: the list goes back to the open profile.
+            return;
+        }
         _selectedProfile = chosen;
         _appSettings.SelectedCropProfile = _selectedProfile?.Name ?? "";
         _appSettings.Save();
         AppLog.Write(_selectedProfile == null ? "Crop profile: none chosen." : $"Crop profile \"{_selectedProfile.Name}\" chosen (game \"{_selectedProfile.Game}\").");
-        if (_selectedProfile != null && _selectedProfile.Values.Count > 0)
-        {
-            // Show it: its values become the current settings (and reach a running game like any change).
-            ApplyValues(_selectedProfile.Values);
-            ApplyCropMargin(moveBox: false);
-            DrawCrop();
-        }
+        // Show it: its values become the current settings (and reach a running game like any change).
+        if (_selectedProfile != null) ShowProfileFraming(_selectedProfile);
         RefreshProfileList();
     }
 
@@ -173,13 +199,115 @@ public partial class MainWindow
         RefreshProfileList();
     }
 
-    /// <summary>A crop key changed while a profile is selected: the profile follows (debounced - sliders fire a lot).</summary>
+    /// <summary>
+    /// A crop key changed while a profile is open: with automatic saving the profile follows (debounced - sliders fire a
+    /// lot); without, the change waits for Save and the bar says so.
+    /// </summary>
     private void OnProfileValueChanged(string key, string value)
     {
         if (_selectedProfile == null || !CropProfiles.IsProfileKey(key)) return;
-        _selectedProfile.Values[key] = value;
-        _profileSaveTimer.Stop();
-        _profileSaveTimer.Start();
+        if (_appSettings.ProfileAutoSave)
+        {
+            _selectedProfile.Values[key] = value;
+            _profileSaveTimer.Stop();
+            _profileSaveTimer.Start();
+            return;
+        }
+        UpdateProfileState();
+    }
+
+    /// <summary>The framing on the page, as a profile holds it.</summary>
+    private void CopyFramingInto(CropProfile profile)
+    {
+        profile.Values.Clear();
+        foreach (var def in Settings.All.Where(d => CropProfiles.IsProfileKey(d.Key)))
+        {
+            profile.Values[def.Key] = _values.GetValueOrDefault(def.Key) ?? def.Default;
+        }
+    }
+
+    /// <summary>A profile's framing onto the page (and to a running game, like any change).</summary>
+    private void ShowProfileFraming(CropProfile profile)
+    {
+        if (profile.Values.Count == 0) return;
+        ApplyValues(profile.Values);
+        ApplyCropMargin(moveBox: false);
+        DrawCrop();
+    }
+
+    /// <summary>
+    /// Before the open profile is left with unsaved changes: Save them, Don't save (they are dropped), or Cancel. True
+    /// to go on. A self-test or screenshot run never asks.
+    /// </summary>
+    private bool AskAboutUnsavedChanges()
+    {
+        if (!ProfileHasUnsavedChanges() || App.Headless) return true;
+        var answer = MessageBox.Show(this, $"\"{_selectedProfile!.Name}\" has unsaved changes. Save them first?", "Unsaved changes",
+            MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+        if (answer == MessageBoxResult.Cancel) return false;
+        if (answer == MessageBoxResult.Yes) OnProfileSave(this, new RoutedEventArgs());
+        return true;
+    }
+
+    private void OnProfileSave(object sender, RoutedEventArgs e)
+    {
+        if (_selectedProfile == null) return;
+        CopyFramingInto(_selectedProfile);
+        SaveProfiles();
+        AppLog.Write($"Crop profile \"{_selectedProfile.Name}\" saved.");
+        UpdateProfileState();
+    }
+
+    private void OnProfileRevert(object sender, RoutedEventArgs e)
+    {
+        if (_selectedProfile == null) return;
+        ShowProfileFraming(_selectedProfile);
+        AppLog.Write($"Crop profile \"{_selectedProfile.Name}\": unsaved changes dropped.");
+        UpdateProfileState();
+    }
+
+    private void OnProfileAutoSaveChanged(object sender, RoutedEventArgs e)
+    {
+        if (_profileLoading) return;
+        var on = CropProfileAutoSave.IsChecked == true;
+        if (on == _appSettings.ProfileAutoSave) return;
+        // Switched on with changes waiting: they are what "automatic" would have saved.
+        if (on && ProfileHasUnsavedChanges()) OnProfileSave(sender, e);
+        _appSettings.ProfileAutoSave = on;
+        if (!App.Headless) _appSettings.Save();
+        UpdateProfileState();
+    }
+
+    private void OnProfileMore(object sender, RoutedEventArgs e)
+    {
+        if (CropProfileMore.ContextMenu is not { } menu) return;
+        menu.PlacementTarget = CropProfileMore;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>What the name box is for: a copy of the framing, a fresh profile, or the open profile's new name.</summary>
+    private enum ProfileNaming { SaveAs, New, Rename }
+    private ProfileNaming _profileNaming = ProfileNaming.SaveAs;
+
+    private void AskProfileName(ProfileNaming naming, string suggested)
+    {
+        _profileNaming = naming;
+        CropProfileName.Text = suggested;
+        CropProfileNamePanel.Visibility = Visibility.Visible;
+        CropProfileName.Focus();
+        CropProfileName.SelectAll();
+    }
+
+    private void OnProfileNew(object sender, RoutedEventArgs e)
+    {
+        var live = MirrorLive.Read();
+        AskProfileName(ProfileNaming.New, live is { Producing: true } ? System.IO.Path.GetFileNameWithoutExtension(live.Program) : "New profile");
+    }
+
+    private void OnProfileRename(object sender, RoutedEventArgs e)
+    {
+        if (_selectedProfile != null) AskProfileName(ProfileNaming.Rename, _selectedProfile.Name);
     }
 
     private void SaveProfiles()
@@ -193,30 +321,58 @@ public partial class MainWindow
         var live = MirrorLive.Read();
         var suggested = CropProfileGame.Text.Trim();
         if (suggested.Length == 0 && live is { Producing: true }) suggested = live.Program;
-        CropProfileName.Text = suggested.Length > 0 ? System.IO.Path.GetFileNameWithoutExtension(suggested) : "";
-        CropProfileNamePanel.Visibility = Visibility.Visible;
-        CropProfileName.Focus();
-        CropProfileName.SelectAll();
+        AskProfileName(ProfileNaming.SaveAs, suggested.Length > 0 ? System.IO.Path.GetFileNameWithoutExtension(suggested) : "");
     }
 
     private void OnProfileSaveConfirm(object sender, RoutedEventArgs e)
     {
         var name = CropProfileName.Text.Trim().Replace("[", "").Replace("]", "");
         if (name.Length == 0) return;
+        var naming = _profileNaming;
+        _profileNaming = ProfileNaming.SaveAs;
         CropProfileNamePanel.Visibility = Visibility.Collapsed;
         var profile = _profiles.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (naming == ProfileNaming.Rename)
+        {
+            if (_selectedProfile == null) return;
+            if (profile != null && !ReferenceEquals(profile, _selectedProfile))
+            {
+                CropProfileStatus.Text = $"A profile called \"{profile.Name}\" exists already: choose another name.";
+                return;
+            }
+            AppLog.Write($"Crop profile \"{_selectedProfile.Name}\" renamed to \"{name}\".");
+            _selectedProfile.Name = name;
+            _appSettings.SelectedCropProfile = name;
+            _appSettings.Save();
+            SaveProfiles();
+            RefreshProfileList();
+            return;
+        }
+        if (naming == ProfileNaming.New && profile != null)
+        {
+            CropProfileStatus.Text = $"A profile called \"{profile.Name}\" exists already: choose another name, or open it from the list.";
+            return;
+        }
+        // Leaving the open profile: its unsaved changes are asked about (Save as takes them into the copy instead).
+        if (naming == ProfileNaming.New && !AskAboutUnsavedChanges()) return;
         if (profile == null)
         {
-            // The game: what is in the box, or the game running now.
-            var game = CropProfileGame.Text.Trim();
-            if (game.Length == 0 && MirrorLive.Read() is { Producing: true } live) game = live.Program;
+            // The game: what is in the box, or the game running now (a new, empty profile is for whatever you name).
+            var game = naming == ProfileNaming.New ? "" : CropProfileGame.Text.Trim();
+            if (naming != ProfileNaming.New && game.Length == 0 && MirrorLive.Read() is { Producing: true } live) game = live.Program;
             profile = new CropProfile { Name = name, Game = game };
             _profiles.Add(profile);
         }
-        profile.Values.Clear();
-        foreach (var def in Settings.All.Where(d => CropProfiles.IsProfileKey(d.Key)))
+        if (naming == ProfileNaming.New)
         {
-            profile.Values[def.Key] = _values.GetValueOrDefault(def.Key) ?? def.Default;
+            // A fresh profile: the default framing, shown at once.
+            profile.Values.Clear();
+            foreach (var def in Settings.All.Where(d => CropProfiles.IsProfileKey(d.Key))) profile.Values[def.Key] = def.Default;
+            ShowProfileFraming(profile);
+        }
+        else
+        {
+            CopyFramingInto(profile);
         }
         _selectedProfile = profile;
         _appSettings.SelectedCropProfile = profile.Name;
@@ -230,6 +386,8 @@ public partial class MainWindow
     private void OnProfileDelete(object sender, RoutedEventArgs e)
     {
         if (_selectedProfile == null) return;
+        if (!App.Headless && MessageBox.Show(this, $"Delete the profile \"{_selectedProfile.Name}\"? This cannot be undone.", "Delete profile",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
         var index = _profiles.IndexOf(_selectedProfile);
         AppLog.Write($"Crop profile \"{_selectedProfile.Name}\" deleted.");
         _profiles.Remove(_selectedProfile);
@@ -240,12 +398,7 @@ public partial class MainWindow
         _profileLoading = true;
         CropProfileGame.Text = _selectedProfile?.Game ?? "";
         _profileLoading = false;
-        if (_selectedProfile != null && _selectedProfile.Values.Count > 0)
-        {
-            ApplyValues(_selectedProfile.Values);
-            ApplyCropMargin(moveBox: false);
-            DrawCrop();
-        }
+        if (_selectedProfile != null) ShowProfileFraming(_selectedProfile);
         RefreshProfileList();
     }
 
@@ -280,8 +433,31 @@ public partial class MainWindow
         CropProfile.SelectedItem = (CropProfile.ItemsSource as List<ProfileItem>)!.First(i => i.Profile?.Name == "Third");
         OnProfileDelete(this, new RoutedEventArgs());
         report.Append(Describe("after deleting Third, the last one (expect Second chosen)"));
+        // Without automatic saving: an edit is unsaved, Revert drops it, Save keeps it; New starts from the defaults; Rename.
+        _appSettings.ProfileAutoSave = false;
+        var before = _values.GetValueOrDefault("crop_height");
+        OnValueChanged("crop_height", "0.31");
+        report.Append($"edit without automatic saving: unsaved {ProfileHasUnsavedChanges()} (expect True), profile keeps {_selectedProfile?.Values.GetValueOrDefault("crop_height") == before} (expect True)\n");
+        snapshot("profiles-unsaved");
+        OnProfileRevert(this, new RoutedEventArgs());
+        report.Append($"after Revert: unsaved {ProfileHasUnsavedChanges()} (expect False), crop_height back {_values.GetValueOrDefault("crop_height") == before} (expect True)\n");
+        OnValueChanged("crop_height", "0.31");
+        OnProfileSave(this, new RoutedEventArgs());
+        report.Append($"after Save: unsaved {ProfileHasUnsavedChanges()} (expect False), profile has 0.31 {_selectedProfile?.Values.GetValueOrDefault("crop_height") == "0.31"} (expect True)\n");
+        snapshot("profiles-saved");
+        _profileNaming = ProfileNaming.New;
+        CropProfileName.Text = "Fresh";
+        OnProfileSaveConfirm(this, new RoutedEventArgs());
+        var cropHeightDefault = Settings.All.First(d => d.Key == "crop_height").Default;
+        report.Append(Describe("after New \"Fresh\"") + $"  Fresh has the default crop height {_selectedProfile?.Values.GetValueOrDefault("crop_height") == cropHeightDefault} (expect True), Second kept 0.31 {_profiles.First(p => p.Name == "Second").Values.GetValueOrDefault("crop_height") == "0.31"} (expect True)\n");
+        _profileNaming = ProfileNaming.Rename;
+        CropProfileName.Text = "Renamed";
+        OnProfileSaveConfirm(this, new RoutedEventArgs());
+        report.Append(Describe("after renaming Fresh to Renamed"));
         OnProfileDelete(this, new RoutedEventArgs());
-        report.Append(Describe("after deleting Second (expect none)"));
+        CropProfile.SelectedItem = (CropProfile.ItemsSource as List<ProfileItem>)!.First(i => i.Profile?.Name == "Second");
+        OnProfileDelete(this, new RoutedEventArgs());
+        report.Append(Describe("after deleting Renamed and Second (expect none)"));
         FillGamePicker("");
         report.Append($"game picker: {(CropProfileGame.ItemsSource as List<RunningApp>)?.Count ?? 0} running programs with a window\n");
         return report.ToString();

@@ -184,8 +184,12 @@ in a narrow window) stand the crop box, the view edges, the picture settings, an
 my gaze, Steady the picture, Mirror window. Cropping, following, steadying and the ring happen in the one pass that
 makes the picture, so they cost no extra pass.
 
-**Crop profiles** (top of the page): save a framing under a name and give it a game's program file (DCS.exe,
-VRChat.exe), and the mirror applies it at each start of that game. Edits go into the chosen profile.
+**Crop profiles** (top of the page): a framing under a name. Give it a game's program file under **For game** (DCS.exe,
+VRChat.exe) and the mirror applies it at each start of that game. **New** starts a profile from the default framing,
+**Save as...** copies the current one into a new profile, and the "⋯" button holds **Rename** and **Delete**. Changes
+reach the stream at once but go into the open profile only when you press **Save**; until then the bar says so in orange,
+and **Revert** goes back to the saved profile. Switching to another profile with unsaved changes asks first. Tick **Save
+edits automatically** to have every change go into the profile as you make it.
 
 **The picture behind the box:**
 

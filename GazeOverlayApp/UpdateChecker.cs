@@ -94,6 +94,8 @@ public sealed class AppSettings
     public string HelperRegisteredPath { get; set; } = "";
     /// <summary>The crop profile chosen on the Mirror tab ("" = none).</summary>
     public string SelectedCropProfile { get; set; } = "";
+    /// <summary>Changes on the Mirror page go into the open crop profile as they are made (else at Save).</summary>
+    public bool ProfileAutoSave { get; set; }
     /// <summary>Size of the mirror window's picture in pixels = what a capture tool gets. 0 = fill the monitor.</summary>
     public int MirrorOutputWidth { get; set; }
     public int MirrorOutputHeight { get; set; }

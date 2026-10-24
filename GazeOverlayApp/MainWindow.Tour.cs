@@ -61,7 +61,7 @@ public partial class MainWindow
             new(CropTab, () => StabilizeExpander, "A calm picture",
                 "Steady the picture takes small head movement and tracking jitter out; Tilt set to Level keeps the horizon level when you lean. Follow my gaze, just above, moves the box up and down after your eyes."),
             new(CropTab, () => Ancestor<WrapPanel>(CropProfile), "Profiles",
-                "Save as... keeps this framing under a name. Give it a game's program file (DCS.exe, say) and the mirror switches to it by itself when that game starts."),
+                "New starts a profile from the default framing, Save as... copies this one. Give it a game's program file (DCS.exe, say) and the mirror switches to it by itself when that game starts. Changes go into the profile when you press Save, so trying something out never spoils it."),
             new(CropTab, () => MirrorToggle, "The mirror window",
                 "For Discord and other programs that capture windows: a window with the same picture, behind your other windows. With the Gaze Mirror source in OBS you do not need it."),
             new(GazeTab, () => Ancestor<Border>(PanelGaze), "Where the gaze comes from",

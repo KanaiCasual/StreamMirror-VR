@@ -130,12 +130,28 @@
                             <TextBlock Text="Profile" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,6,0"
                                        ToolTip="A saved framing: crop box, follow, steadying.&#10;&#10;Give it a game's name and the mirror applies it at that game's start." />
                             <ComboBox x:Name="CropProfile" MinWidth="190" Margin="0,2,6,2" VerticalAlignment="Center" DisplayMemberPath="Label" />
-                            <Button x:Name="CropProfileSaveAs" Content="Save as..." ToolTip="Saves the current framing as a profile" Margin="0,2,6,2" Click="OnProfileSaveAs" />
+                            <Button x:Name="CropProfileSave" Content="Save" Margin="0,2,6,2" Click="OnProfileSave"
+                                    ToolTip="Keeps the current framing in this profile" />
+                            <Button x:Name="CropProfileRevert" Content="Revert" Margin="0,2,6,2" Click="OnProfileRevert" Visibility="Collapsed"
+                                    ToolTip="Drops the unsaved changes: back to this profile as saved" />
+                            <Button x:Name="CropProfileNew" Content="New" Margin="0,2,6,2" Click="OnProfileNew"
+                                    ToolTip="A new profile that starts from the default framing. The profile you have open stays as it is." />
+                            <Button x:Name="CropProfileSaveAs" Content="Save as..." Margin="0,2,6,2" Click="OnProfileSaveAs"
+                                    ToolTip="Saves the current framing as a new profile. The profile you have open keeps its saved framing." />
                             <StackPanel x:Name="CropProfileNamePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,6,0">
                                 <TextBox x:Name="CropProfileName" Width="140" MinWidth="0" Margin="0,2,4,2" VerticalAlignment="Center" ToolTip="Name of the profile. Enter saves, Esc cancels." />
                                 <Button Content="OK" Margin="0,2,0,2" Click="OnProfileSaveConfirm" />
                             </StackPanel>
-                            <Button x:Name="CropProfileDelete" Content="Delete" Margin="0,2,12,2" Click="OnProfileDelete" />
+                            <Button x:Name="CropProfileMore" Margin="0,2,12,2" Padding="8,5" Click="OnProfileMore" ToolTip="Rename or delete this profile"
+                                    AutomationProperties.Name="More profile actions: rename, delete">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE712;" FontSize="12" />
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem x:Name="CropProfileRename" Header="Rename..." Click="OnProfileRename" />
+                                        <MenuItem x:Name="CropProfileDelete" Header="Delete..." Click="OnProfileDelete" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="For game" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,6,0" />
                                 <ComboBox x:Name="CropProfileGame" IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True" MinWidth="170" MaxDropDownHeight="240"
@@ -143,7 +159,12 @@
                                           ToolTip="The game's program file, for example DCS.exe or VRChat.exe.&#10;&#10;Open the list to pick a running program, or type and the list narrows. Enter applies.&#10;&#10;**Empty:** the profile applies when you choose it here." />
                             </StackPanel>
                     </WrapPanel>
-                    <TextBlock x:Name="CropProfileStatus" DockPanel.Dock="Top" Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,10" TextWrapping="Wrap" />
+                    <DockPanel Margin="0,2,0,10">
+                        <CheckBox x:Name="CropProfileAutoSave" DockPanel.Dock="Right" Content="Save edits automatically" MinWidth="0" Margin="12,0,0,0" VerticalAlignment="Top"
+                                  Checked="OnProfileAutoSaveChanged" Unchecked="OnProfileAutoSaveChanged"
+                                  ToolTip="**On:** every change on this page goes into the open profile as you make it.&#10;&#10;**Off (the default):** changes reach the stream at once, and the profile keeps them when you press Save. Revert goes back to the profile as saved.&#10;&#10;Switching it on saves unsaved changes." />
+                        <TextBlock x:Name="CropProfileStatus" Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" />
+                    </DockPanel>
                     <StackPanel x:Name="ExplainMirror" DockPanel.Dock="Top" Margin="0,0,0,10" />
 
                     <!-- Capture from the headset, armed: impossible to miss, and says what to do. -->

@@ -127,9 +127,13 @@ OSC (SRanibro and similar), VRChat's avatar eyes, or **Fixed centre** for a ring
 
 ## 8. Save it for your game
 
-At the top of the Mirror page, **Save as...** stores this framing as a profile. Type your game's program file under
-**For game** (for example `DCS.exe`), and the mirror switches to that profile by itself whenever that game starts. Make
-one per game that needs a different framing.
+At the top of the Mirror page, **Save as...** stores this framing as a profile (**New** starts one from the default
+framing instead). Type your game's program file under **For game** (for example `DCS.exe`), and the mirror switches to
+that profile by itself whenever that game starts. Make one per game that needs a different framing.
+
+Changes you make afterwards show on the stream at once, but the profile keeps them only when you press **Save**. An
+orange line under the bar tells you something is unsaved, and **Revert** goes back. That way trying something out never
+spoils a profile by accident. Prefer every change saved as you go? Tick **Save edits automatically**.
 
 ## 9. Before you go live
 
