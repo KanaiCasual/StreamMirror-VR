@@ -688,6 +688,16 @@ public partial class App : Application
                 ("a file's SHA-256 is computed as sha256sum would", ChecksumOfEmptyFile(outputDir) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
             };
             foreach (var (name, ok) in checks) report.WriteLine($"update check - {(ok ? "ok  " : "FAIL")} {name}");
+            // The Mirror page's automatic refreshes: never over a headset capture, and never a picture with no game in it.
+            var pictureChecks = new (string Name, bool Ok)[]
+            {
+                ("a game's picture replaces the last one", GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: false, armed: false, producerProgram: "DCS.exe")),
+                ("a headset capture stays", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: true, armed: false, producerProgram: "DCS.exe")),
+                ("nothing is replaced while a capture is armed", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: false, armed: true, producerProgram: "DCS.exe")),
+                ("SteamVR with no game in it (the helper mirrors its empty home) replaces nothing", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: false, armed: false, producerProgram: "")),
+                ("no mirror at all replaces nothing", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: false, armed: false, producerProgram: null)),
+            };
+            foreach (var (name, ok) in pictureChecks) report.WriteLine($"mirror picture - {(ok ? "ok  " : "FAIL")} {name}");
             report.WriteLine($"this build: version {UpdateChecker.CurrentVersionText}, repository '{UpdateChecker.Repository}' (configured: {UpdateChecker.IsConfigured})");
 
             // Optional live read of a public repository's release list, to prove the network path (--selftest <dir> <owner/name>).
@@ -705,7 +715,7 @@ public partial class App : Application
                     report.WriteLine($"live check of {liveRepo} failed: {liveError.Message}");
                 }
             }
-            return checks.All(c => c.Ok) && liveOk && quadViewsOk ? 0 : 1;
+            return checks.All(c => c.Ok) && pictureChecks.All(c => c.Ok) && liveOk && quadViewsOk ? 0 : 1;
         }
         catch (Exception ex)
         {

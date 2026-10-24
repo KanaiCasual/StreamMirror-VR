@@ -353,10 +353,17 @@ public partial class MainWindow
         };
     }
 
+    /// <summary>
+    /// Whether an automatic refresh (opening the Mirror page, coming back to the app) may replace the picture. A picture
+    /// captured from the headset was set up on purpose: only the button replaces it, and nothing does while a capture is
+    /// armed. And only a game's picture: the SteamVR helper also mirrors SteamVR with no game in it (its empty home, the
+    /// producer's game name blank), and that picture would push out the last game's.
+    /// </summary>
+    internal static bool AutomaticRefreshAllowed(bool kept, bool armed, string? producerProgram) => !kept && !armed && !string.IsNullOrEmpty(producerProgram);
+
     private async Task RefreshCropPictureAsync(bool quietWhenNoGame, bool automatic = false)
     {
-        // A picture captured with the key was set up on purpose: only the button replaces it. Nor while a capture is armed.
-        if (automatic && (_appSettings.MirrorPictureKept || _captureArmed)) return;
+        if (automatic && !AutomaticRefreshAllowed(_appSettings.MirrorPictureKept, _captureArmed, MirrorLive.ReadProducer()?.Program)) return;
         CropRefresh.IsEnabled = false;
         var (picture, message) = await MirrorSnapshot.RequestAsync();
         CropRefresh.IsEnabled = true;
