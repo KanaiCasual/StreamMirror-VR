@@ -232,11 +232,12 @@ the game gets none of them. The crop picture shows the result as a dashed box, a
 box the largest one of the chosen shape inside it.
 
 **Picture:** the mirrored **eye** (right by default), the **picture size** and the **picture rate** cap. These apply to
-OBS and the mirror window alike. Picture size is the resolution the mirror sends: **Up to 3840 x 2160** (the default),
-**2560 x 1440** or **1920 x 1080** scale the crop box down until it fits inside that resolution, keeping its shape, so a
-16:9 box comes out at exactly that size and a square box at 2160 x 2160; a smaller box is never scaled up. **As large
-as the box** sends the box's own pixel count, often more than 4K on a high-resolution headset: the sharpest, and the
-most work for the graphics card and OBS. Pick the resolution you record or stream at.
+OBS and the mirror window alike. Picture size is the resolution the mirror sends, and each choice shows what your crop
+box gets. **4K** (the default), **1440p** and **1080p** scale the box down, keeping its shape, until it fits a 3840 x
+2160, 2560 x 1440 or 1920 x 1080 frame turned the box's way: a 16:9 box gets exactly that, a 4:3 box 2880 x 2160 at 4K,
+a square one 2160 x 2160, a vertical 9:16 one 2160 x 3840. A smaller box is never scaled up. **As large as the box**
+sends the box's own pixel count, often more than 4K on a high-resolution headset: the sharpest, and the most work for
+the graphics card and OBS. Pick the resolution you record or stream at. The line under the picture says what OBS gets.
 
 **Capture** (on the Picture card, for OpenXR games that run through SteamVR): **SteamVR capture**, the default, has the
 SteamVR helper take the picture SteamVR shows in the headset, so SteamVR's overlays (OVR Toolkit, fpsVR, the dashboard

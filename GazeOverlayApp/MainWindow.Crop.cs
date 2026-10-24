@@ -591,20 +591,63 @@ public partial class MainWindow
             : "The image's middle. With a picture from a game, this mark moves to the spot where straight ahead lands in the eye image, from the headset's own projection.";
         ApplyPictureToggles(locked);
 
-        // What OBS will get, in pixels - worked out the way the layer does (even sizes).
+        // What OBS will get, in pixels - worked out the way the layer does (even sizes), Picture size included.
         if (_cropFullWidth > 0 && _cropFullHeight > 0)
         {
             var pixelWidth = (int)(boxWidth * _cropFullWidth) & ~1;
             var pixelHeight = (int)(boxHeight * _cropFullHeight) & ~1;
             var share = 100.0 * pixelWidth * pixelHeight / ((double)_cropFullWidth * _cropFullHeight);
+            var (sentWidth, sentHeight) = active ? (pixelWidth, pixelHeight) : (_cropFullWidth, _cropFullHeight);
+            var (outWidth, outHeight) = Settings.OutputSize(sentWidth, sentHeight, PictureSizeCap());
             CropReadout.Text = active
-                ? $"OBS gets {pixelWidth} x {pixelHeight} px, {share:0} % of the {_cropFullWidth} x {_cropFullHeight} eye image."
-                : $"Crop is off: OBS gets the whole {_cropFullWidth} x {_cropFullHeight} image. The box would be {pixelWidth} x {pixelHeight} px.";
+                ? $"OBS gets {outWidth} x {outHeight} px: the box, {pixelWidth} x {pixelHeight} px of the {_cropFullWidth} x {_cropFullHeight} eye image ({share:0} %)."
+                : $"Crop is off: OBS gets {outWidth} x {outHeight} px, the whole {_cropFullWidth} x {_cropFullHeight} image.";
+            RelabelPictureSize(sentWidth, sentHeight);
         }
         else
         {
             CropReadout.Text = active ? "Crop is on." : "Crop is off: OBS gets the whole eye image.";
+            RelabelPictureSize(0, 0);
         }
+    }
+
+    private int PictureSizeCap() => int.TryParse(_values.GetValueOrDefault("output_max_side") ?? "3840", out var cap) ? cap : 3840;
+
+    /// <summary>
+    /// The Picture size choices name what this box gets (a 4:3 box at 4K: 2880 x 2160); without a picture, the frames
+    /// themselves. The selected item is chosen again so its box shows the new name (with _loading set, nothing is saved).
+    /// </summary>
+    private void RelabelPictureSize(int boxWidth, int boxHeight)
+    {
+        if (!_choiceCombos.TryGetValue("output_max_side", out var combo)) return;
+        var classes = new Dictionary<string, string> { ["3840"] = "4K", ["2560"] = "1440p", ["1920"] = "1080p" };
+        var changed = false;
+        foreach (var item in combo.Items.Cast<ComboBoxItem>())
+        {
+            var value = (string)item.Tag;
+            var cap = int.TryParse(value, out var number) ? number : 0;
+            string label;
+            if (boxWidth <= 0 || boxHeight <= 0)
+            {
+                label = Settings.All.First(d => d.Key == "output_max_side").Choices.First(c => c.Value == value).Label;
+            }
+            else
+            {
+                var (width, height) = Settings.OutputSize(boxWidth, boxHeight, cap);
+                label = cap < 64 ? $"As large as the box: {width} x {height}"
+                    : width == (boxWidth & ~1) && height == (boxHeight & ~1) ? $"{width} x {height} ({classes.GetValueOrDefault(value, value)}, the box as it is)"
+                    : $"{width} x {height} ({classes.GetValueOrDefault(value, value)})";
+            }
+            if ((string)item.Content == label) continue;
+            item.Content = label;
+            changed = true;
+        }
+        if (!changed || combo.SelectedItem is not ComboBoxItem selected) return;
+        var wasLoading = _loading;
+        _loading = true;
+        combo.SelectedItem = null;
+        combo.SelectedItem = selected;
+        _loading = wasLoading;
     }
 
     /// <summary>The Show toggles above the picture: each switched-off help is hidden, whatever DrawCrop worked out for it.</summary>

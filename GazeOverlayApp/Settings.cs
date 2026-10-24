@@ -474,7 +474,7 @@ public static class Settings
         new()
         {
             Key = "output_max_side", Group = GroupCrop, Kind = SettingKind.Choice, Default = "3840",
-            Label = "Picture size", Description = "The resolution of the picture the mirror sends to OBS and the mirror window.\n\n**Up to 3840 x 2160, 2560 x 1440, 1920 x 1080:** the mirror scales the crop box down until it fits inside that resolution, keeping its shape. A 16:9 box comes out at exactly that resolution; a box of another shape fits inside it (a square box at 3840 x 2160 comes out 2160 x 2160). A box that is already smaller is sent as it is: nothing is scaled up.\n\n**As large as the box:** no scaling. The picture has as many pixels as the box covers in the headset's image, which on a high-resolution headset is often more than 4K. The sharpest picture, and the most work for the graphics card and OBS.\n\nPick the resolution you record or stream at: OBS scales anything larger down anyway, so more only costs more. The crop box itself does not change.",
+            Label = "Picture size", Description = "The resolution of the picture the mirror sends to OBS and the mirror window. With a picture on the Mirror page, each choice shows the resolution your crop box gets.\n\n**4K, 1440p, 1080p:** the mirror scales the crop box down, keeping its shape, until it fits a frame of that size turned the box's way: 3840 x 2160 for a wide box, 2160 x 3840 for a tall one. A 16:9 box gets exactly 3840 x 2160, a 4:3 box 2880 x 2160, a square box 2160 x 2160, a 9:16 box for vertical video 2160 x 3840. A box that is already smaller is sent as it is: nothing is scaled up.\n\n**As large as the box:** no scaling. The picture has as many pixels as the box covers in the headset's image, which on a high-resolution headset is often more than 4K. The sharpest picture, and the most work for the graphics card and OBS.\n\nPick the resolution you record or stream at: OBS scales anything larger down anyway, so more only costs more. The crop box itself does not change.",
             Choices = [new("3840", "Up to 3840 x 2160 (4K)"), new("2560", "Up to 2560 x 1440 (1440p)"), new("1920", "Up to 1920 x 1080 (1080p)"), new("0", "As large as the box")],
         },
         new()
@@ -490,6 +490,20 @@ public static class Settings
             Choices = [new("auto", "Headset, else raw gaze, else VRChat"), new("headset", "Headset only"), new("sranibro", "Raw gaze over OSC only"), new("vrchat", "VRChat only"), new("fixed", "Fixed centre (no eye tracking)")],
         },
     ];
+
+    /// <summary>
+    /// The resolution the mirror sends for a box of this size under output_max_side: scaled down, keeping its shape, to fit
+    /// that frame (by its 16:9 height) turned the box's way; never up; even sizes. The same sum as the core's pipeline.
+    /// </summary>
+    public static (int Width, int Height) OutputSize(int width, int height, int cap)
+    {
+        if (cap < 64 || width < 1 || height < 1) return (width & ~1, height & ~1);
+        int longSide = cap, shortSide = Math.Max(64, cap * 9 / 16);
+        var (maxWidth, maxHeight) = width >= height ? (longSide, shortSide) : (shortSide, longSide);
+        if (width <= maxWidth && height <= maxHeight) return (width & ~1, height & ~1);
+        var scale = Math.Min((double)maxWidth / width, (double)maxHeight / height);
+        return (Math.Max(64, Math.Min(maxWidth, (int)Math.Round(width * scale)) & ~1), Math.Max(64, Math.Min(maxHeight, (int)Math.Round(height * scale)) & ~1));
+    }
 
     public static readonly Preset[] Presets =
     [

@@ -709,6 +709,19 @@ public partial class App : Application
                 ("no mirror at all gives no picture", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(havePicture: false, armed: false, producerProgram: null)),
             };
             foreach (var (name, ok) in pictureChecks) report.WriteLine($"mirror picture - {(ok ? "ok  " : "FAIL")} {name}");
+            // Picture size: the frame turns with the box, nothing is scaled up, 0 is no limit (the core's pipeline does the same sum).
+            var sizeChecks = new (string Name, bool Ok)[]
+            {
+                ("16:9 box at 4K: 3840 x 2160", Settings.OutputSize(6000, 3375, 3840) == (3840, 2160)),
+                ("4:3 box at 4K: 2880 x 2160", Settings.OutputSize(6000, 4500, 3840) == (2880, 2160)),
+                ("square box at 4K: 2160 x 2160", Settings.OutputSize(7000, 7000, 3840) == (2160, 2160)),
+                ("9:16 box at 4K: 2160 x 3840", Settings.OutputSize(3375, 6000, 3840) == (2160, 3840)),
+                ("16:9 box at 1080p: 1920 x 1080", Settings.OutputSize(6000, 3375, 1920) == (1920, 1080)),
+                ("a box a hair off 16:9 (6814 x 3832) still gets 3840 x 2160", Settings.OutputSize(6814, 3832, 3840) == (3840, 2160)),
+                ("a smaller box is sent as it is", Settings.OutputSize(1600, 900, 3840) == (1600, 900)),
+                ("as large as the box: no limit", Settings.OutputSize(6814, 3832, 0) == (6814, 3832)),
+            };
+            foreach (var (name, ok) in sizeChecks) report.WriteLine($"picture size - {(ok ? "ok  " : "FAIL")} {name}");
             report.WriteLine($"this build: version {UpdateChecker.CurrentVersionText}, repository '{UpdateChecker.Repository}' (configured: {UpdateChecker.IsConfigured})");
 
             // Optional live read of a public repository's release list, to prove the network path (--selftest <dir> <owner/name>).
@@ -726,7 +739,7 @@ public partial class App : Application
                     report.WriteLine($"live check of {liveRepo} failed: {liveError.Message}");
                 }
             }
-            return checks.All(c => c.Ok) && pictureChecks.All(c => c.Ok) && liveOk && quadViewsOk ? 0 : 1;
+            return checks.All(c => c.Ok) && pictureChecks.All(c => c.Ok) && sizeChecks.All(c => c.Ok) && liveOk && quadViewsOk ? 0 : 1;
         }
         catch (Exception ex)
         {

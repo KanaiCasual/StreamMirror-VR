@@ -311,15 +311,18 @@ namespace gaze_mirror {
         if (!_renderDue) return output;
         _renderDue = false;
 
-        // The published size: the crop's own, scaled down to fit inside the 16:9 frame output_max_side names by its width
-        // (3840 = 3840 x 2160), which is what a 16:9 recording or stream holds. 0 = no limit.
-        const uint32_t maxWidth = s.outputMaxSide >= 64 ? s.outputMaxSide : 16384;
-        const uint32_t maxHeight = s.outputMaxSide >= 64 ? std::max(64u, s.outputMaxSide * 9 / 16) : 16384;
+        // The published size: the crop's own, scaled down to fit the frame output_max_side names, turned the box's way -
+        // 3840 = 3840 x 2160 for a wide box, 2160 x 3840 for a tall one (a vertical video). 0 = no limit. The app's
+        // Settings.OutputSize does the same sum for its labels.
         uint32_t outWidth = static_cast<uint32_t>(crop.width), outHeight = static_cast<uint32_t>(crop.height);
+        const uint32_t longSide = s.outputMaxSide >= 64 ? s.outputMaxSide : 16384;
+        const uint32_t shortSide = s.outputMaxSide >= 64 ? std::max(64u, s.outputMaxSide * 9 / 16) : 16384;
+        const uint32_t maxWidth = outWidth >= outHeight ? longSide : shortSide, maxHeight = outWidth >= outHeight ? shortSide : longSide;
         if (outWidth > maxWidth || outHeight > maxHeight) {
             const double scale = std::min(double(maxWidth) / outWidth, double(maxHeight) / outHeight);
-            outWidth = std::max(64u, static_cast<uint32_t>(outWidth * scale) & ~1u);
-            outHeight = std::max(64u, static_cast<uint32_t>(outHeight * scale) & ~1u);
+            // Rounded to the nearest even size, never past the frame: a box a hair off 16:9 still gets 3840 x 2160.
+            outWidth = std::max(64u, std::min(maxWidth, static_cast<uint32_t>(std::lround(outWidth * scale))) & ~1u);
+            outHeight = std::max(64u, std::min(maxHeight, static_cast<uint32_t>(std::lround(outHeight * scale))) & ~1u);
         }
         RingConstants ring;
         const bool drawRing = _ring.visible(s);
