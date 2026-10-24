@@ -193,6 +193,19 @@ public partial class App : Application
         var largest = roomy.Rect();
         var roomyResize = new CropBox { Aspect = 1, ImageAspect = 1, Margin = 0.05 };
         roomyResize.ResizeFromCorner(0.5, 0.5, 1.5, 1.5); // dragged far out of the picture
+        // Free shape, its sides one at a time: a box from 0.2 to 0.6 across and 0.3 to 0.6 down.
+        var sides = new CropBox { Aspect = 0, ImageAspect = 1, FreeWidth = 0.4, Height = 0.3, CenterX = 0.4, CenterY = 0.45 };
+        sides.ResizeFromSide(CropBox.Side.Right, 0.8);    // right side out to 0.8
+        var widened = sides.Rect();
+        sides.ResizeFromSide(CropBox.Side.Top, 0.1);      // top side up to 0.1
+        var heightened = sides.Rect();
+        sides.ResizeFromSide(CropBox.Side.Left, 0.95);    // left side dragged past the right one
+        var squeezed = sides.Rect();
+        var marginSides = new CropBox { Aspect = 0, ImageAspect = 1, FreeWidth = 0.4, Height = 0.4, Margin = 0.05 };
+        marginSides.ResizeFromSide(CropBox.Side.Bottom, 1.5); // dragged far out of the picture
+        var fixedShape = new CropBox { Aspect = 16.0 / 9.0, ImageAspect = 1, Height = 0.3 };
+        var fixedBefore = fixedShape.Rect();
+        fixedShape.ResizeFromSide(CropBox.Side.Right, 0.9);
 
         // Picture request: play the layer (blocks + answering the request counter).
         string pictureResult;
@@ -246,6 +259,12 @@ public partial class App : Application
             ("with room kept free, the largest box leaves that room on both sides", Near(largest.Left, 0.02) && Near(largest.Width, 0.96) && Near(largest.Height, 0.96 * 9 / 16)),
             ("with room kept free, dragging a corner stops at the room", Near(roomyResize.Rect().Left, 0.5) && Near(roomyResize.Rect().Width, 0.45) && Near(roomyResize.Rect().Height, 0.45)),
             ("the free shape follows the pointer both ways", Near(free.Rect().Width, 0.5) && Near(free.Rect().Height, 0.2)),
+            ("free shape, a side dragged: only its own size changes, the other sides stay",
+                Near(widened.Left, 0.2) && Near(widened.Width, 0.6) && Near(widened.Top, 0.3) && Near(widened.Height, 0.3)
+                && Near(heightened.Left, 0.2) && Near(heightened.Width, 0.6) && Near(heightened.Top, 0.1) && Near(heightened.Height, 0.5)),
+            ("free shape, a side dragged past the opposite one stops at the smallest size", Near(squeezed.Left + squeezed.Width, 0.8) && Near(squeezed.Width, CropBox.MinSize)),
+            ("free shape, a side dragged out of the picture stops at the room kept free", Near(marginSides.Rect().Top + marginSides.Rect().Height, 0.95)),
+            ("a fixed shape has no sides to drag", fixedShape.Rect() == fixedBefore),
             ("\"16:9\", \"0\" and plain numbers are understood as shapes", Near(CropBox.ParseAspect("16:9"), 16.0 / 9) && CropBox.ParseAspect("0") == 0 && Near(CropBox.ParseAspect("1.5"), 1.5)),
             ("a picture request is answered and read back, both eyes (" + pictureResult + ")", pictureResult == "ok" || pictureResult.StartsWith("skipped")),
         };

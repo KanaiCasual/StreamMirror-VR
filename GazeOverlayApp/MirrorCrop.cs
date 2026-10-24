@@ -302,6 +302,32 @@ public sealed class CropBox
         Normalize();
     }
 
+    public enum Side { Left, Right, Top, Bottom }
+
+    /// <summary>
+    /// Dragging a side, free shape only: that side follows the pointer (across for Left and Right, down for Top and
+    /// Bottom), and the other three stay where they are - one size changes, the other does not. Never below the smallest
+    /// size, never past the image or into the room kept free.
+    /// </summary>
+    public void ResizeFromSide(Side side, double pointer)
+    {
+        if (Aspect > 0) return;
+        var (left, top, width, height) = Rect();
+        double right = left + width, bottom = top + height;
+        switch (side)
+        {
+            case Side.Left: left = Math.Clamp(pointer, Margin, Math.Max(Margin, right - MinSize)); break;
+            case Side.Right: right = Math.Clamp(pointer, Math.Min(left + MinSize, 1 - Margin), 1 - Margin); break;
+            case Side.Top: top = Math.Clamp(pointer, Margin, Math.Max(Margin, bottom - MinSize)); break;
+            case Side.Bottom: bottom = Math.Clamp(pointer, Math.Min(top + MinSize, 1 - Margin), 1 - Margin); break;
+        }
+        FreeWidth = right - left;
+        Height = bottom - top;
+        CenterX = (left + right) / 2;
+        CenterY = (top + bottom) / 2;
+        Normalize();
+    }
+
     /// <summary>"16:9" or a plain number; "0" / "free" = free shape.</summary>
     public static double ParseAspect(string? text)
     {

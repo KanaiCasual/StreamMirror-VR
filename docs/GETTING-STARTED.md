@@ -93,7 +93,8 @@ On the Mirror page, the blue box on the picture is what your viewers get.
    your eye can really see.
 3. Press **Crop to view edges**. The box becomes the largest box of your shape inside that area: no black lens corners,
    no wasted picture.
-4. Drag the box to move it, drag a corner or roll the mouse wheel to resize. **Lock** keeps a stray click from moving
+4. Drag the box to move it, drag a corner or roll the mouse wheel to resize. With the **Free** shape, drag a side to
+   change only the width or only the height. **Lock** keeps a stray click from moving
    it.
 
 ## 6. Calm it down

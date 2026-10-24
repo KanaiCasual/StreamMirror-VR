@@ -23,6 +23,9 @@ public partial class MainWindow
     private readonly Rectangle[] _cropShades = [new(), new(), new(), new()];
     private readonly Rectangle _cropFrame = new() { StrokeThickness = 2, Fill = Brushes.Transparent };
     private readonly Rectangle[] _cropHandles = [new(), new(), new(), new()];
+    // Free shape: a bar in the middle of each side (left, right, top, bottom) - a side drags on its own.
+    private readonly Rectangle[] _cropSideHandles = [new(), new(), new(), new()];
+    private CropBox.Side _cropSide;
     private readonly Line[] _cropThirds = [new(), new(), new(), new()];
     private readonly Line[] _cropBoxCross = [new(), new()]; // A small cross at the box's own centre, to line it up with the centre mark and the visible edges.
     private readonly Ellipse _cropGazeRing = new() { StrokeThickness = 2, Fill = Brushes.Transparent }; // The ring as it was when the picture was taken.
@@ -45,7 +48,7 @@ public partial class MainWindow
     private readonly Line[] _cropMiddleCross = [new(), new()];
     private readonly TextBlock _cropPlaceholder = new() { TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
     private Rect _cropShown;                 // Where the picture is drawn inside the canvas.
-    private enum CropDrag { None, Move, Resize }
+    private enum CropDrag { None, Move, Resize, Side }
     private CropDrag _cropDrag;
     private Point _cropAnchor;               // Resize: the corner that stays put (fractions). Move: pointer offset from the centre.
 
@@ -207,6 +210,15 @@ public partial class MainWindow
         {
             handle.Width = handle.Height = 10;
             handle.Fill = accent;
+            handle.IsHitTestVisible = false;
+            CropCanvas.Children.Add(handle);
+        }
+        for (var i = 0; i < 4; i++)
+        {
+            var handle = _cropSideHandles[i];
+            (handle.Width, handle.Height) = i < 2 ? (6, 18) : (18, 6); // upright on the left and right side, flat on the top and bottom
+            handle.Fill = accent;
+            handle.RadiusX = handle.RadiusY = 2;
             handle.IsHitTestVisible = false;
             CropCanvas.Children.Add(handle);
         }
@@ -408,6 +420,8 @@ public partial class MainWindow
             Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_EXPANDED") == "1";
         _values["stabilize"] = "1";
         _crop.MoveTo(0, _crop.CenterY); // against the left wall: the steadying room has to hold it off
+        // GAZE_SCREENSHOT_FREE=1: the box in the free shape, to look at its side handles.
+        if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_FREE") == "1") { _crop.Aspect = 0; _crop.FreeWidth = 0.5; _crop.Height = 0.35; _crop.MoveTo(0.5, 0.5); }
         ApplyCropMargin(moveBox: false);
         ShowSelectedPicture();
         if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_ARMED") == "1")
@@ -515,8 +529,16 @@ public partial class MainWindow
         (_cropBoxCross[0].X1, _cropBoxCross[0].Y1, _cropBoxCross[0].X2, _cropBoxCross[0].Y2) = (boxCentre.X, boxCentre.Y - 10, boxCentre.X, boxCentre.Y + 10);
         (_cropBoxCross[1].X1, _cropBoxCross[1].Y1, _cropBoxCross[1].X2, _cropBoxCross[1].Y2) = (boxCentre.X - 10, boxCentre.Y, boxCentre.X + 10, boxCentre.Y);
 
+        var sideMiddles = new[] { new Point(box.Left, box.Top + box.Height / 2), new Point(box.Right, box.Top + box.Height / 2), new Point(box.Left + box.Width / 2, box.Top), new Point(box.Left + box.Width / 2, box.Bottom) };
+        for (var i = 0; i < 4; i++)
+        {
+            Canvas.SetLeft(_cropSideHandles[i], sideMiddles[i].X - _cropSideHandles[i].Width / 2);
+            Canvas.SetTop(_cropSideHandles[i], sideMiddles[i].Y - _cropSideHandles[i].Height / 2);
+        }
+
         var locked = CropLocked.IsChecked == true;
         foreach (var handle in _cropHandles) handle.Visibility = locked ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var handle in _cropSideHandles) handle.Visibility = locked || _crop.Aspect > 0 ? Visibility.Collapsed : Visibility.Visible;
 
         // Gaze following: the tinted area is how far the box may travel, the two dashed lines bound the zone in which the
         // gaze moves nothing.
@@ -760,6 +782,26 @@ public partial class MainWindow
         return fraction.X >= left && fraction.X <= left + width && fraction.Y >= top && fraction.Y <= top + height;
     }
 
+    /// <summary>
+    /// Free shape: the side under the pointer (within 7 px of it, along its length but clear of the corners, which take
+    /// precedence), or none. A fixed shape has no sides to drag: one side alone would change the shape.
+    /// </summary>
+    private CropBox.Side? CropSideAt(Point pointer)
+    {
+        if (_crop.Aspect > 0 || CropLocked.IsChecked == true) return null;
+        var (left, top, width, height) = _crop.Rect();
+        double x0 = _cropShown.Left + left * _cropShown.Width, x1 = x0 + width * _cropShown.Width;
+        double y0 = _cropShown.Top + top * _cropShown.Height, y1 = y0 + height * _cropShown.Height;
+        const double reach = 7, clear = 14;
+        var alongHeight = pointer.Y > y0 + clear && pointer.Y < y1 - clear;
+        var alongWidth = pointer.X > x0 + clear && pointer.X < x1 - clear;
+        if (alongHeight && Math.Abs(pointer.X - x0) <= reach) return CropBox.Side.Left;
+        if (alongHeight && Math.Abs(pointer.X - x1) <= reach) return CropBox.Side.Right;
+        if (alongWidth && Math.Abs(pointer.Y - y0) <= reach) return CropBox.Side.Top;
+        if (alongWidth && Math.Abs(pointer.Y - y1) <= reach) return CropBox.Side.Bottom;
+        return null;
+    }
+
     private void OnCropMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (CropLocked.IsChecked == true) return;
@@ -775,6 +817,15 @@ public partial class MainWindow
             if ((corner - pointer).Length > 14) continue;
             _cropDrag = CropDrag.Resize;
             _cropAnchor = corners[3 - i];
+            CropCanvas.CaptureMouse();
+            return;
+        }
+
+        // Free shape: a side drags on its own.
+        if (CropSideAt(pointer) is { } side)
+        {
+            _cropDrag = CropDrag.Side;
+            _cropSide = side;
             CropCanvas.CaptureMouse();
             return;
         }
@@ -799,7 +850,8 @@ public partial class MainWindow
             }
             var (left, top, width, height) = _crop.Rect();
             var corners = new[] { new Point(left, top), new Point(left + width, top), new Point(left, top + height), new Point(left + width, top + height) };
-            var cursor = IsInsideCropBox(ToFraction(pointer)) ? Cursors.SizeAll : Cursors.Arrow;
+            var cursor = CropSideAt(pointer) is { } side ? (side is CropBox.Side.Left or CropBox.Side.Right ? Cursors.SizeWE : Cursors.SizeNS)
+                : IsInsideCropBox(ToFraction(pointer)) ? Cursors.SizeAll : Cursors.Arrow;
             for (var i = 0; i < 4; i++)
             {
                 var corner = new Point(_cropShown.Left + corners[i].X * _cropShown.Width, _cropShown.Top + corners[i].Y * _cropShown.Height);
@@ -811,6 +863,7 @@ public partial class MainWindow
 
         var fraction = ToFraction(pointer);
         if (_cropDrag == CropDrag.Move) _crop.MoveTo(fraction.X - _cropAnchor.X, fraction.Y - _cropAnchor.Y);
+        else if (_cropDrag == CropDrag.Side) _crop.ResizeFromSide(_cropSide, _cropSide is CropBox.Side.Left or CropBox.Side.Right ? fraction.X : fraction.Y);
         else _crop.ResizeFromCorner(_cropAnchor.X, _cropAnchor.Y, fraction.X, fraction.Y);
         CommitCrop();
     }

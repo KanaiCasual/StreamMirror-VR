@@ -3,6 +3,7 @@
 ## Not released yet
 
 **New**
+- **Free shape: drag a side.** With the Free shape, each side of the crop box has a handle: drag it to change the width or the height alone, while the other sides stay where they are. Corners still change both.
 - **Undo and redo**: Ctrl+Z takes back the last change made on the page you look at (a whole drag of the crop box or a slider counts as one), Ctrl+Y or Ctrl+Shift+Z redoes it. Revert can be undone too.
 - **A guided tour** of the pages and their main controls. It starts the first time the app opens, and About > **Take the tour** brings it back. Esc ends it, the arrow keys step through it.
 - **A getting-started guide** on GitHub (docs/GETTING-STARTED.md) walks from the download to a framed, steady picture in OBS. About > **Getting started** opens it.

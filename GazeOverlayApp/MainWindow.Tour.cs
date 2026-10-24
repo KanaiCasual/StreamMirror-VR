@@ -54,7 +54,7 @@ public partial class MainWindow
             new(StatusTab, () => LiveText.Parent as FrameworkElement, "What the mirror is doing",
                 "While you play, this line names the game the mirror shows and says whether your eye gaze arrives. It answers most \"why is nothing happening\" questions."),
             new(CropTab, () => CropFrameBorder, "Your picture",
-                "One eye of your headset view. The blue box on it is what OBS and the mirror window get: drag it to move it, drag a corner or roll the mouse wheel to resize it. The app keeps this picture until you replace it with one of the buttons above."),
+                "One eye of your headset view. The blue box on it is what OBS and the mirror window get: drag it to move it, drag a corner or roll the mouse wheel to resize it. With the Free shape, drag a side to change the width or the height alone. The app keeps this picture until you replace it with one of the buttons above."),
             new(CropTab, () => CropCapture, "Capture from headset",
                 "The best picture to frame on is your view as you sit when you play. Press this, put the headset on, look straight ahead and press the key (Pause), or let a countdown take it (the arrow beside it)."),
             new(CropTab, () => Ancestor<Border>(CropEnabled), "The crop box",

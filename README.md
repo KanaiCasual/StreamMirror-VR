@@ -225,7 +225,8 @@ centre mark, or with the view edges, and you centre the framing on your view.
 
 **Crop the picture:** drag a box on a picture of the whole eye image and skip the crop percentages in OBS. A shape
 locks the box (16:9, 9:16, 1:1, 4:3, 4:5, 21:9 or free). OBS and the mirror window get **that box**. Drag inside the
-box to move it, a corner or the mouse wheel to resize; **Centre**, **Largest**, and **Lock** against stray clicks.
+box to move it, a corner or the mouse wheel to resize; with the free shape, a side changes the width or the height alone.
+**Centre**, **Largest**, and **Lock** against stray clicks.
 With the picture selected, the arrow keys move the box and + and - resize it (Shift for larger steps).
 
 **View edges:** the headset draws more than your eye can see through the lens, and the crop should cover the part

@@ -274,7 +274,7 @@
                             </WrapPanel>
                             <Border x:Name="CropFrameBorder" Background="{StaticResource Picture}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" ClipToBounds="True" MinHeight="240"
                                     Focusable="True" AutomationProperties.Name="The picture with the crop box. The arrow keys move the box, plus and minus resize it."
-                                    ToolTip="**Move:** drag inside the box.&#10;&#10;**Resize:** drag a corner, or roll the mouse wheel over it.&#10;&#10;**Keys:** with the picture selected, the arrow keys move the box and + and - resize it (Shift for larger steps).&#10;&#10;**In OBS:** set the crop values in the source's Properties to 0, then select the source and press Ctrl+F (Transform &gt; Fit to screen) once. From then on it keeps fitting as the box changes size.">
+                                    ToolTip="**Move:** drag inside the box.&#10;&#10;**Resize:** drag a corner, or roll the mouse wheel over it.&#10;&#10;**Free shape:** drag a side to change the width or the height alone.&#10;&#10;**Keys:** with the picture selected, the arrow keys move the box and + and - resize it (Shift for larger steps).&#10;&#10;**In OBS:** set the crop values in the source's Properties to 0, then select the source and press Ctrl+F (Transform &gt; Fit to screen) once. From then on it keeps fitting as the box changes size.">
                                 <Canvas x:Name="CropCanvas" Background="Transparent" ClipToBounds="True" />
                             </Border>
                         </DockPanel>
@@ -285,7 +285,7 @@
                                 <Border Style="{StaticResource Card}" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Style="{StaticResource CardTitle}" Text="CROP BOX"
-                                                   ToolTip="**Move:** drag inside the box.&#10;&#10;**Resize:** drag a corner, or roll the mouse wheel over it.&#10;&#10;The mirror draws the ring and the calibration on the whole image first, so the crop does not affect them." />
+                                                   ToolTip="**Move:** drag inside the box.&#10;&#10;**Resize:** drag a corner, or roll the mouse wheel over it.&#10;&#10;**Free shape:** drag a side to change the width or the height alone.&#10;&#10;The mirror draws the ring and the calibration on the whole image first, so the crop does not affect them." />
                                         <DockPanel>
                                             <ComboBox x:Name="CropAspect" DockPanel.Dock="Right" MinWidth="110" Margin="6,2,0,2" VerticalAlignment="Center" />
                                             <CheckBox x:Name="CropEnabled" Content="Crop the picture" MinWidth="0" VerticalAlignment="Center"
