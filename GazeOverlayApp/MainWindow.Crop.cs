@@ -597,7 +597,8 @@ public partial class MainWindow
             var pixelWidth = (int)(boxWidth * _cropFullWidth) & ~1;
             var pixelHeight = (int)(boxHeight * _cropFullHeight) & ~1;
             var share = 100.0 * pixelWidth * pixelHeight / ((double)_cropFullWidth * _cropFullHeight);
-            var (sentWidth, sentHeight) = active ? (pixelWidth, pixelHeight) : (_cropFullWidth, _cropFullHeight);
+            // The box's exact size goes into the sum, as in the mirror: its whole pixels are a hair off its shape.
+            var (sentWidth, sentHeight) = active ? (boxWidth * _cropFullWidth, boxHeight * _cropFullHeight) : (_cropFullWidth, _cropFullHeight);
             var (outWidth, outHeight) = Settings.OutputSize(sentWidth, sentHeight, PictureSizeCap());
             CropReadout.Text = active
                 ? $"OBS gets {outWidth} x {outHeight} px: the box, {pixelWidth} x {pixelHeight} px of the {_cropFullWidth} x {_cropFullHeight} eye image ({share:0} %)."
@@ -617,7 +618,7 @@ public partial class MainWindow
     /// The Picture size choices name what this box gets (a 4:3 box at 4K: 2880 x 2160); without a picture, the frames
     /// themselves. The selected item is chosen again so its box shows the new name (with _loading set, nothing is saved).
     /// </summary>
-    private void RelabelPictureSize(int boxWidth, int boxHeight)
+    private void RelabelPictureSize(double boxWidth, double boxHeight)
     {
         if (!_choiceCombos.TryGetValue("output_max_side", out var combo)) return;
         var classes = new Dictionary<string, string> { ["3840"] = "4K", ["2560"] = "1440p", ["1920"] = "1080p" };
@@ -635,7 +636,7 @@ public partial class MainWindow
             {
                 var (width, height) = Settings.OutputSize(boxWidth, boxHeight, cap);
                 label = cap < 64 ? $"As large as the box: {width} x {height}"
-                    : width == (boxWidth & ~1) && height == (boxHeight & ~1) ? $"{width} x {height} ({classes.GetValueOrDefault(value, value)}, the box as it is)"
+                    : width == ((int)boxWidth & ~1) && height == ((int)boxHeight & ~1) ? $"{width} x {height} ({classes.GetValueOrDefault(value, value)}, the box as it is)"
                     : $"{width} x {height} ({classes.GetValueOrDefault(value, value)})";
             }
             if ((string)item.Content == label) continue;

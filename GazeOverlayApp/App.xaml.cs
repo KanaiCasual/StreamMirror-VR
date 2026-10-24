@@ -724,10 +724,33 @@ public partial class App : Application
                 ("9:16 box at 4K: 2160 x 3840", Settings.OutputSize(3375, 6000, 3840) == (2160, 3840)),
                 ("16:9 box at 1080p: 1920 x 1080", Settings.OutputSize(6000, 3375, 1920) == (1920, 1080)),
                 ("a box a hair off 16:9 (6814 x 3832) still gets 3840 x 2160", Settings.OutputSize(6814, 3832, 3840) == (3840, 2160)),
+                ("a 16:9 box of 6226.5 x 3501.98 px (crop height 52.9 % of a 6620 px eye) gets 3840 x 2160, not 3840 x 2158", Settings.OutputSize(6226.5, 3501.98, 3840) == (3840, 2160)),
                 ("a smaller box is sent as it is", Settings.OutputSize(1600, 900, 3840) == (1600, 900)),
                 ("as large as the box: no limit", Settings.OutputSize(6814, 3832, 0) == (6814, 3832)),
             };
-            foreach (var (name, ok) in sizeChecks) report.WriteLine($"picture size - {(ok ? "ok  " : "FAIL")} {name}");
+            // Every shape preset gives its exact numbers, whatever the box's size: the box is made the way the mirror makes it
+            // (its height in eye pixels, its width = height x the shape, in single precision), at three sizes from real eyes.
+            var shapes = new (string Shape, float Width, float Height, (int, int) K4, (int, int) P1440, (int, int) P1080)[]
+            {
+                ("16:9", 16, 9, (3840, 2160), (2560, 1440), (1920, 1080)),
+                ("9:16", 9, 16, (2160, 3840), (1440, 2560), (1080, 1920)),
+                ("1:1", 1, 1, (2160, 2160), (1440, 1440), (1080, 1080)),
+                ("4:3", 4, 3, (2880, 2160), (1920, 1440), (1440, 1080)),
+                ("4:5", 4, 5, (2160, 2700), (1440, 1800), (1080, 1350)),
+                ("21:9", 21, 9, (3840, 1646), (2560, 1098), (1920, 822)),
+            };
+            var shapeChecks = shapes.Select(shape =>
+            {
+                var aspect = shape.Width / shape.Height;
+                var exact = new[] { 4501.37f, 5844.06f, 6620f * 0.947f }.All(height =>
+                {
+                    var width = height * aspect;
+                    return Settings.OutputSize(width, height, 3840) == shape.K4 && Settings.OutputSize(width, height, 2560) == shape.P1440
+                        && Settings.OutputSize(width, height, 1920) == shape.P1080;
+                });
+                return ($"the {shape.Shape} shape gives {shape.K4.Item1} x {shape.K4.Item2}, {shape.P1440.Item1} x {shape.P1440.Item2} and {shape.P1080.Item1} x {shape.P1080.Item2} at any box size", exact);
+            }).ToArray();
+            foreach (var (name, ok) in sizeChecks.Concat(shapeChecks)) report.WriteLine($"picture size - {(ok ? "ok  " : "FAIL")} {name}");
             report.WriteLine($"this build: version {UpdateChecker.CurrentVersionText}, repository '{UpdateChecker.Repository}' (configured: {UpdateChecker.IsConfigured})");
 
             // Optional live read of a public repository's release list, to prove the network path (--selftest <dir> <owner/name>).
@@ -745,7 +768,7 @@ public partial class App : Application
                     report.WriteLine($"live check of {liveRepo} failed: {liveError.Message}");
                 }
             }
-            return checks.All(c => c.Ok) && pictureChecks.All(c => c.Ok) && sizeChecks.All(c => c.Ok) && liveOk && quadViewsOk ? 0 : 1;
+            return checks.All(c => c.Ok) && pictureChecks.All(c => c.Ok) && sizeChecks.All(c => c.Ok) && shapeChecks.All(c => c.Item2) && liveOk && quadViewsOk ? 0 : 1;
         }
         catch (Exception ex)
         {

@@ -314,15 +314,18 @@ namespace gaze_mirror {
         // The published size: the crop's own, scaled down to fit the frame output_max_side names, turned the box's way -
         // 3840 = 3840 x 2160 for a wide box, 2160 x 3840 for a tall one (a vertical video). 0 = no limit. The app's
         // Settings.OutputSize does the same sum for its labels.
-        uint32_t outWidth = static_cast<uint32_t>(crop.width), outHeight = static_cast<uint32_t>(crop.height);
+        const double boxWidth = crop.width, boxHeight = crop.height;
+        uint32_t outWidth = static_cast<uint32_t>(boxWidth), outHeight = static_cast<uint32_t>(boxHeight);
         const uint32_t longSide = s.outputMaxSide >= 64 ? s.outputMaxSide : 16384;
         const uint32_t shortSide = s.outputMaxSide >= 64 ? std::max(64u, s.outputMaxSide * 9 / 16) : 16384;
-        const uint32_t maxWidth = outWidth >= outHeight ? longSide : shortSide, maxHeight = outWidth >= outHeight ? shortSide : longSide;
-        if (outWidth > maxWidth || outHeight > maxHeight) {
-            const double scale = std::min(double(maxWidth) / outWidth, double(maxHeight) / outHeight);
-            // Rounded to the nearest even size, never past the frame: a box a hair off 16:9 still gets 3840 x 2160.
-            outWidth = std::max(64u, std::min(maxWidth, static_cast<uint32_t>(std::lround(outWidth * scale))) & ~1u);
-            outHeight = std::max(64u, std::min(maxHeight, static_cast<uint32_t>(std::lround(outHeight * scale))) & ~1u);
+        const uint32_t maxWidth = boxWidth >= boxHeight ? longSide : shortSide, maxHeight = boxWidth >= boxHeight ? shortSide : longSide;
+        if (boxWidth > maxWidth || boxHeight > maxHeight) {
+            // On the box's exact size - its whole pixels are a hair off its shape (3501.98 tall becomes 3501) - and rounded to
+            // the nearest even size, never past the frame: a 16:9 box gets 3840 x 2160, not 3840 x 2158.
+            const double scale = std::min(maxWidth / boxWidth, maxHeight / boxHeight);
+            const auto even = [](double size, uint32_t most) { return std::max(64u, std::min(most, static_cast<uint32_t>(std::lround(size / 2) * 2))); };
+            outWidth = even(boxWidth * scale, maxWidth);
+            outHeight = even(boxHeight * scale, maxHeight);
         }
         RingConstants ring;
         const bool drawRing = _ring.visible(s);

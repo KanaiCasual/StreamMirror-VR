@@ -495,14 +495,16 @@ public static class Settings
     /// The resolution the mirror sends for a box of this size under output_max_side: scaled down, keeping its shape, to fit
     /// that frame (by its 16:9 height) turned the box's way; never up; even sizes. The same sum as the core's pipeline.
     /// </summary>
-    public static (int Width, int Height) OutputSize(int width, int height, int cap)
+    public static (int Width, int Height) OutputSize(double width, double height, int cap)
     {
-        if (cap < 64 || width < 1 || height < 1) return (width & ~1, height & ~1);
+        if (cap < 64 || width < 1 || height < 1) return ((int)width & ~1, (int)height & ~1);
         int longSide = cap, shortSide = Math.Max(64, cap * 9 / 16);
         var (maxWidth, maxHeight) = width >= height ? (longSide, shortSide) : (shortSide, longSide);
-        if (width <= maxWidth && height <= maxHeight) return (width & ~1, height & ~1);
-        var scale = Math.Min((double)maxWidth / width, (double)maxHeight / height);
-        return (Math.Max(64, Math.Min(maxWidth, (int)Math.Round(width * scale)) & ~1), Math.Max(64, Math.Min(maxHeight, (int)Math.Round(height * scale)) & ~1));
+        if (width <= maxWidth && height <= maxHeight) return ((int)width & ~1, (int)height & ~1);
+        // On the box's exact size, rounded to the nearest even size, never past the frame (as the core does).
+        var scale = Math.Min(maxWidth / width, maxHeight / height);
+        static int Even(double size, int most) => Math.Max(64, Math.Min(most, (int)Math.Round(size / 2, MidpointRounding.AwayFromZero) * 2));
+        return (Even(width * scale, maxWidth), Even(height * scale, maxHeight));
     }
 
     public static readonly Preset[] Presets =
