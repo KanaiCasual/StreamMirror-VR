@@ -3,7 +3,7 @@
 ## Not released yet
 
 **Fixed**
-- **The Mirror page's picture was replaced by SteamVR's empty home.** With SteamVR running and no game in it, opening the Mirror page or coming back to the app took a fresh picture of SteamVR's empty home and put it in place of the last game's. Those automatic refreshes now only take a picture while a game runs. Refresh picture still takes one whenever you press it.
+- **The Mirror page's saved picture was replaced by itself.** Opening the Mirror page or coming back to the app took a fresh picture, so with SteamVR running and no game in it, SteamVR's empty home replaced the last game's picture. Now a saved picture stays until you press Refresh picture or Capture from headset. The app takes a picture by itself only while it has none, and only from a running game.
 
 **Changed**
 - **Layers page**: the OpenXR API layers have their own page in the menu, with the list always open. The Status page keeps a one-line summary that links to it, and now lists every part at all times (no Details button).

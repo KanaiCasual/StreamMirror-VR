@@ -688,14 +688,14 @@ public partial class App : Application
                 ("a file's SHA-256 is computed as sha256sum would", ChecksumOfEmptyFile(outputDir) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
             };
             foreach (var (name, ok) in checks) report.WriteLine($"update check - {(ok ? "ok  " : "FAIL")} {name}");
-            // The Mirror page's automatic refreshes: never over a headset capture, and never a picture with no game in it.
+            // The Mirror page's automatic refresh: it only fills an empty page, and only with a game's picture.
             var pictureChecks = new (string Name, bool Ok)[]
             {
-                ("a game's picture replaces the last one", GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: false, armed: false, producerProgram: "DCS.exe")),
-                ("a headset capture stays", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: true, armed: false, producerProgram: "DCS.exe")),
-                ("nothing is replaced while a capture is armed", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: false, armed: true, producerProgram: "DCS.exe")),
-                ("SteamVR with no game in it (the helper mirrors its empty home) replaces nothing", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: false, armed: false, producerProgram: "")),
-                ("no mirror at all replaces nothing", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(kept: false, armed: false, producerProgram: null)),
+                ("with no picture yet, a running game's picture is taken", GazeOverlay.MainWindow.AutomaticRefreshAllowed(havePicture: false, armed: false, producerProgram: "DCS.exe")),
+                ("a saved picture stays: only a button replaces it", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(havePicture: true, armed: false, producerProgram: "DCS.exe")),
+                ("nothing is taken while a capture is armed", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(havePicture: false, armed: true, producerProgram: "DCS.exe")),
+                ("SteamVR with no game in it (the helper mirrors its empty home) gives no picture", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(havePicture: false, armed: false, producerProgram: "")),
+                ("no mirror at all gives no picture", !GazeOverlay.MainWindow.AutomaticRefreshAllowed(havePicture: false, armed: false, producerProgram: null)),
             };
             foreach (var (name, ok) in pictureChecks) report.WriteLine($"mirror picture - {(ok ? "ok  " : "FAIL")} {name}");
             report.WriteLine($"this build: version {UpdateChecker.CurrentVersionText}, repository '{UpdateChecker.Repository}' (configured: {UpdateChecker.IsConfigured})");

@@ -12,8 +12,8 @@ namespace GazeOverlay;
 /// <summary>
 /// The crop tool's reference picture, taken the way it is needed: from inside the headset.
 /// "Capture from headset" arms a one-shot: the user puts the headset on, sits as they play and presses the capture key.
-/// That takes ONE picture of each eye, and the mode is over. Such a picture is kept: the automatic refreshes of the tab
-/// leave it alone until "Refresh picture" is pressed.
+/// That takes ONE picture of each eye, and the mode is over. Like every saved picture it stays until a button replaces
+/// it: the tab takes one by itself only while it has none.
 /// The key is watched by the mirror LAYER, not by this app: the layer runs inside the game, and a game that has the focus
 /// can keep system hot keys from every other program (DCS does). The app only says "armed, this key" in shared memory;
 /// the layer looks at the key while that is set, takes the picture and disarms. It changes nothing in the headset.
@@ -129,7 +129,7 @@ public partial class MainWindow
         _crop.ImageAspect = (double)_cropFullWidth / _cropFullHeight;
         CropStatus.Text = _appSettings.MirrorPictureKept
             ? "Showing the picture you captured from the headset. The app keeps it until you press Refresh picture."
-            : "Showing the last picture. Refresh picture gets a new one from the running game.";
+            : "Showing the last picture. The app keeps it until you press Refresh picture.";
         ShowSelectedPicture();
     }
 

@@ -179,7 +179,8 @@ VRChat.exe), and the mirror applies it at each start of that game. Edits go into
 
 <img src="docs/page-mirror-capture.png" width="500" alt="The capture key and countdown, under the arrow next to Capture from headset">
 
-- **Refresh picture** takes one from the running game.
+- **Refresh picture** takes one from the running game. The app keeps every picture, through restarts too, until you
+  take a new one with a button; it takes one by itself only while it has none.
 - **Capture from headset** takes it the way you sit in play: press it (a large banner says what to do), put the headset
   on, look straight ahead and press the key. The key is **Pause** by default; the arrow next to the button changes it.
   You hear a sound, and the capture switches itself off. It takes one picture of **each eye**, and the app **keeps**

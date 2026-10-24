@@ -343,10 +343,10 @@ public partial class MainWindow
         LoadLastCropPicture();
         Tabs.SelectionChanged += async (_, e) =>
         {
-            // Opening the tab asks the running game for a fresh picture once - an event, not a timer.
+            // Opening the tab with no picture yet asks the running game for one - an event, not a timer.
             if (ReferenceEquals(e.OriginalSource, Tabs) && ReferenceEquals(Tabs.SelectedItem, CropTab)) await RefreshCropPictureAsync(quietWhenNoGame: true, automatic: true);
         };
-        // Coming back to the app with this tab open (from the game, from OBS): a fresh picture too. Still an event.
+        // Coming back to the app with this tab open and still no picture: the same. Still an event.
         Activated += async (_, _) =>
         {
             if (ReferenceEquals(Tabs.SelectedItem, CropTab) && CropRefresh.IsEnabled) await RefreshCropPictureAsync(quietWhenNoGame: true, automatic: true);
@@ -354,16 +354,16 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Whether an automatic refresh (opening the Mirror page, coming back to the app) may replace the picture. A picture
-    /// captured from the headset was set up on purpose: only the button replaces it, and nothing does while a capture is
-    /// armed. And only a game's picture: the SteamVR helper also mirrors SteamVR with no game in it (its empty home, the
-    /// producer's game name blank), and that picture would push out the last game's.
+    /// Whether an automatic refresh (opening the Mirror page, coming back to the app) may take a picture: only while there
+    /// is none. A saved picture - refreshed or captured from the headset - stays until a button replaces it, and nothing
+    /// is taken while a capture is armed. And only a game's picture: the SteamVR helper also mirrors SteamVR with no game
+    /// in it (its empty home, the producer's game name blank).
     /// </summary>
-    internal static bool AutomaticRefreshAllowed(bool kept, bool armed, string? producerProgram) => !kept && !armed && !string.IsNullOrEmpty(producerProgram);
+    internal static bool AutomaticRefreshAllowed(bool havePicture, bool armed, string? producerProgram) => !havePicture && !armed && !string.IsNullOrEmpty(producerProgram);
 
     private async Task RefreshCropPictureAsync(bool quietWhenNoGame, bool automatic = false)
     {
-        if (automatic && !AutomaticRefreshAllowed(_appSettings.MirrorPictureKept, _captureArmed, MirrorLive.ReadProducer()?.Program)) return;
+        if (automatic && !AutomaticRefreshAllowed(_pictureFirst != null, _captureArmed, MirrorLive.ReadProducer()?.Program)) return;
         CropRefresh.IsEnabled = false;
         var (picture, message) = await MirrorSnapshot.RequestAsync();
         CropRefresh.IsEnabled = true;
