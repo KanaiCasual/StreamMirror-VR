@@ -254,10 +254,12 @@ games. **OpenXR capture** has the mirror layer take the picture inside the game,
 choice is saved with the crop profile, so one game can stay clean. SteamVR games always use SteamVR capture, and native
 OpenXR runtimes always use OpenXR capture.
 
-**Show tool panels** (on the Picture card, on by default): with OpenXR capture, what other OpenXR tools lay over the
-game appears in the picture where it sits in the headset: flat panels such as OpenKneeboard's kneeboards, curved panels,
-and a tool's own 3D layer. The tool's layer has to come before the mirror layer in the OpenXR layer list; the order
-check on the Status page sees to that. What the headset's runtime adds itself (its own menus, the play-area boundary)
+**Show panels** (on the Picture card, on by default): with OpenXR capture, every flat panel over the game's world
+appears in the picture where it sits in the headset. That covers the game's own panels (a screen of text in VAIL's
+start-up room, a floating menu) and what other OpenXR tools lay over the game: OpenKneeboard's kneeboards, curved
+panels, a tool's own 3D layer. A tool's layer has to come before the mirror layer in the OpenXR layer list; the order
+check on the Status page sees to that. Off keeps all of them off the stream. A menu or loading screen with no world
+behind it is mirrored either way. What the headset's runtime adds itself (its own menus, the play-area boundary)
 never passes through the mirror layer; only SteamVR capture has that.
 
 **Follow my gaze (up / down):** a 16:9 box covers about half the height of the eye image, so a look down at your knees

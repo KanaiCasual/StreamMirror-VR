@@ -142,8 +142,8 @@ takes you back to how the profile was when you opened it. And on any page, **Ctr
 - [ ] The Status page shows the game's name and, with eye tracking, "gaze arriving".
 - [ ] The OBS source fills the canvas (Ctrl+F done) and moves smoothly.
 - [ ] The ring sits where you look (marker checked, then switched **off**).
-- [ ] Nothing you don't want on stream: tool panels such as OpenKneeboard come along by default; untick **Show tool
-      panels** on the Picture card to keep them off.
+- [ ] Nothing you don't want on stream: flat panels (the game's own, and tools' such as OpenKneeboard) come along
+      by default; untick **Show panels** on the Picture card to keep them off.
 
 ## 10. Which setup is yours?
 
@@ -152,8 +152,8 @@ layer does everything. Nothing to choose.
 
 **OpenXR game running through SteamVR's OpenXR runtime** (common with Index, Vive, Quest via Steam Link): the
 **Capture** choice on the Picture card decides. **SteamVR capture** takes the picture SteamVR shows you, overlays
-included (OVR Toolkit, fpsVR, the dashboard). **OpenXR capture** takes the game alone, plus tool panels such as
-OpenKneeboard.
+included (OVR Toolkit, fpsVR, the dashboard). **OpenXR capture** takes the game alone, plus its panels and tool panels such
+as OpenKneeboard.
 
 **SteamVR game** (VRChat, Half-Life: Alyx, Pavlov): the SteamVR helper mirrors it. It starts and stops with SteamVR by
 itself.

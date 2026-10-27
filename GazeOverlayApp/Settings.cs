@@ -456,14 +456,14 @@ public static class Settings
         {
             Key = "picture_source", Group = GroupCrop, Kind = SettingKind.Choice, Default = "steamvr",
             Label = "Capture",
-            Description = "For OpenXR games that run through SteamVR. Saved with the crop profile, so one game can stay clean.\n\n**SteamVR capture (the default):** the SteamVR helper takes the picture SteamVR shows in the headset. SteamVR's overlays come with it (OVR Toolkit, fpsVR, the dashboard and its desktop view, notifications), and so do the app's own aids in the headset (the countdown, the view-edge blocks, the marker).\n\n**OpenXR capture:** the mirror layer takes the picture inside the game. SteamVR's overlays stay out of the stream. Panels that OpenXR tools such as OpenKneeboard add come along while Show tool panels is on.\n\nSteamVR games always use SteamVR capture. Native OpenXR runtimes, such as Pimax Play's, always use OpenXR capture.",
+            Description = "For OpenXR games that run through SteamVR. Saved with the crop profile, so one game can stay clean.\n\n**SteamVR capture (the default):** the SteamVR helper takes the picture SteamVR shows in the headset. SteamVR's overlays come with it (OVR Toolkit, fpsVR, the dashboard and its desktop view, notifications), and so do the app's own aids in the headset (the countdown, the view-edge blocks, the marker).\n\n**OpenXR capture:** the mirror layer takes the picture inside the game. SteamVR's overlays stay out of the stream. Panels come along while Show panels is on: the game's own, and those OpenXR tools such as OpenKneeboard add.\n\nSteamVR games always use SteamVR capture. Native OpenXR runtimes, such as Pimax Play's, always use OpenXR capture.",
             Choices = [new("steamvr", "SteamVR capture (with overlays)"), new("game", "OpenXR capture (no SteamVR overlays)")],
         },
         new()
         {
             Key = "show_panels", Group = GroupCrop, Kind = SettingKind.Toggle, Default = "1",
-            Label = "Show tool panels",
-            Description = "With OpenXR capture: what other OpenXR tools lay over the game appears in the picture where it sits in the headset: flat panels such as OpenKneeboard's kneeboards, curved panels, and a tool's own 3D layer.\n\nThe tool's layer must come before the mirror layer in the OpenXR layer list on the Status page; its order check sees to that.\n\nTurn it off to keep them off the stream; the headset still shows them.",
+            Label = "Show panels",
+            Description = "With OpenXR capture: every flat panel over the game's world appears in the picture where it sits in the headset.\n\n**The game's own:** a screen of text in VAIL's start-up room, a menu that floats in front of you.\n\n**Other OpenXR tools':** OpenKneeboard's kneeboards, curved panels, a tool's own 3D layer. The tool's layer must come before the mirror layer in the OpenXR layer list on the Status page; its order check sees to that.\n\nTurn it off to keep all of them off the stream; the headset still shows them. A menu or loading screen with no world behind it is mirrored either way.",
         },
         new()
         {

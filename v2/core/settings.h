@@ -35,8 +35,8 @@ namespace gaze_mirror {
         float glowWidth = 0.0028f;
         float glowStrength = 0.4f;
         float tailOpacity = 0.7f;
-        float tailMax = 0.14f;
-        float trailMs = 150.f;
+        float tailMax = 0.2f;
+        float trailMs = 200.f;
         float blobTrailMs = 450.f;
         float heatMs = 2000.f;
         float heatCoolMs = 700.f;
