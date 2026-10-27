@@ -442,6 +442,7 @@ public partial class App : Application
             return QuadViewsPixels.Compute(session!.StereoWidth, session.StereoHeight, e["peripheral_multiplier"], e["focus_multiplier"], e["horizontal_focus_section"], e["vertical_focus_section"]).Total;
         }
 
+        QuadViewsPixels.Result Logged() => QuadViewsPixels.Compute(session!.StereoWidth, session.StereoHeight, 0.32, 1.225, 0.35, 0.35);
         var before = QuadViewsFile.Evaluate([("test", file)], session);
         var sliders = QuadViewsSetting.All.ToDictionary(s => s.Id, _ => 0.0);
         var untouched = QuadViewsFile.Plan(file, sliders, new HashSet<string>());
@@ -479,6 +480,11 @@ public partial class App : Application
             ("a per-game focus size goes, with the section it leaves empty: the page's value counts in every game", !untouched.Lines.Contains("[app:SomeGame]")),
             ("per-game lines the page has no setting for stay", untouched.Entries().Any(e => e.Section == "[exe:Contractors]" && e.Key == "unadvertise")),
             ("the [SteamVR] Turbo guard is left alone", editedValues["turbo_mode"] == 0 && edited.InCommon("turbo_mode") == "1"),
+            ("the lines under the sliders give the sizes the layer logged (sharp 3042 x 3178, surround 2270 x 2372) and its total (29 %)",
+                QuadViewsReadout.Focus(1.225, Logged()).Contains("3042 x 3178") && QuadViewsReadout.Peripheral(0.32, Logged(), 7096, 7412).Contains("2270 x 2372")
+                && QuadViewsReadout.Total(0.32, 1.225, 0.35, 0.35, Logged(), session!.StereoPixels).StartsWith("In all: 29 %")),
+            ("...and say the sharpness against the headset's", QuadViewsReadout.Sharpness(1.0) == "As sharp as the headset." && QuadViewsReadout.Sharpness(1.414).StartsWith("1.41x")
+                && QuadViewsReadout.Sharpness(0.5) == "0.5x the headset's sharpness on each side."),
         };
         foreach (var (name, ok) in checks) report.WriteLine($"quad views - {(ok ? "ok  " : "FAIL")} {name}");
 

@@ -468,6 +468,9 @@ reads these at its start: press Apply, then restart the game.**
 
 - **Render load:** the pixels per frame your settings make the game render, for the last game start, the saved file,
   and the result of Apply.
+- **Under the sliders:** what they make. The sharp area's and the surround's size in pixels per eye, how sharp each
+  is against the headset (100 % = as sharp as the headset; the resolution sliders are shares of the pixel count, so
+  200 % is 1.41x on each side), how much of the view the sharp area covers, and what both images cost together.
 - **Presets:** *Give me FPS*, *TM's Favorite*, *QV defaults*, and three slots of your own.
 - One deliberate difference from the Companion: Apply writes the **whole file fresh**, in the app's own layout. Every
   setting stands once at the top, which every runtime and game reads, grouped as with eye tracking, without eye

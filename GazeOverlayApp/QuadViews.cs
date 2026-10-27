@@ -367,6 +367,47 @@ public static class QuadViewsPixels
     private static int Align2(uint n) => (int)((n + 1) & ~1u);
 }
 
+/// <summary>The lines under the Quad Views page's sliders: what the values make, in pixels and in sharpness.
+/// <paramref name="pixels"/> and the headset's size are null until a game has started once.</summary>
+public static class QuadViewsReadout
+{
+    /// <summary>A multiplier scales both sides of the picture: say so, against the headset's own sharpness.</summary>
+    public static string Sharpness(double multiplier) => Math.Abs(multiplier - 1) < 0.005
+        ? "As sharp as the headset."
+        : multiplier > 1
+            ? $"{multiplier:0.##}x the headset's sharpness on each side (supersampled)."
+            : $"{multiplier:0.##}x the headset's sharpness on each side.";
+
+    public static string Focus(double multiplier, QuadViewsPixels.Result? pixels) => pixels != null
+        ? $"Sharp area: {pixels.FocusWidth} x {pixels.FocusHeight} per eye.\n{Sharpness(multiplier)}"
+        : $"{Sharpness(multiplier)}\nPixel sizes show here once a game has started with quad views.";
+
+    public static string Peripheral(double multiplier, QuadViewsPixels.Result? pixels, int stereoWidth, int stereoHeight) => pixels != null
+        ? $"Surround: {pixels.PeripheralWidth} x {pixels.PeripheralHeight} per eye (the headset: {stereoWidth} x {stereoHeight}).\n{Sharpness(multiplier)}"
+        : Sharpness(multiplier);
+
+    /// <summary>The sharp area's share of the view: the two size sliders together.</summary>
+    public static string Area(double horizontalSection, double verticalSection) =>
+        $"Together: the sharp area covers {100 * horizontalSection * verticalSection:0} % of the view.";
+
+    /// <summary>What both images cost together, against the headset rendering everything at full resolution.</summary>
+    public static string Total(double peripheralMultiplier, double focusMultiplier, double horizontalSection, double verticalSection, QuadViewsPixels.Result? pixels, long stereoPixels)
+    {
+        double sharp, surround;
+        if (pixels != null && stereoPixels > 0)
+        {
+            sharp = 2.0 * pixels.FocusWidth * pixels.FocusHeight / stereoPixels;
+            surround = 2.0 * pixels.PeripheralWidth * pixels.PeripheralHeight / stereoPixels;
+        }
+        else
+        {
+            sharp = focusMultiplier * focusMultiplier * horizontalSection * verticalSection;
+            surround = peripheralMultiplier * peripheralMultiplier;
+        }
+        return $"In all: {100 * (sharp + surround):0} % of the pixels the headset renders without quad views.\nSharp area {100 * sharp:0} %, surround {100 * surround:0} %.";
+    }
+}
+
 public enum QuadViewsScale { Fraction, PixelShare }
 
 /// <summary>One control of the Quad Views tab. A slider can drive two keys: the eye-tracked one and its fixed fallback.</summary>
@@ -421,13 +462,13 @@ public sealed class QuadViewsSetting
         {
             Id = "focus_res", Label = "Foveate resolution", Suffix = "% of native", Min = 50, Max = 400, Scale = QuadViewsScale.PixelShare,
             Keys = ["focus_multiplier"],
-            Description = "Pixel count of the sharp region compared to the headset's normal resolution.\n\nAbove 100 % is supersampling.",
+            Description = "How sharp the sharp region is: a share of the pixels the headset itself would give that same area.\n\n**100 %:** as sharp as the headset. **Above 100 %** is supersampling: 200 % doubles the pixels, 1.41x on each side.\n\nThe line under the slider gives the size in pixels.",
         },
         new()
         {
             Id = "peripheral_res", Label = "Peripheral resolution", Suffix = "% of native", Min = 1, Max = 100, Scale = QuadViewsScale.PixelShare,
             Keys = ["peripheral_multiplier"],
-            Description = "Pixel count of the area outside the sharp region.\n\nMost of the saving comes from here.",
+            Description = "How sharp the area outside the sharp region is: a share of the headset's own pixel count. 25 % is half the sharpness on each side, a quarter of the pixels.\n\nMost of the saving comes from here. The lines under the slider give the size in pixels and what both images cost together.",
         },
         new()
         {

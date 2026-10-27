@@ -22,6 +22,7 @@ public partial class MainWindow
     private bool _quadViewsLoading;
     private bool _quadViewsBackedUp;
     private CheckBox? _quadViewsTurboBox;
+    private readonly Dictionary<string, TextBlock> _quadViewsReadouts = [];
 
     private void BuildQuadViewsUi()
     {
@@ -90,7 +91,26 @@ public partial class MainWindow
                 };
                 AddRowEditor(row, slider);
             }
-            (focusIds.Contains(setting.Id) ? focus : resolution).Children.Add(row);
+            var card = focusIds.Contains(setting.Id) ? focus : resolution;
+            card.Children.Add(row);
+            // Under the sliders that set the pixel count: what they make (RefreshQuadViewsReadout fills them in).
+            var readouts = setting.Id switch
+            {
+                "focus_v" => ["area"],
+                "focus_res" => ["focus_res"],
+                "peripheral_res" => new[] { "peripheral_res", "total" },
+                _ => [],
+            };
+            foreach (var id in readouts)
+            {
+                var readout = new TextBlock
+                {
+                    Foreground = (Brush)FindResource("Muted"), FontSize = 11.5, TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(RowLabelWidth, 0, 22, 4),
+                };
+                _quadViewsReadouts[id] = readout;
+                card.Children.Add(readout);
+            }
         }
 
         // Presets sit in the banner at the top, next to Apply, so they are reachable without scrolling.
@@ -268,6 +288,16 @@ public partial class MainWindow
             QuadViewsLoadSaved.Text = $"Saved settings: about {Share(saved):0.0} % of the full-resolution pixel count.";
             QuadViewsLoadNext.Text = $"After Apply: about {Share(next):0.0} %.";
             QuadViewsLoadNext.Foreground = (Brush)FindResource("Muted");
+        }
+
+        // ---- under the sliders: what the values on them make
+        {
+            var (horizontal, vertical) = QuadViewsSections(next);
+            var pixels = QuadViewsPixelsFor(next);
+            _quadViewsReadouts["area"].Text = QuadViewsReadout.Area(horizontal, vertical);
+            _quadViewsReadouts["focus_res"].Text = QuadViewsReadout.Focus(next["focus_multiplier"], pixels);
+            _quadViewsReadouts["peripheral_res"].Text = QuadViewsReadout.Peripheral(next["peripheral_multiplier"], pixels, session?.StereoWidth ?? 0, session?.StereoHeight ?? 0);
+            _quadViewsReadouts["total"].Text = QuadViewsReadout.Total(next["peripheral_multiplier"], next["focus_multiplier"], horizontal, vertical, pixels, session?.StereoPixels ?? 0);
         }
 
         // ---- what Apply tidies, and what the file sets apart from the sliders

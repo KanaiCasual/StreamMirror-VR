@@ -6,6 +6,7 @@
 - **Free shape: drag a side.** With the Free shape, each side of the crop box has a handle: drag it to change the width or the height alone, while the other sides stay where they are. Corners still change both.
 - **Undo and redo**: Ctrl+Z takes back the last change made on the page you look at (a whole drag of the crop box or a slider counts as one), Ctrl+Y or Ctrl+Shift+Z redoes it. Revert can be undone too.
 - **A guided tour** of the pages and their main controls. It starts the first time the app opens, and About > **Take the tour** brings it back. Esc ends it, the arrow keys step through it.
+- **Quad Views: what the sliders make, in pixels.** Under Foveate resolution: the sharp area's size per eye and how sharp it is against the headset (100 % = as sharp as the headset, 200 % = 1.41x on each side). Under Peripheral resolution: the surround's size next to the headset's own, and what both images cost together, split into sharp area and surround. Under the focus sizes: how much of the view the sharp area covers. The numbers follow the sliders as you drag, before Apply.
 - **A getting-started guide** on GitHub (docs/GETTING-STARTED.md) walks from the download to a framed, steady picture in OBS. About > **Getting started** opens it.
 
 **Fixed**
