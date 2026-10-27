@@ -31,13 +31,12 @@ public partial class MainWindow
         QuadViewsNotice.Visibility = Visibility.Collapsed;
         ShowToolTipsPatiently(QuadViewsTitle);
 
-        // Two cards: where the sharp part is, and how much is rendered. Side by side when there is room.
-        var focusIds = new HashSet<string> { "focus_h", "focus_v", "offset_v", "transition", "gaze_smoothing", "gaze_deadzone" };
+        // Two cards: what a running game takes at once, and what waits for its next start. Side by side when there is room.
         var focus = new StackPanel();
         var resolution = new StackPanel();
         var cards = new Grid { Margin = new Thickness(0, 0, -10, 0) };
-        var focusCard = NewCard("FOCUS", focus, 0);
-        var resolutionCard = NewCard("RESOLUTION", resolution, 0);
+        var focusCard = NewCard("LIVE: A RUNNING GAME SHOWS CHANGES AT ONCE", focus, 0);
+        var resolutionCard = NewCard("NEXT START: CHANGES WAIT FOR THE GAME TO START AGAIN", resolution, 0);
         focusCard.Margin = resolutionCard.Margin = new Thickness(0, 0, 10, 10);
         cards.Children.Add(focusCard);
         cards.Children.Add(resolutionCard);
@@ -54,10 +53,13 @@ public partial class MainWindow
 
         foreach (var setting in QuadViewsSetting.All)
         {
-            var row = NewRow(setting.Description);
+            var description = setting.Description + (setting.Live
+                ? "\n\n**Live:** a running game shows the change at once."
+                : "\n\n**Next start:** a running game keeps the old value until it starts again.");
+            var row = NewRow(description);
             if (setting.IsToggle)
             {
-                var box = new CheckBox { Content = setting.Label, FontWeight = FontWeights.SemiBold, ToolTip = WrappedToolTip(setting.Description) };
+                var box = new CheckBox { Content = setting.Label, FontWeight = FontWeights.SemiBold, ToolTip = WrappedToolTip(description) };
                 ShowToolTipsPatiently(box);
                 box.Checked += (_, _) => OnQuadViewsChanged(setting.Id, 1);
                 box.Unchecked += (_, _) => OnQuadViewsChanged(setting.Id, 0);
@@ -67,7 +69,7 @@ public partial class MainWindow
             }
             else
             {
-                AddRowLabel(row, setting.Label, setting.Description);
+                AddRowLabel(row, setting.Label, description);
                 var slider = new Slider
                 {
                     Minimum = setting.Min, Maximum = setting.Max, SmallChange = setting.Step, LargeChange = setting.Step * 5,
@@ -80,7 +82,7 @@ public partial class MainWindow
                 });
                 // The default is Quad-Views-Foveated's own, read from the file it ships for this headset's runtime.
                 slider.MouseDoubleClick += (_, _) => { if (QuadViewsLayerDefaults().TryGetValue(setting.Id, out var standard)) slider.Value = Math.Clamp(standard, setting.Min, setting.Max); };
-                Describe(slider, setting.Label, setting.Description + "\n\nDouble-click the slider for Quad-Views-Foveated's own default. Click the value to type one.");
+                Describe(slider, setting.Label, description + "\n\nDouble-click the slider for Quad-Views-Foveated's own default. Click the value to type one.");
                 slider.ValueChanged += (_, e) =>
                 {
                     valueText.Text = $"{setting.Show(e.NewValue)} {setting.Suffix}";
@@ -93,7 +95,7 @@ public partial class MainWindow
                 };
                 AddRowEditor(row, slider);
             }
-            var card = focusIds.Contains(setting.Id) ? focus : resolution;
+            var card = setting.Live ? focus : resolution;
             card.Children.Add(row);
             // The official layer's own debug switch has no place on this page (the file model knows it, for the import).
             row.Visibility = setting.AppliesTo(_quadViewsOwn) ? Visibility.Visible : Visibility.Collapsed;
@@ -254,8 +256,8 @@ public partial class MainWindow
 
         if (!keepStatus)
         {
-            SetQuadViewsStatus((imported ? "These are your Quad-Views-Foveated settings: VR Gaze Mirror's layer starts from them. " : "") +
-                               "Changes are saved as you make them. A running game takes them at once; resolution and Turbo from its next start.");
+            SetQuadViewsStatus((imported ? "These are your Quad-Views-Foveated settings: VR Gaze Mirror's layer starts from them.\n" : "") +
+                               "Changes are saved as you make them. The card titles below say when a running game takes them.");
         }
         RefreshQuadViewsReadout();
         SyncFixedFocusKeys(); // The fixed centre's sharp area follows the file.

@@ -444,6 +444,8 @@ public sealed class QuadViewsSetting
     public QuadViewsScale Scale { get; init; }
     public bool NeedsRestartNote { get; init; }
     public QuadViewsLayers Layers { get; init; }
+    /// <summary>A running game takes the change at once (the layer reads its settings again); otherwise at its next start.</summary>
+    public bool Live { get; init; } = true;
 
     public bool AppliesTo(bool ownLayer) => Layers == QuadViewsLayers.Both || (Layers == QuadViewsLayers.OwnOnly) == ownLayer;
 
@@ -475,13 +477,13 @@ public sealed class QuadViewsSetting
         {
             Id = "focus_h", Label = "Horizontal focus size", Suffix = "% of FOV", Min = 10, Max = 90,
             Keys = ["horizontal_focus_section", "horizontal_fixed_section"],
-            Description = "Width of the sharp region that follows your eyes, as a share of the headset's field of view.\n\n**Smaller:** faster. Too small and you see the blurry surround.",
+            Description = "Width of the sharp region that follows your eyes, as a share of the headset's field of view.\n\n**Smaller:** faster. Too small and you see the blurry surround.\n\nWith eye tracking the size changes at once, and the region's pixel count follows at the game's next start. Without eye tracking, the whole change waits for the next start.",
         },
         new()
         {
             Id = "focus_v", Label = "Vertical focus size", Suffix = "% of FOV", Min = 10, Max = 90,
             Keys = ["vertical_focus_section", "vertical_fixed_section"],
-            Description = "Height of the sharp region.",
+            Description = "Height of the sharp region.\n\nWith eye tracking the size changes at once, and the region's pixel count follows at the game's next start. Without eye tracking, the whole change waits for the next start.",
         },
         new()
         {
@@ -503,13 +505,13 @@ public sealed class QuadViewsSetting
         },
         new()
         {
-            Id = "focus_res", Label = "Foveate resolution", Suffix = "% of native", Min = 50, Max = 400, Scale = QuadViewsScale.PixelShare,
+            Id = "focus_res", Label = "Foveate resolution", Suffix = "% of native", Min = 50, Max = 400, Scale = QuadViewsScale.PixelShare, Live = false,
             Keys = ["focus_multiplier"],
             Description = "How sharp the sharp region is: a share of the pixels the headset itself would give that same area.\n\n**100 %:** as sharp as the headset. **Above 100 %** is supersampling: 200 % doubles the pixels, 1.41x on each side.\n\nThe line under the slider gives the size in pixels.",
         },
         new()
         {
-            Id = "peripheral_res", Label = "Peripheral resolution", Suffix = "% of native", Min = 1, Max = 100, Scale = QuadViewsScale.PixelShare,
+            Id = "peripheral_res", Label = "Peripheral resolution", Suffix = "% of native", Min = 1, Max = 100, Scale = QuadViewsScale.PixelShare, Live = false,
             Keys = ["peripheral_multiplier"],
             Description = "How sharp the area outside the sharp region is: a share of the headset's own pixel count. 25 % is half the sharpness on each side, a quarter of the pixels.\n\nMost of the saving comes from here. The lines under the slider give the size in pixels and what both images cost together.",
         },
@@ -527,7 +529,7 @@ public sealed class QuadViewsSetting
         },
         new()
         {
-            Id = "turbo", Label = "Turbo mode", Suffix = "", IsToggle = true, CommonOnly = true,
+            Id = "turbo", Label = "Turbo mode", Suffix = "", IsToggle = true, CommonOnly = true, Live = false,
             Keys = ["turbo_mode"],
             Description = "Lets the game start its next frame early, which can raise the frame rate.\n\nQuad-Views-Foveated switches it off for SteamVR and Varjo runtimes because it causes errors there, and this app leaves those exceptions in place.",
         },

@@ -48,51 +48,58 @@ public partial class MainWindow
         var steps = new List<TourStep>
         {
             new(null, () => null, "VR Gaze Mirror in two minutes",
-                "This tour shows each page and what its main controls do. Next steps through it; Skip ends it. You can start it again any time from the About page."),
+                "This tour shows each page and what its main controls do.\n\nNext steps through it; Skip ends it. You can start it again any time from the About page."),
             new(StatusTab, () => Ancestor<Border>(StatusRows), "The mirror's parts",
-                "The mirror layer takes the picture inside OpenXR games, the SteamVR helper inside SteamVR games, and the OBS plugin brings it into OBS. Green is ready, grey is not needed on this PC. A red or orange part says what to do about it."),
+                "The mirror layer takes the picture inside OpenXR games, the SteamVR helper inside SteamVR games, and the OBS plugin brings it into OBS.\n\nGreen is ready, grey is not needed on this PC. A red or orange part says what to do about it."),
             new(StatusTab, () => LiveText.Parent as FrameworkElement, "What the mirror is doing",
-                "While you play, this line names the game the mirror shows and says whether your eye gaze arrives. It answers most \"why is nothing happening\" questions."),
+                "While you play, this line names the game the mirror shows and says whether your eye gaze arrives.\n\nIt answers most \"why is nothing happening\" questions."),
             new(CropTab, () => CropFrameBorder, "Your picture",
-                "One eye of your headset view. The blue box on it is what OBS and the mirror window get: drag it to move it, drag a corner or roll the mouse wheel to resize it. With the Free shape, drag a side to change the width or the height alone. The app keeps this picture until you replace it with one of the buttons above."),
+                "One eye of your headset view. The blue box on it is what OBS and the mirror window get.\n\nDrag it to move it, drag a corner or roll the mouse wheel to resize it. With the Free shape, drag a side to change the width or the height alone.\n\nThe app keeps this picture until you replace it with one of the buttons above."),
             new(CropTab, () => CropCapture, "Capture from headset",
-                "The best picture to frame on is your view as you sit when you play. Press this, put the headset on, look straight ahead and press the key (Pause), or let a countdown take it (the arrow beside it)."),
+                "The best picture to frame on is your view as you sit when you play.\n\nPress this, put the headset on, look straight ahead and press the key (Pause), or let a countdown take it (the arrow beside it)."),
             new(CropTab, () => Ancestor<Border>(CropEnabled), "The crop box",
-                "Crop the picture switches the box on, and the shape beside it (16:9 for a stream) keeps its proportions. Lock stops a stray click from moving it."),
+                "Crop the picture switches the box on, and the shape beside it (16:9 for a stream) keeps its proportions.\n\nLock stops a stray click from moving it."),
             new(CropTab, () => ViewEdgesCard, "View edges",
-                "The headset draws more than your eye sees through the lens. Measure where your view ends once, in the headset, then Crop to view edges makes the largest box that fits: no black lens corners."),
+                "The headset draws more than your eye sees through the lens.\n\nMeasure where your view ends once, in the headset. Then Crop to view edges makes the largest box that fits: no black lens corners."),
             new(CropTab, () => Ancestor<Border>(PanelOutput), "What goes out",
-                "Which eye, how the picture is taken, the resolution OBS gets and the most pictures a second. Each Picture size choice names the resolution your crop box gets; pick the one you record or stream at, 1920 x 1080 for 1080p: more only costs more. Show tool panels brings kneeboards such as OpenKneeboard along."),
+                "Which eye, how the picture is taken, the resolution OBS gets and the most pictures a second.\n\nEach Picture size choice names the resolution your crop box gets. Pick the one you record or stream at, 1920 x 1080 for 1080p: more only costs more.\n\nShow tool panels brings kneeboards such as OpenKneeboard along."),
             new(CropTab, () => StabilizeExpander, "A calm picture",
-                "Steady the picture takes small head movement and tracking jitter out; Tilt set to Level keeps the horizon level when you lean. The green band on the picture is the room the box may move in. Follow my gaze, just above, moves the box up and down after your eyes.",
+                "Steady the picture takes small head movement and tracking jitter out. Tilt set to Level keeps the horizon level when you lean.\n\nThe green band on the picture is the room the box may move in.\n\nFollow my gaze, just above, moves the box up and down after your eyes.",
                 StabilizeExpander),
             new(CropTab, () => Ancestor<WrapPanel>(CropProfile), "Profiles",
-                "A profile keeps a framing under a name. New starts one from the default framing, Save as... copies the current one, and the ... button renames or deletes it. Give it a game's program file under For game (DCS.exe, say) and the mirror switches to it by itself when that game starts."),
+                "A profile keeps a framing under a name. New starts one from the default framing, Save as... copies the current one, and the ... button renames or deletes it.\n\nGive it a game's program file under For game (DCS.exe, say) and the mirror switches to it by itself when that game starts."),
             new(CropTab, () => Ancestor<DockPanel>(CropProfileAutoSave), "Saving a profile",
-                "Changes show on the stream at once, but go into the profile only when you press Save, so trying something out never spoils it. This line turns orange while something is unsaved, and Revert goes back. Tick Save edits automatically to save every change as you make it; Revert then goes back to how the profile was when you opened it. On any page, Ctrl+Z undoes one change and Ctrl+Y redoes it."),
+                "Changes show on the stream at once, but go into the profile only when you press Save, so trying something out never spoils it. This line turns orange while something is unsaved, and Revert goes back.\n\nTick Save edits automatically to save every change as you make it; Revert then goes back to how the profile was when you opened it.\n\nOn any page, Ctrl+Z undoes one change and Ctrl+Y redoes it."),
             new(CropTab, () => MirrorToggle, "The mirror window",
-                "For Discord and other programs that capture windows: a window with the same picture, behind your other windows. This button opens and closes it. With the Gaze Mirror source in OBS you do not need it."),
+                "For Discord and other programs that capture windows: a window with the same picture, behind your other windows. This button opens and closes it.\n\nWith the Gaze Mirror source in OBS you do not need it."),
             new(CropTab, () => MirrorWindowExpander, "Mirror window settings",
-                "At the foot of this column: the monitor the window fills (or a set size, for Discord 1920 x 1080 say), the most pictures a second it draws, and a title bar for capture tools that only list windows with one.",
+                "At the foot of this column: the monitor the window fills (or a set size, for Discord 1920 x 1080 say) and the most pictures a second it draws.\n\nA title bar is there for capture tools that only list windows with one.",
                 MirrorWindowExpander),
             new(GazeTab, () => Ancestor<Border>(PanelGaze), "Where the gaze comes from",
-                "The ring shows your viewers where you look. The headset's own eye tracking comes first; this sets the fallbacks. No eye tracking? Choose Fixed centre, or switch the ring off on the Ring page. Further down, a marker in the headset lets you check where the ring lands."),
+                "The ring shows your viewers where you look. The headset's own eye tracking comes first; this sets the fallbacks.\n\nNo eye tracking? Choose Fixed centre, or switch the ring off on the Ring page.\n\nFurther down, a marker in the headset lets you check where the ring lands."),
             new(LookTab, () => LookHeaderBar, "The ring's look",
-                "A preset is enough for most people. The preview shows every change at once, and your headset shows none of it."),
+                "A preset is enough for most people.\n\nThe preview shows every change at once, and your headset shows none of it."),
             new(CoverTab, () => null, "Desktop cover",
-                "For headsets that track with cameras: black over the game's window on your monitor, so a moving picture there cannot confuse the tracking. Headsets with base stations do not need it."),
+                "For headsets that track with cameras: black over the game's window on your monitor, so a moving picture there cannot confuse the tracking.\n\nHeadsets with base stations do not need it."),
         };
         if (_navQuadViews)
         {
             steps.Add(new(QuadViewsTab, () => QuadViewsLayerOn.Parent as FrameworkElement, "Quad views",
-                "Foveated rendering: the game draws a small sharp area where you look and the rest of the view at a lower resolution, which frees up graphics card time for a higher frame rate. It works in games that offer quad views, such as DCS and VAIL. This switch turns it on for every OpenXR game, from the game's next start."));
+                "Foveated rendering: the game draws a small sharp area where you look and the rest of the view at a lower resolution. That frees up graphics card time for a higher frame rate.\n\nIt works in games that offer quad views, such as DCS and VAIL.\n\nThis switch turns it on for every OpenXR game, from the game's next start."));
             steps.Add(new(QuadViewsTab, () => PanelQuadViews, "Why this quad views layer",
-                "It is built on mbucchia's Quad-Views-Foveated and adds to it: Direct3D 12 games too (VAIL), a sharp area that blends into the rest with no visible seam, steadier when your eyes jitter or blink, sharpening without halos, and a diagnostics view in the headset. Most sliders apply while you play; only the resolution and Turbo wait for the next start. Games it cannot help (Vulkan, OpenGL) run as usual instead of going black. Switched on, it takes over from the official layer if you had that."));
+                "It is built on mbucchia's Quad-Views-Foveated and adds to it:\n" +
+                "  - Direct3D 12 games too (VAIL)\n" +
+                "  - no visible seam around the sharp area\n" +
+                "  - steadier when your eyes jitter or blink\n" +
+                "  - sharpening without halos\n" +
+                "  - a diagnostics view in the headset\n\n" +
+                "The settings under Live show in a running game at once; those under Next start wait for the game to start again.\n\n" +
+                "Games it cannot help (Vulkan, OpenGL) run as usual instead of going black. Switched on, it takes over from the official layer if you had that."));
         }
         steps.Add(new(LayersTab, () => Ancestor<Border>(LayerRows), "OpenXR layers",
-            "Every OpenXR add-on on this PC, in the order games load them, with a switch for each. If the order breaks a rule the app knows, Fix order puts it right."));
+            "Every OpenXR add-on on this PC, in the order games load them, with a switch for each.\n\nIf the order breaks a rule the app knows, Fix order puts it right."));
         steps.Add(new(AboutTab, () => Ancestor<Border>(TourButton), "That's it",
-            "Getting started opens a step-by-step guide to a first setup, Take the tour starts this tour again, and Logs opens the log files to send with a bug report."));
+            "Getting started opens a step-by-step guide to a first setup. Take the tour starts this tour again.\n\nLogs opens the log files to send with a bug report."));
         return steps;
     }
 
