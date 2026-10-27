@@ -74,20 +74,110 @@
 
             <TabItem x:Name="StatusTab" Header="Status">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <!-- The picture's own colours, blurred far out behind the page: it takes on the game's light. -->
+                        <Image x:Name="StatusAmbient" Width="760" Height="470" Margin="-20,40,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                               Stretch="UniformToFill" Opacity="0.3" IsHitTestVisible="False">
+                            <Image.OpacityMask>
+                                <RadialGradientBrush>
+                                    <GradientStop Offset="0.2" Color="#FF000000" />
+                                    <GradientStop Offset="1" Color="#00000000" />
+                                </RadialGradientBrush>
+                            </Image.OpacityMask>
+                            <Image.Effect>
+                                <BlurEffect Radius="90" RenderingBias="Performance" />
+                            </Image.Effect>
+                        </Image>
                     <StackPanel Margin="{StaticResource PageMargin}">
-                        <DockPanel Margin="0,0,0,10">
+                        <DockPanel Margin="0,0,0,16">
                             <Button DockPanel.Dock="Right" Content="Refresh" VerticalAlignment="Center" Click="OnRefresh" />
                             <TextBlock Style="{StaticResource PageTitle}" Text="Status" />
-                            <DockPanel VerticalAlignment="Center" Margin="0,0,10,0">
+                            <DockPanel VerticalAlignment="Center" Margin="0,4,10,0">
                                 <Ellipse x:Name="LiveDot" DockPanel.Dock="Left" Width="8" Height="8" Margin="0,1,8,0" VerticalAlignment="Center" Fill="Gray" />
-                                <TextBlock x:Name="LiveText" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <TextBlock x:Name="LiveText" Style="{StaticResource Hint}" VerticalAlignment="Center" TextWrapping="Wrap" />
                             </DockPanel>
                         </DockPanel>
 
-                        <StackPanel x:Name="ExplainStatus" Margin="0,0,0,10" />
+                        <!-- The picture that goes out, as the app last saw it, with the mirror line and its reflection under it (the
+                             icon's drawing); beside it, what the mirror sends and the way the picture takes. In a narrow window the
+                             column goes under the picture (see LayOutStatusHero). -->
+                        <Grid x:Name="StatusHero" Margin="0,0,0,18" SizeChanged="OnStatusHeroSize">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="StatusReadoutColumn" Width="330" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel x:Name="StatusPictureColumn" MaxWidth="760" HorizontalAlignment="Stretch">
+                                <Border x:Name="StatusMonitor" CornerRadius="10" ClipToBounds="True" Background="{StaticResource Picture}"
+                                        BorderBrush="#29C9D6FF" BorderThickness="1" SizeChanged="OnStatusMonitorSize">
+                                    <Grid>
+                                        <Image x:Name="StatusPicture" Stretch="UniformToFill" />
+                                        <Border x:Name="StatusWaitShade" Background="#B8091022" Visibility="Collapsed" />
+                                        <StackPanel x:Name="StatusWaitNote" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" Visibility="Collapsed">
+                                            <TextBlock Text="Start a VR game" FontFamily="{StaticResource DisplayFont}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                            <TextBlock x:Name="StatusWaitText" Foreground="{StaticResource Ice}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"
+                                                       Text="The mirror picks it up by itself, and OBS shows it." />
+                                        </StackPanel>
+                                        <Border x:Name="StatusTally" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="14" Padding="9,5,11,5" CornerRadius="6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse x:Name="StatusTallyDot" Width="9" Height="9" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                <TextBlock x:Name="StatusTallyText" FontWeight="SemiBold" FontSize="13" />
+                                            </StackPanel>
+                                        </Border>
+                                        <DockPanel VerticalAlignment="Bottom" Margin="14,0,14,11">
+                                            <TextBlock x:Name="StatusCaptionRight" DockPanel.Dock="Right" FontSize="12" Foreground="White">
+                                                <TextBlock.Effect><DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" /></TextBlock.Effect>
+                                            </TextBlock>
+                                            <TextBlock x:Name="StatusCaption" FontSize="12" Foreground="White" TextTrimming="CharacterEllipsis">
+                                                <TextBlock.Effect><DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.9" /></TextBlock.Effect>
+                                            </TextBlock>
+                                        </DockPanel>
+                                    </Grid>
+                                </Border>
+                                <!-- The mirror line, with the dot that is red while a game is mirrored. -->
+                                <Grid Height="16" Margin="0,6,0,0">
+                                    <Border Height="4" CornerRadius="2" Background="{StaticResource Ice}" VerticalAlignment="Center" />
+                                    <Ellipse x:Name="StatusLineDot" Width="24" Height="24" HorizontalAlignment="Left" Margin="80,-4,0,-4"
+                                             Stroke="{StaticResource WindowBack}" StrokeThickness="4" />
+                                </Grid>
+                                <!-- The reflection: the same picture upside down, fading out in scan lines. -->
+                                <Border Height="84" Margin="0,4,0,0" ClipToBounds="True">
+                                    <Border.OpacityMask>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Offset="0" Color="#C0000000" />
+                                            <GradientStop Offset="1" Color="#00000000" />
+                                        </LinearGradientBrush>
+                                    </Border.OpacityMask>
+                                    <Border>
+                                        <Border.OpacityMask>
+                                            <DrawingBrush TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute" Viewbox="0,0,8,8" ViewboxUnits="Absolute">
+                                                <DrawingBrush.Drawing>
+                                                    <GeometryDrawing Brush="Black" Geometry="M0,0 H8 V5 H0 Z" />
+                                                </DrawingBrush.Drawing>
+                                            </DrawingBrush>
+                                        </Border.OpacityMask>
+                                        <Rectangle x:Name="StatusReflection" />
+                                    </Border>
+                                </Border>
+                            </StackPanel>
+
+                            <DockPanel x:Name="StatusReadout" Grid.Column="1" Margin="26,0,0,0" LastChildFill="False">
+                                <TextBlock x:Name="StatusGame" DockPanel.Dock="Top" FontFamily="{StaticResource DisplayFont}" FontSize="26" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="StatusGameSub" DockPanel.Dock="Top" Style="{StaticResource Hint}" Margin="0,2,0,14" />
+                                <Grid x:Name="StatusFacts" DockPanel.Dock="Top" />
+                                <!-- The way the picture takes: headset, mirror, a reader (OBS or the mirror window). -->
+                                <Grid x:Name="StatusPath" DockPanel.Dock="Top" Margin="0,16,0,0" />
+                                <Button DockPanel.Dock="Bottom" Content="Open the Mirror page" Style="{DynamicResource AccentButtonStyle}" HorizontalAlignment="Stretch"
+                                        Padding="10,9" Margin="0,18,0,0" Click="OnStatusOpenMirror" />
+                            </DockPanel>
+                        </Grid>
 
                         <!-- The first steps, each ticked off by what the app sees; gone once all three are done. -->
-                        <Border x:Name="StartCard" Style="{StaticResource Card}" Margin="0,0,0,10">
+                        <Border x:Name="StartCard" Style="{StaticResource Card}" Margin="0,0,0,18">
                             <StackPanel>
                                 <DockPanel>
                                     <Button x:Name="StartHide" DockPanel.Dock="Right" Content="Hide" Padding="8,1" FontSize="11" Margin="0,-3,0,5" Click="OnStartHide"
@@ -98,22 +188,23 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource CardTitle}" Text="Parts" />
-                                <StackPanel x:Name="StatusRows" />
-                            </StackPanel>
+                        <!-- The parts, as tiles; a part with a fault says what to do about it. -->
+                        <DockPanel Margin="0,0,0,10">
+                            <!-- The OpenXR layers: a summary here, the list on its own page. -->
+                            <Button x:Name="LayerSummaryLink" DockPanel.Dock="Right" Style="{StaticResource FlatButton}" VerticalAlignment="Bottom" Click="OnShowLayersPage"
+                                    ToolTip="Opens the Layers page: the OpenXR API layers, their order, and switches for each">
+                                <TextBlock x:Name="LayerSummaryLinkText" FontSize="13" />
+                            </Button>
+                            <TextBlock Text="Parts" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Bottom" />
+                            <TextBlock x:Name="StatusPartsSummary" Style="{StaticResource Hint}" Margin="12,0,0,1" VerticalAlignment="Bottom" />
+                        </DockPanel>
+                        <Border>
+                            <WrapPanel x:Name="StatusRows" Margin="0,0,-10,0" SizeChanged="OnStatusTilesSize" />
                         </Border>
 
-                        <TextBlock x:Name="StatusReadyHint" Style="{StaticResource Hint}" FontSize="12" Margin="2,10,0,0" TextWrapping="Wrap" Visibility="Collapsed"
-                                   Text="Ready for a game. Start one and the mirror picks it up: the Mirror page then shows its picture, and OBS gets it." />
-
-                        <!-- The OpenXR layers: a summary here, the list on its own page. -->
-                        <Button x:Name="LayerSummaryLink" Style="{StaticResource FlatButton}" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnShowLayersPage"
-                                ToolTip="Opens the Layers page: the OpenXR API layers, their order, and switches for each">
-                            <TextBlock x:Name="LayerSummaryLinkText" TextDecorations="Underline" FontSize="12" />
-                        </Button>
+                        <StackPanel x:Name="ExplainStatus" Margin="0,18,0,0" />
                     </StackPanel>
+                    </Grid>
                 </ScrollViewer>
             </TabItem>
 

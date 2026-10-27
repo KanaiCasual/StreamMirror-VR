@@ -622,6 +622,7 @@ public partial class MainWindow
             // The box's exact size goes into the sum, as in the mirror: its whole pixels are a hair off its shape.
             var (sentWidth, sentHeight) = active ? (boxWidth * _cropFullWidth, boxHeight * _cropFullHeight) : (_cropFullWidth, _cropFullHeight);
             var (outWidth, outHeight) = Settings.OutputSize(sentWidth, sentHeight, PictureSizeCap());
+            _obsGets = (outWidth, outHeight);
             CropReadout.Text = active
                 ? $"OBS gets {outWidth} x {outHeight} px: the box, {pixelWidth} x {pixelHeight} px of the {_cropFullWidth} x {_cropFullHeight} eye image ({share:0} %)."
                 : $"Crop is off: OBS gets {outWidth} x {outHeight} px, the whole {_cropFullWidth} x {_cropFullHeight} image.";

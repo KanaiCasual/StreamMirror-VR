@@ -977,7 +977,7 @@ public partial class MainWindow : Window
         {
             StatusRows.Children.Clear();
             _statusRowsInto = StatusRows;
-            AddStatusRow("Could not read the OpenXR layer setup", e.Message, Colors.Firebrick);
+            AddStatusRow("\uE7BA", "Could not read the OpenXR layer setup", e.Message, Colors.Firebrick, "Problem");
             AppLog.Write("Could not read the OpenXR layer setup", e);
             return;
         }
@@ -1011,44 +1011,53 @@ public partial class MainWindow : Window
         var allWell = layerActive && obsReady && (helper.Color == Colors.SeaGreen || helper.Color == Colors.Gray) && status.QuadViews.Health != LayerHealth.Duplicate && !marker && status.OrderCorrect != false
                       && gameLayersWell;
         _statusRowsInto = StatusRows;
-        if (allWell) AddStatusSummary();
+        _layerActive = layerActive;
         // An active layer needs no more than the word; where it is installed is its tooltip.
-        AddStatusRow("Mirror layer", layerActive ? "Active." : status.GazeMirror.Detail, layerActive ? Colors.SeaGreen : Colors.Firebrick, tip: layerActive ? status.GazeMirror.Detail : null);
+        AddStatusRow("\uE81E", "Mirror layer", layerActive ? "Takes the picture inside OpenXR games." : status.GazeMirror.Detail, layerActive ? Colors.SeaGreen : Colors.Firebrick,
+            layerActive ? "Active" : "Missing", tip: layerActive ? status.GazeMirror.Detail : null);
         // The game-layers layer: with it first in the list, Show other tools' panels can leave the game's own panels in.
-        AddStatusRow("Game's own panels",
-            gameLayersWell ? "Always in the picture. Show other tools' panels decides about the rest."
+        AddStatusRow("\uE737", "Game's own panels",
+            gameLayersWell ? "Menus and the game's text stay in the picture."
             : status.GameLayers.Health == LayerHealth.Active
                 ? "Another layer sits above the game-layers layer, so the mirror cannot tell the game's panels from other tools'.\n\n" +
                   "With Show other tools' panels off, the game's own panels go too. Fix order puts it first again (one Windows prompt); a game takes the new order at its next start."
             : status.GameLayers.Health == LayerHealth.Duplicate ? status.GameLayers.Detail
             : status.GameLayers.Detail + "\n\nWithout it, Show other tools' panels off hides the game's own panels too.",
             gameLayersWell ? Colors.SeaGreen : status.GameLayers.Health == LayerHealth.Active ? Colors.DarkOrange : Colors.Firebrick,
+            gameLayersWell ? "Always shown" : status.GameLayers.Health == LayerHealth.Active ? "Order" : "Missing",
             button: status.GameLayers.Health == LayerHealth.Active && !status.GameLayersFirst ? ("Fix order", OnStatusFixOrder) : null,
             tip: status.GameLayers.Detail);
-        AddStatusRow("OBS plugin",
+        AddStatusRow("\uE714", "OBS plugin",
             status.ObsPath == null ? "The app found no OBS Studio on this PC."
-            : status.ObsPluginPresent ? "In OBS: add a \"Gaze Mirror\" source, then press Ctrl+F once to fit it."
+            : status.ObsPluginPresent ? "In OBS, add a \"Gaze Mirror\" source, then press Ctrl+F once to fit it."
             : $"Not in OBS yet ({status.ObsPath}). Run the installer again now that OBS is there, or use its Repair option.",
-            obsReady ? Colors.SeaGreen : status.ObsPath == null ? Colors.Gray : Colors.Firebrick);
-        AddStatusRow("SteamVR helper", helper.Text + " It mirrors games that use SteamVR directly; the layer mirrors OpenXR games.", helper.Color);
-        AddStatusRow("Quad views (optional)",
+            obsReady ? Colors.SeaGreen : status.ObsPath == null ? Colors.Gray : Colors.Firebrick,
+            obsReady ? "Installed" : status.ObsPath == null ? "No OBS" : "Missing");
+        AddStatusRow("\uE7FC", "SteamVR helper", helper.Text + " It mirrors games that use SteamVR directly.", helper.Color,
+            helper.Color == Colors.SeaGreen ? (MirrorLive.IsHelperRunning() ? "Running" : "Ready") : helper.Color == Colors.Gray ? "Not needed" : helper.Color == Colors.Firebrick ? "Missing" : "Needs a look");
+        AddStatusRow("\uECA5", "Quad views",
             status.OwnQuadViewsOn ? "On: Direct3D 11, Direct3D 12 and Vulkan games get quad views. The Quad Views page sets it up."
             : !status.OwnQuadViewsInstalled ? status.OwnQuadViews.Detail
             : status.QuadViews.Health != LayerHealth.NotActive ? "Off here. The official Quad-Views-Foveated is on and does quad views; switching it on on the Quad Views page turns that one off."
             : "Off. The Quad Views page switches it on; the mirror and the ring work without it.",
             status.OwnQuadViewsOn ? HealthColor(status.OwnQuadViews.Health) : !status.OwnQuadViewsInstalled ? Colors.Firebrick : Colors.Gray,
+            status.OwnQuadViewsOn ? (status.OwnQuadViews.Health == LayerHealth.Active ? "On" : "Needs a look") : !status.OwnQuadViewsInstalled ? "Missing" : "Off",
             tip: status.OwnQuadViews.Detail);
         if (marker)
         {
-            AddStatusRow("Calibration is ON",
+            AddStatusRow("\uE7B3", "Calibration",
                 "Your headset shows a marker, and Ctrl+Alt+arrow keys nudge the ring in game. " +
-                "Switch it off on the Gaze page when you are done.", Colors.DarkOrange);
+                "Switch it off on the Gaze page when you are done.", Colors.DarkOrange, "On");
         }
         if (status.OrderCorrect == false)
         {
-            AddStatusRow("Layer order",
-                "The mirror layer sits above the quad views layer, so it sees the wrong picture. Press \"Fix order\" on the Layers page.", Colors.Firebrick);
+            AddStatusRow("\uE8CB", "Layer order",
+                "The mirror layer sits above the quad views layer, so it sees the wrong picture. Press \"Fix order\" on the Layers page.", Colors.Firebrick, "Wrong");
         }
+        var needLook = StatusRows.Children.OfType<FrameworkElement>().Count(tile => tile.Tag is true);
+        StatusPartsSummary.Text = allWell ? "all in place" : needLook == 1 ? "1 needs a look" : $"{needLook} need a look";
+        StatusPartsSummary.Foreground = (Brush)FindResource(allWell ? "Muted" : "Warn");
+        UpdateStatusHero();
 
         BuildLayerRows(status.Layers);
     }
@@ -1249,52 +1258,12 @@ public partial class MainWindow : Window
     /// <summary>One line: health dot, name, what is known about it, and a button when there is something to do.</summary>
     private Panel _statusRowsInto = null!; // Where the part rows go: the card.
 
-    /// <summary>All is well: one line that says so, above the parts.</summary>
-    private void AddStatusSummary()
+    /// <summary>One part as a tile (see StatusTile); a part that needs a look is marked for the count above the tiles.</summary>
+    private void AddStatusRow(string icon, string title, string detail, Color color, string pill, (string Label, RoutedEventHandler Click)? button = null, string? tip = null)
     {
-        var row = new Grid { Margin = new Thickness(0, 2, 0, 4) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.Children.Add(new Ellipse { Width = 8, Height = 8, Fill = (Brush)FindResource("Good"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 0, 0) });
-        var name = new TextBlock { Text = "All parts working", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
-        Grid.SetColumn(name, 1);
-        row.Children.Add(name);
-        var text = new TextBlock { Text = MirrorLive.SteamVrInstalled() ? "The mirror layer, the OBS plugin and the SteamVR helper are in place." : "The mirror layer and the OBS plugin are in place. No SteamVR here, so no helper needed.", Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
-        Grid.SetColumn(text, 2);
-        row.Children.Add(text);
-        StatusRows.Children.Add(row);
-    }
-
-    private void AddStatusRow(string title, string detail, Color color, (string Label, RoutedEventHandler Click)? button = null, string? tip = null)
-    {
-        var row = new Grid { Margin = new Thickness(0, 6, 0, 6) };
-        if (tip != null) row.ToolTip = WrappedToolTip(tip);
-        row.Background = Brushes.Transparent;
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MaxWidth = 230 });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(new Ellipse { Width = 8, Height = 8, Fill = new SolidColorBrush(color), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 0, 0) });
-        var name = new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0), TextTrimming = TextTrimming.CharacterEllipsis };
-        Grid.SetColumn(name, 1);
-        row.Children.Add(name);
-        var text = new TextBlock { Text = detail, Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
-        Grid.SetColumn(text, 2);
-        row.Children.Add(text);
-        if (button is { } action)
-        {
-            var control = new Button { Content = action.Label, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
-            control.Click += action.Click;
-            Grid.SetColumn(control, 3);
-            row.Children.Add(control);
-        }
-        var into = _statusRowsInto ?? StatusRows;
-        if (into.Children.Count > 0 || !ReferenceEquals(into, StatusRows))
-        {
-            into.Children.Add(new Border { Height = 1, Background = (Brush)FindResource("Line") });
-        }
-        into.Children.Add(row);
+        var tile = StatusTile(icon, title, detail, color, pill, button, tip);
+        tile.Tag = color != Colors.SeaGreen && color != Colors.Gray;
+        (_statusRowsInto ?? StatusRows).Children.Add(tile);
     }
 
     // ------------------------------------------------------------------ about
@@ -1464,7 +1433,7 @@ public partial class MainWindow : Window
         _liveDot = state == GazeLiveState.NoGame ? null : (Brush)FindResource("Good");
         if (_statusNav != null) _statusNav.Dot = _liveDot;
         UpdateStartSteps();
-        StatusReadyHint.Visibility = state == GazeLiveState.NoGame && StartCard.Visibility != Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+        if (ReferenceEquals(Tabs.SelectedItem, StatusTab)) UpdateStatusHero();
         if (ReferenceEquals(Tabs.SelectedItem, GazeTab)) RefreshGazeNow();
     }
 

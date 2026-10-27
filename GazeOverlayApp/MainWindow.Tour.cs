@@ -50,7 +50,7 @@ public partial class MainWindow
             new(null, () => null, "VR Gaze Mirror in two minutes",
                 "This tour shows each page and what its main controls do.\n\nNext steps through it; Skip ends it. You can start it again any time from the About page."),
             new(StatusTab, () => Ancestor<Border>(StatusRows), "The mirror's parts",
-                "The mirror layer takes the picture inside OpenXR games, the SteamVR helper inside SteamVR games, and the OBS plugin brings it into OBS.\n\nGreen is ready, grey is not needed on this PC. A red or orange part says what to do about it."),
+                "The mirror layer takes the picture inside OpenXR games, the SteamVR helper inside SteamVR games, and the OBS plugin brings it into OBS.\n\nCyan is ready, grey is not needed on this PC. An amber or red part says what to do about it."),
             new(StatusTab, () => LiveText.Parent as FrameworkElement, "What the mirror is doing",
                 "While you play, this line names the game the mirror shows and says whether your eye gaze arrives.\n\nIt answers most \"why is nothing happening\" questions."),
             new(CropTab, () => CropFrameBorder, "Your picture",
