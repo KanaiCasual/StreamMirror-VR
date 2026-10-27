@@ -25,7 +25,7 @@
   <PropertyGroup>
     <OutDir>$(ProjectDir)..\..\bin\quad-views\</OutDir>
     <IntDir>$(ProjectDir)..\..\obj\quad-views\</IntDir>
-    <TargetName>XR_APILAYER_NOVENDOR_gaze_mirror_quad_views</TargetName>
+    <TargetName>XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews</TargetName>
     <Deps>$(ProjectDir)..\..\external\qvf-deps\</Deps>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -37,7 +37,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>LAYER_NAME="XR_APILAYER_NOVENDOR_gaze_mirror_quad_views";NDEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>LAYER_NAME="XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews";NDEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(IntDir);$(ProjectDir);$(ProjectDir)framework;$(Deps)fmt\include;$(Deps)openxr-sdk\include;$(Deps)openxr-sdk\src\common;$(Deps)xr-utility\shared\XrUtility;$(Deps)xr-utility\shared\SampleShared;$(Deps)wil\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -57,7 +57,7 @@
       <ObjectFileOutput />
     </FxCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json" "$(OutDir)" &gt; nul
+      <Command>copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" "$(OutDir)" &gt; nul
 copy /y "$(ProjectDir)..\settings.cfg" "$(OutDir)" &gt; nul</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -107,7 +107,7 @@ copy /y "$(ProjectDir)..\settings.cfg" "$(OutDir)" &gt; nul</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include="module.def" />
-    <None Include="XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json" />
+    <None Include="XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

@@ -41,7 +41,7 @@ using namespace gaze_mirror;
 
 namespace {
 
-    constexpr char LayerName[] = "XR_APILAYER_NOVENDOR_gaze_mirror";
+    constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_GazeMirror";
     constexpr uint32_t ImageWidth = 2000, ImageHeight = 2100;
     constexpr float HalfFov = 0.7853982f;                   // 45 degrees each way.
     constexpr float GazeYaw = 0.1745329f, GazePitch = 0.0872665f; // Looking 10 degrees right, 5 degrees up.

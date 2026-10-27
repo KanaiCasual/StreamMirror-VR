@@ -87,7 +87,7 @@
     -->
     <Property Id="OWNQUADVIEWSSTATE">
       <RegistrySearch Id="FindOwnQuadViews" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
-                      Name="[ProgramFiles64Folder]VR-Gaze-Mirror\QuadViews\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json" Type="raw" Bitness="always64" />
+                      Name="[ProgramFiles64Folder]VR-Gaze-Mirror\QuadViews\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" Type="raw" Bitness="always64" />
     </Property>
     <Property Id="OWNQUADVIEWSOFF" Value="1" />
     <SetProperty Id="OWNQUADVIEWSOFF" Value="0" After="AppSearch" Sequence="both" Condition="OWNQUADVIEWSSTATE = &quot;#0&quot;" />
@@ -157,10 +157,10 @@
     <!-- The gaze mirror layer: loaded by OpenXR games. -->
     <ComponentGroup Id="LayerFiles" Directory="LayerDir">
       <Component>
-        <File Id="LayerDll" Source="$(var.PayloadDir)\Layer\XR_APILAYER_NOVENDOR_gaze_mirror.dll" />
+        <File Id="LayerDll" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_GazeMirror.dll" />
       </Component>
       <Component>
-        <File Id="LayerJson" Source="$(var.PayloadDir)\Layer\XR_APILAYER_NOVENDOR_gaze_mirror.json" />
+        <File Id="LayerJson" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_GazeMirror.json" />
       </Component>
     </ComponentGroup>
 
@@ -168,10 +168,12 @@
       OpenXR loads implicit layers in the order their registry values were created. This layer must sit below
       Quad-Views-Foveated; when that is installed later (for example from the offer on the last page), the settings
       app's Status tab notices and its "Fix order" button puts it right.
+      The component's ID changed with the layer's name (XR_APILAYER_NOVENDOR_gaze_mirror before 2.3.2), so an update takes
+      the old entry out with the old version instead of leaving it behind.
     -->
-    <Component Id="LayerRegistration" Directory="INSTALLFOLDER" Guid="9C7E2A51-6B0D-4F5E-A3C4-2D1F8E7B6A90">
+    <Component Id="LayerRegistration" Directory="INSTALLFOLDER" Guid="2BF5E720-C196-4C2C-9E81-AFBFCB3407BC">
       <RegistryValue Id="LayerGazeMirror" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
-                     Name="[LayerDir]XR_APILAYER_NOVENDOR_gaze_mirror.json" Type="integer" Value="0" KeyPath="yes" />
+                     Name="[LayerDir]XR_APILAYER_KANAICASUAL_GazeMirror.json" Type="integer" Value="0" KeyPath="yes" />
     </Component>
 
     <!-- The settings app, the mirror window and the SteamVR helper (with Valve's OpenVR library), harvested as published. -->
@@ -182,10 +184,10 @@
     <!-- VR Gaze Mirror's quad views layer (built on Quad-Views-Foveated, MIT), with the settings it ships. -->
     <ComponentGroup Id="OwnQuadViewsFiles" Directory="OwnQuadViewsDir">
       <Component>
-        <File Id="OwnQuadViewsDll" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.dll" />
+        <File Id="OwnQuadViewsDll" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll" />
       </Component>
       <Component>
-        <File Id="OwnQuadViewsJson" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json" />
+        <File Id="OwnQuadViewsJson" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" />
       </Component>
       <Component>
         <File Id="OwnQuadViewsSettings" Source="$(var.PayloadDir)\QuadViews\settings.cfg" />
@@ -193,9 +195,9 @@
     </ComponentGroup>
 
     <!-- Off unless the user switched it on (see OWNQUADVIEWSOFF); it belongs above the gaze mirror layer: Fix order. -->
-    <Component Id="OwnQuadViewsRegistration" Directory="OwnQuadViewsDir" Guid="3B8E6F2A-91C4-4D7B-8E05-6A2F1C9D4B37">
+    <Component Id="OwnQuadViewsRegistration" Directory="OwnQuadViewsDir" Guid="5AB33D7F-E44B-4E5D-8C5F-8A6FCCF04C6E">
       <RegistryValue Id="LayerOwnQuadViews" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
-                     Name="[OwnQuadViewsDir]XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json" Type="integer" Value="[OWNQUADVIEWSOFF]" KeyPath="yes" />
+                     Name="[OwnQuadViewsDir]XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" Type="integer" Value="[OWNQUADVIEWSOFF]" KeyPath="yes" />
     </Component>
 
     <ComponentGroup Id="Licences" Directory="LicencesDir">

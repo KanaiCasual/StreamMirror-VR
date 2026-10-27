@@ -24,7 +24,7 @@
   <PropertyGroup>
     <OutDir>$(ProjectDir)..\bin\layer\</OutDir>
     <IntDir>$(ProjectDir)..\obj\layer\</IntDir>
-    <TargetName>XR_APILAYER_NOVENDOR_gaze_mirror</TargetName>
+    <TargetName>XR_APILAYER_KANAICASUAL_GazeMirror</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -43,7 +43,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)XR_APILAYER_NOVENDOR_gaze_mirror.json" "$(OutDir)" &gt; nul</Command>
+      <Command>copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_GazeMirror.json" "$(OutDir)" &gt; nul</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

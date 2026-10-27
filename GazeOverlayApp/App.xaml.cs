@@ -368,7 +368,7 @@ public partial class App : Application
         var checks = new (string Name, bool Ok)[]
         {
             ("a bad order is reported (mirror under quad views and under the overlay layer, toolkit under quad views, quad views and toolkit above the eye tracker)",
-                problems.Count == 5 && problems.Any(p => p.StartsWith("MBUCCHIA_quad_views_foveated must be above NOVENDOR_gaze_mirror")) &&
+                problems.Count == 5 && problems.Any(p => p.StartsWith("MBUCCHIA_quad_views_foveated must be above KANAICASUAL_GazeMirror")) &&
                 problems.Any(p => p.StartsWith("MBUCCHIA_quad_views_foveated must be above EXAMPLE_eye_tracker"))),
             ("the suggested order satisfies every rule and leaves unrelated layers where they were",
                 suggested != null && LayerOrder.Problems(suggested).Count == 0 && suggested.IndexOf(unknown) < suggested.IndexOf(eyeTracking)),

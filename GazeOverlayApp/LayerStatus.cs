@@ -31,8 +31,8 @@ public sealed record SystemStatus(
 public static class LayerStatus
 {
     public const string QuadViewsLayer = "XR_APILAYER_MBUCCHIA_quad_views_foveated";
-    public const string OwnQuadViewsLayer = "XR_APILAYER_NOVENDOR_gaze_mirror_quad_views";
-    public const string GazeMirrorLayer = "XR_APILAYER_NOVENDOR_gaze_mirror";
+    public const string OwnQuadViewsLayer = "XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews";
+    public const string GazeMirrorLayer = "XR_APILAYER_KANAICASUAL_GazeMirror";
     public const string ObsPluginFile = "gaze-mirror-capture.dll";
     private const string LayersKey = @"SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit";
 

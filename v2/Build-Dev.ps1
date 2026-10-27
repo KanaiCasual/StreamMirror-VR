@@ -16,7 +16,7 @@ Get-ChildItem (Join-Path $root 'bin\layer\*.dll'), (Join-Path $root 'bin\helper\
 
 # The offline test: plays game and runtime for the layer and saves what comes out as PNGs.
 $testFolder = Join-Path $root 'bin\test'
-& (Join-Path $testFolder 'layer_test.exe') (Join-Path $root 'bin\layer\XR_APILAYER_NOVENDOR_gaze_mirror.dll') (Join-Path $testFolder 'out')
+& (Join-Path $testFolder 'layer_test.exe') (Join-Path $root 'bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror.dll') (Join-Path $testFolder 'out')
 if ($LASTEXITCODE -ne 0) { throw 'The offline layer test failed.' }
 
 # The quad views layer's own offline test (D3D11, D3D12, when it stands aside, the gaze filter).

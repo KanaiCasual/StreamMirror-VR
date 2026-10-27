@@ -67,9 +67,9 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileVersion", "1.1.4.0"
-            VALUE "InternalName", "XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.dll"
+            VALUE "InternalName", "XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll"
             VALUE "LegalCopyright", "Copyright (c) 2023 Matthieu Bucchianeri; 2026 Oliver Kobis (KanaiCasual)"
-            VALUE "OriginalFilename", "XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.dll"
+            VALUE "OriginalFilename", "XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll"
             VALUE "ProductName", "VR Gaze Mirror quad views layer (built on Quad-Views-Foveated)"
             VALUE "ProductVersion", "1.1.4.0"
         END

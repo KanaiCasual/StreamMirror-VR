@@ -509,7 +509,7 @@ The desktop cover's hotkey and the mirror window work from the tray.
 
 One core, two producers, any number of readers:
 
-- **The mirror layer** (`XR_APILAYER_NOVENDOR_gaze_mirror`) sits in OpenXR games. Each frame it reads the game's eye
+- **The mirror layer** (`XR_APILAYER_KANAICASUAL_GazeMirror`) sits in OpenXR games. Each frame it reads the game's eye
   images, the head pose and (if the runtime gives it) the eye gaze, and makes the mirror picture.
 - **The SteamVR helper** (`GazeMirrorHelper.exe`) does the same for SteamVR games from SteamVR's own mirror texture,
   eye tracking and poses. SteamVR starts it with itself, and it leaves as SteamVR closes.

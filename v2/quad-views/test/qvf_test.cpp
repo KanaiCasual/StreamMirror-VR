@@ -43,7 +43,7 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
 
-    constexpr char LayerName[] = "XR_APILAYER_NOVENDOR_gaze_mirror_quad_views";
+    constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews";
     constexpr uint32_t StereoWidth = 2000, StereoHeight = 2100;
     constexpr int ImagesPerSwapchain = 3;
     constexpr int64_t Format = 29; // DXGI_FORMAT_R8G8B8A8_UNORM_SRGB

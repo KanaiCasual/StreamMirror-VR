@@ -1,8 +1,8 @@
 {
   "file_format_version" : "1.0.0",
   "api_layer": {
-    "name": "XR_APILAYER_NOVENDOR_gaze_mirror_quad_views",
-    "library_path": ".\\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.dll",
+    "name": "XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews",
+    "library_path": ".\\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll",
     "api_version": "1.0",
     "implementation_version": "1",
     "description": "VR Gaze Mirror: quad views and foveated rendering, built on Quad-Views-Foveated",
@@ -21,6 +21,6 @@
     "functions": {
       "xrNegotiateLoaderApiLayerInterface": "xrNegotiateLoaderApiLayerInterface"
     },
-    "disable_environment": "DISABLE_XR_APILAYER_NOVENDOR_gaze_mirror_quad_views"
+    "disable_environment": "DISABLE_XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews"
   }
 }

@@ -5,12 +5,12 @@ $payload = Join-Path $PSScriptRoot 'Payload'
 $v2 = Join-Path $root 'v2'
 
 $files = @(
-    @("$v2\bin\layer\XR_APILAYER_NOVENDOR_gaze_mirror.dll", 'Layer'),
-    @("$v2\bin\layer\XR_APILAYER_NOVENDOR_gaze_mirror.json", 'Layer'),
+    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror.dll", 'Layer'),
+    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror.json", 'Layer'),
     @("$v2\bin\obs-plugin\gaze-mirror-capture.dll", 'OBSPlugin\obs-plugins\64bit'),
     @("$v2\bin\obs-plugin\data\obs-plugins\gaze-mirror-capture\locale\en-US.ini", 'OBSPlugin\data\obs-plugins\gaze-mirror-capture\locale'),
-    @("$v2\bin\quad-views\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.dll", 'QuadViews'),
-    @("$v2\bin\quad-views\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json", 'QuadViews'),
+    @("$v2\bin\quad-views\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll", 'QuadViews'),
+    @("$v2\bin\quad-views\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json", 'QuadViews'),
     @("$v2\bin\quad-views\settings.cfg", 'QuadViews')
 )
 

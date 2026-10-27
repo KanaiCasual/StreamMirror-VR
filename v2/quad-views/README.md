@@ -1,6 +1,6 @@
 # VR Gaze Mirror's quad views layer
 
-`XR_APILAYER_NOVENDOR_gaze_mirror_quad_views`: quad views and eye-tracked foveated rendering for OpenXR games, built on
+`XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews`: quad views and eye-tracked foveated rendering for OpenXR games, built on
 [Quad-Views-Foveated](https://github.com/mbucchia/Quad-Views-Foveated) 1.1.4 by Matthieu Bucchianeri (MIT, see
 `LICENSE`; the code it uses is listed in `THIRD_PARTY`). He does not make or support this build.
 

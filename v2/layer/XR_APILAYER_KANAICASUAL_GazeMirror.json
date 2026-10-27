@@ -1,14 +1,14 @@
 {
   "file_format_version": "1.0.0",
   "api_layer": {
-    "name": "XR_APILAYER_NOVENDOR_gaze_mirror",
-    "library_path": ".\\XR_APILAYER_NOVENDOR_gaze_mirror.dll",
+    "name": "XR_APILAYER_KANAICASUAL_GazeMirror",
+    "library_path": ".\\XR_APILAYER_KANAICASUAL_GazeMirror.dll",
     "api_version": "1.0",
     "implementation_version": "2",
     "description": "VR Gaze Mirror 2.0 - mirror picture with gaze ring for OBS and the mirror window",
     "functions": {
       "xrNegotiateLoaderApiLayerInterface": "xrNegotiateLoaderApiLayerInterface"
     },
-    "disable_environment": "DISABLE_XR_APILAYER_NOVENDOR_gaze_mirror"
+    "disable_environment": "DISABLE_XR_APILAYER_KANAICASUAL_GazeMirror"
   }
 }

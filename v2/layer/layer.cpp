@@ -28,7 +28,7 @@
 namespace gaze_mirror::layer {
 
     namespace {
-        constexpr char LayerName[] = "XR_APILAYER_NOVENDOR_gaze_mirror";
+        constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_GazeMirror";
 
         struct SwapchainState {
             DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
