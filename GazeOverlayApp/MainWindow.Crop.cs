@@ -37,6 +37,7 @@ public partial class MainWindow
     // Level horizon: the box turned as far as it may each way inside the eye image, and how far that is.
     private readonly Polygon[] _cropTurnLimit = [new(), new()];
     private readonly TextBlock _cropTurnLabel = new() { FontSize = 11, Padding = new Thickness(4, 1, 4, 1), IsHitTestVisible = false };
+    private readonly TextBlock _cropBadge = new() { FontSize = 12, FontWeight = FontWeights.SemiBold, Padding = new Thickness(7, 1, 7, 2), IsHitTestVisible = false };
     private readonly TextBlock _levelWarning = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 4, 0, 6) };
     private bool LevelHorizon => _values.GetValueOrDefault("stabilize_tilt") == "level";
     private readonly Image _cropImage = new() { Stretch = Stretch.Fill };
@@ -108,7 +109,7 @@ public partial class MainWindow
         CropCanvas.Children.Add(_cropPlaceholder);
         foreach (var shade in _cropShades)
         {
-            shade.Fill = new SolidColorBrush(Color.FromArgb(150, 0, 0, 0));
+            shade.Fill = new SolidColorBrush(Color.FromArgb(160, 8, 12, 28));
             shade.IsHitTestVisible = false;
             CropCanvas.Children.Add(shade);
         }
@@ -206,13 +207,21 @@ public partial class MainWindow
         ShowBoxCross.IsChecked = _appSettings.ShowBoxCross;
         ShowGaze.IsChecked = _appSettings.ShowGaze;
         _loading = false;
+        // The corner handles: small rounded squares, cyan rim on the page's navy.
         foreach (var handle in _cropHandles)
         {
-            handle.Width = handle.Height = 10;
-            handle.Fill = accent;
+            handle.Width = handle.Height = 12;
+            handle.Fill = (Brush)FindResource("WindowBack");
+            handle.Stroke = accent;
+            handle.StrokeThickness = 2;
+            handle.RadiusX = handle.RadiusY = 3;
             handle.IsHitTestVisible = false;
             CropCanvas.Children.Add(handle);
         }
+        // The box's shape, in its bottom right corner.
+        _cropBadge.Background = accent;
+        _cropBadge.Foreground = (Brush)FindResource("OnAccent");
+        CropCanvas.Children.Add(_cropBadge);
         for (var i = 0; i < 4; i++)
         {
             var handle = _cropSideHandles[i];
@@ -514,9 +523,14 @@ public partial class MainWindow
         var corners = new[] { box.TopLeft, box.TopRight, box.BottomLeft, box.BottomRight };
         for (var i = 0; i < 4; i++)
         {
-            Canvas.SetLeft(_cropHandles[i], corners[i].X - 5);
-            Canvas.SetTop(_cropHandles[i], corners[i].Y - 5);
+            Canvas.SetLeft(_cropHandles[i], corners[i].X - 6);
+            Canvas.SetTop(_cropHandles[i], corners[i].Y - 6);
         }
+        _cropBadge.Text = _crop.Aspect > 0 ? (_values.GetValueOrDefault("crop_aspect") ?? "") : "Free";
+        _cropBadge.Visibility = active && box.Width > 70 && box.Height > 40 && _cropFrame.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+        _cropBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(_cropBadge, box.Right - _cropBadge.DesiredSize.Width - 8);
+        Canvas.SetTop(_cropBadge, box.Bottom - _cropBadge.DesiredSize.Height - 8);
         for (var i = 0; i < 2; i++)
         {
             var x = box.Left + box.Width * (i + 1) / 3;
@@ -633,6 +647,7 @@ public partial class MainWindow
             CropReadout.Text = active ? "Crop is on." : "Crop is off: OBS gets the whole eye image.";
             RelabelPictureSize(0, 0);
         }
+        UpdateMirrorObsCard();
     }
 
     private int PictureSizeCap() => int.TryParse(_values.GetValueOrDefault("output_max_side") ?? "3840", out var cap) ? cap : 3840;

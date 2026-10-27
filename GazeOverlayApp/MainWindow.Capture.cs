@@ -187,6 +187,7 @@ public partial class MainWindow
     {
         var other = _appSettings.MirrorPictureShowOther && _pictureOther != null;
         _cropImage.Source = other ? _pictureOther : _pictureFirst;
+        MirrorAmbient.Source = _cropImage.Source;
 
         var both = _pictureOther != null && _appSettings.MirrorPictureEye is 0 or 1 && _appSettings.MirrorPictureOtherEye is 0 or 1;
         _loading = true;

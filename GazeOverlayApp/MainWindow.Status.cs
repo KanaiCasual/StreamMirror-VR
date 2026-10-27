@@ -14,7 +14,6 @@ public partial class MainWindow
 {
     private bool _layerActive;
     private (int Width, int Height)? _obsGets; // What OBS gets with the box as drawn on the Mirror page (see DrawCrop).
-    private string _statusPictureKey = "";
 
     private void UpdateStatusHero()
     {
@@ -25,34 +24,8 @@ public partial class MainWindow
         UpdateStatusPicture();
         var hasPicture = StatusPicture.Source != null;
 
-        // The light on the monitor: red while a game goes out to a reader, cyan while it is mirrored with nobody reading.
         var onAir = (Brush)FindResource("OnAir");
-        var accent = (Brush)FindResource("Accent");
-        if (reading)
-        {
-            StatusTally.Background = onAir;
-            StatusTallyDot.Fill = Brushes.White;
-            StatusTallyDot.Stroke = null;
-            StatusTallyText.Foreground = Brushes.White;
-            StatusTallyText.Text = "Live";
-        }
-        else if (producing)
-        {
-            StatusTally.Background = accent;
-            StatusTallyDot.Fill = (Brush)FindResource("OnAccent");
-            StatusTallyDot.Stroke = null;
-            StatusTallyText.Foreground = (Brush)FindResource("OnAccent");
-            StatusTallyText.Text = "Mirroring, nothing reads it yet";
-        }
-        else
-        {
-            StatusTally.Background = new SolidColorBrush(Color.FromArgb(0xD8, 0x09, 0x0E, 0x20));
-            StatusTallyDot.Fill = null;
-            StatusTallyDot.Stroke = (Brush)FindResource("Ice");
-            StatusTallyDot.StrokeThickness = 2;
-            StatusTallyText.Foreground = (Brush)FindResource("Ice");
-            StatusTallyText.Text = "Waiting for a game";
-        }
+        SetTally(StatusTally, StatusTallyDot, StatusTallyText, producing, reading, "Mirroring, nothing reads it yet");
 
         StatusWaitShade.Visibility = StatusWaitNote.Visibility = producing ? Visibility.Collapsed : Visibility.Visible;
         StatusWaitText.Text = "The mirror picks it up by itself, and OBS shows it." +
@@ -159,30 +132,121 @@ public partial class MainWindow
         }
     }
 
+    private string _framedKey = "";
+    private BitmapSource? _framed;
+
     /// <summary>The picture as OBS gets it: the saved one, cut to the crop box when the box is on. Cut again only on a change.</summary>
-    private void UpdateStatusPicture()
+    private BitmapSource? FramedPicture()
     {
         var source = _cropImage.Source as BitmapSource ?? _pictureFirst;
         var cropOn = _values.GetValueOrDefault("crop_enabled") == "1";
         var rect = cropOn && source != null ? _crop.Rect() : (0, 0, 1, 1);
         var key = $"{source?.GetHashCode()} {rect}";
-        if (key == _statusPictureKey) return;
-        _statusPictureKey = key;
-
-        BitmapSource? shown = source;
+        if (key == _framedKey) return _framed;
+        _framedKey = key;
+        _framed = source;
         if (source != null && cropOn)
         {
             var pixels = new Int32Rect((int)(rect.Item1 * source.PixelWidth), (int)(rect.Item2 * source.PixelHeight),
                                        Math.Max(1, (int)(rect.Item3 * source.PixelWidth)), Math.Max(1, (int)(rect.Item4 * source.PixelHeight)));
             pixels.Width = Math.Min(pixels.Width, source.PixelWidth - pixels.X);
             pixels.Height = Math.Min(pixels.Height, source.PixelHeight - pixels.Y);
-            try { shown = new CroppedBitmap(source, pixels); } catch (ArgumentException) { shown = source; }
+            try { _framed = new CroppedBitmap(source, pixels); } catch (ArgumentException) { _framed = source; }
         }
+        return _framed;
+    }
+
+    /// <summary>The reflection under the mirror line: the picture's lower edge against the line, upside down.</summary>
+    private static Brush? Reflection(BitmapSource? picture) => picture == null ? null
+        : new ImageBrush(picture) { Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Bottom, RelativeTransform = new ScaleTransform(1, -1, 0.5, 0.5) };
+
+    private void UpdateStatusPicture()
+    {
+        var shown = FramedPicture();
+        if (ReferenceEquals(shown, _statusShown) && shown != null) return;
+        _statusShown = shown;
         StatusPicture.Source = StatusAmbient.Source = shown;
-        // The reflection: the picture's lower edge against the line, upside down.
-        StatusReflection.Fill = shown == null ? null
-            : new ImageBrush(shown) { Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Bottom, RelativeTransform = new ScaleTransform(1, -1, 0.5, 0.5) };
+        StatusReflection.Fill = Reflection(shown);
         SizeStatusMonitor();
+    }
+
+    private BitmapSource? _statusShown;
+
+    /// <summary>
+    /// A picture's light: Live (red) while a game goes out to a reader - the OBS source or the mirror window -, cyan while
+    /// it is mirrored and nothing reads it, an outlined "Waiting for a game" otherwise.
+    /// </summary>
+    private void SetTally(Border tally, Ellipse dot, TextBlock text, bool producing, bool reading, string mirroringText)
+    {
+        if (reading)
+        {
+            tally.Background = (Brush)FindResource("OnAir");
+            dot.Fill = Brushes.White;
+            dot.Stroke = null;
+            text.Foreground = Brushes.White;
+            text.Text = "Live";
+        }
+        else if (producing)
+        {
+            tally.Background = (Brush)FindResource("Accent");
+            dot.Fill = (Brush)FindResource("OnAccent");
+            dot.Stroke = null;
+            text.Foreground = (Brush)FindResource("OnAccent");
+            text.Text = mirroringText;
+        }
+        else
+        {
+            tally.Background = new SolidColorBrush(Color.FromArgb(0xD8, 0x09, 0x0E, 0x20));
+            dot.Fill = null;
+            dot.Stroke = (Brush)FindResource("Ice");
+            dot.StrokeThickness = 2;
+            text.Foreground = (Brush)FindResource("Ice");
+            text.Text = "Waiting for a game";
+        }
+    }
+
+    private DateTime _mirrorLiveRead;
+    private MirrorState? _mirrorLiveLast;
+
+    /// <summary>
+    /// The Mirror page's "What OBS gets": the box's picture as it is drawn now. Follows every change of the box; the game's
+    /// state is read at most once a second (a drag redraws many times a second).
+    /// </summary>
+    private void UpdateMirrorObsCard()
+    {
+        var shown = FramedPicture();
+        if (!ReferenceEquals(shown, MirrorObsPicture.Source))
+        {
+            MirrorObsPicture.Source = shown;
+            MirrorObsReflection.Fill = Reflection(shown);
+            SizeMirrorObsFrame();
+        }
+        MirrorObsEmpty.Visibility = shown == null ? Visibility.Visible : Visibility.Collapsed;
+
+        if ((DateTime.UtcNow - _mirrorLiveRead).TotalSeconds >= 1)
+        {
+            _mirrorLiveRead = DateTime.UtcNow;
+            _mirrorLiveLast = MirrorLive.Read();
+        }
+        var producing = _mirrorLiveLast is { Producing: true };
+        var reading = producing && _mirrorLiveLast!.Width > 0;
+        MirrorObsTally.Visibility = producing ? Visibility.Visible : Visibility.Collapsed;
+        if (producing) SetTally(MirrorObsTally, MirrorObsTallyDot, MirrorObsTallyText, producing, reading, "Mirroring");
+        MirrorObsLineDot.Fill = (Brush)FindResource(producing ? "OnAir" : "Muted");
+        MirrorObsFacts.Text = ChoiceLabel("mirror_eye") + (_obsGets is { } gets ? $", {gets.Width} × {gets.Height}" : "");
+    }
+
+    private void OnMirrorObsSize(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged) SizeMirrorObsFrame();
+    }
+
+    private void SizeMirrorObsFrame()
+    {
+        var width = MirrorObsFrame.ActualWidth;
+        if (width <= 0) return;
+        var aspect = MirrorObsPicture.Source is BitmapSource { PixelHeight: > 0 } shown ? (double)shown.PixelWidth / shown.PixelHeight : 16.0 / 9.0;
+        MirrorObsFrame.Height = Math.Min(width / Math.Clamp(aspect, 0.6, 3.5), 300);
     }
 
     private void OnStatusHeroSize(object sender, SizeChangedEventArgs e)

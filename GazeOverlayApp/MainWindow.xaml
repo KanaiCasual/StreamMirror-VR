@@ -296,14 +296,32 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
+                        <!-- The picture's own colours, blurred far out behind it (as on the Status page). -->
+                        <Image x:Name="MirrorAmbient" Margin="-60,0,-20,-40" Stretch="UniformToFill" Opacity="0.22" IsHitTestVisible="False">
+                            <Image.OpacityMask>
+                                <RadialGradientBrush>
+                                    <GradientStop Offset="0.2" Color="#FF000000" />
+                                    <GradientStop Offset="1" Color="#00000000" />
+                                </RadialGradientBrush>
+                            </Image.OpacityMask>
+                            <Image.Effect>
+                                <BlurEffect Radius="90" RenderingBias="Performance" />
+                            </Image.Effect>
+                        </Image>
+
                         <!-- The picture, what OBS gets of it, and what takes or changes the picture. -->
                         <DockPanel x:Name="MirrorPictureArea" Margin="0,0,12,0">
                             <!-- The row above the picture: what takes a picture, and what is drawn over it. -->
                             <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
                                 <Button x:Name="CropRefresh" Content="Refresh picture" ToolTip="Asks the running game for a new picture of the mirror image" Margin="0,2,6,2" Click="OnCropRefresh" />
                                 <!-- The picture taken the way you sit: from inside the headset, by key or by a countdown (the arrow beside it). -->
-                                <Button x:Name="CropCapture" Content="Capture from headset" Style="{DynamicResource AccentButtonStyle}" Margin="0,2,2,2" Click="OnCaptureArm"
-                                        ToolTip="Takes the picture from inside the headset.&#10;&#10;**How:** arm this, put the headset on, sit the way you play, look straight ahead and press the key.&#10;&#10;It takes one picture of each eye and switches itself off. The app keeps the picture until you press Refresh picture." />
+                                <Button x:Name="CropCapture" Style="{DynamicResource AccentButtonStyle}" Margin="0,2,2,2" Click="OnCaptureArm"
+                                        ToolTip="Takes the picture from inside the headset.&#10;&#10;**How:** arm this, put the headset on, sit the way you play, look straight ahead and press the key.&#10;&#10;It takes one picture of each eye and switches itself off. The app keeps the picture until you press Refresh picture.">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE722;" FontSize="13" Margin="0,0,7,0" />
+                                        <TextBlock Text="Capture from headset" />
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="CaptureOptionsButton" Margin="0,2,6,2" Padding="8,5" Click="OnCaptureOptions" AutomationProperties.Name="Capture options: the key and the countdown">
                                     <TextBlock Style="{StaticResource Icon}" Text="&#xE70D;" FontSize="9" />
                                 </Button>
@@ -322,12 +340,13 @@
                                 <!-- What is drawn over the picture: each help can be switched off to see the picture plain. -->
                                 <Button x:Name="ShowMenuButton" Margin="0,2,0,2" Click="OnShowMenu" ToolTip="The helps drawn over the picture: switch each on or off">
                                     <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE890;" FontSize="13" Margin="0,0,7,0" />
                                         <TextBlock Text="Show" />
                                         <TextBlock Style="{StaticResource Icon}" Text="&#xE70D;" FontSize="9" Margin="7,2,0,0" />
                                     </StackPanel>
                                 </Button>
                                 <!-- The mirror window: open or close it from here; its settings are in the Mirror window section. -->
-                                <Button x:Name="MirrorToggle" Content="Open mirror window" Margin="12,2,0,2" Click="OnMirrorToggle"
+                                <Button x:Name="MirrorToggle" Content="Open mirror window" Margin="6,2,0,2" Click="OnMirrorToggle"
                                         ToolTip="A window with the mirror picture, cropped and with the ring, for OBS Window Capture or Discord.&#10;&#10;Its monitor, size and rate are in the Mirror window section." />
                                 <Popup x:Name="ShowMenu" PlacementTarget="{Binding ElementName=ShowMenuButton}" Placement="Bottom" VerticalOffset="4" StaysOpen="False" AllowsTransparency="True">
                                     <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,8,14,8">
@@ -363,7 +382,7 @@
                                 <TextBlock x:Name="CropReadout" FontWeight="SemiBold" Margin="0,0,12,0" />
                                 <TextBlock x:Name="CropStatus" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" />
                             </WrapPanel>
-                            <Border x:Name="CropFrameBorder" Background="{StaticResource Picture}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" ClipToBounds="True" MinHeight="240"
+                            <Border x:Name="CropFrameBorder" Background="{StaticResource Picture}" BorderBrush="#29C9D6FF" BorderThickness="1" CornerRadius="10" ClipToBounds="True" MinHeight="240"
                                     Focusable="True" AutomationProperties.Name="The picture with the crop box. The arrow keys move the box, plus and minus resize it."
                                     ToolTip="**Move:** drag inside the box.&#10;&#10;**Resize:** drag a corner, or roll the mouse wheel over it.&#10;&#10;**Free shape:** drag a side to change the width or the height alone.&#10;&#10;**Keys:** with the picture selected, the arrow keys move the box and + and - resize it (Shift for larger steps).&#10;&#10;**In OBS:** set the crop values in the source's Properties to 0, then select the source and press Ctrl+F (Transform &gt; Fit to screen) once. From then on it keeps fitting as the box changes size.">
                                 <Canvas x:Name="CropCanvas" Background="Transparent" ClipToBounds="True" />
@@ -373,6 +392,51 @@
                         <!-- The settings beside the picture: the crop box, the picture every reader gets, and three sections that fold away. -->
                         <ScrollViewer x:Name="MirrorSideScroll" Grid.Column="1" VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="MirrorSide">
+                                <!-- What OBS gets: the picture cut to the box as it is drawn now, with the mirror line and its reflection. -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <TextBlock x:Name="MirrorObsFacts" DockPanel.Dock="Right" Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,8" />
+                                            <TextBlock Style="{StaticResource CardTitle}" Text="What OBS gets" />
+                                        </DockPanel>
+                                        <Border x:Name="MirrorObsFrame" CornerRadius="7" ClipToBounds="True" Background="{StaticResource Picture}" SizeChanged="OnMirrorObsSize">
+                                            <Grid>
+                                                <Image x:Name="MirrorObsPicture" Stretch="UniformToFill" />
+                                                <TextBlock x:Name="MirrorObsEmpty" Style="{StaticResource Hint}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           TextAlignment="Center" Margin="16" Text="No picture yet: Refresh picture or Capture from headset takes one." />
+                                                <Border x:Name="MirrorObsTally" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" Padding="8,4,10,4" CornerRadius="6" Visibility="Collapsed">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Ellipse x:Name="MirrorObsTallyDot" Width="8" Height="8" Margin="0,0,7,0" VerticalAlignment="Center" />
+                                                        <TextBlock x:Name="MirrorObsTallyText" FontWeight="SemiBold" FontSize="12" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                        <Grid Height="13" Margin="0,5,0,0">
+                                            <Border Height="3" CornerRadius="1.5" Background="{StaticResource Ice}" VerticalAlignment="Center" />
+                                            <Ellipse x:Name="MirrorObsLineDot" Width="19" Height="19" HorizontalAlignment="Left" Margin="48,-3,0,-3"
+                                                     Stroke="{StaticResource Panel}" StrokeThickness="3.5" />
+                                        </Grid>
+                                        <Border Height="26" Margin="0,3,0,0" ClipToBounds="True">
+                                            <Border.OpacityMask>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                    <GradientStop Offset="0" Color="#B0000000" />
+                                                    <GradientStop Offset="1" Color="#00000000" />
+                                                </LinearGradientBrush>
+                                            </Border.OpacityMask>
+                                            <Border>
+                                                <Border.OpacityMask>
+                                                    <DrawingBrush TileMode="Tile" Viewport="0,0,7,7" ViewportUnits="Absolute" Viewbox="0,0,7,7" ViewboxUnits="Absolute">
+                                                        <DrawingBrush.Drawing>
+                                                            <GeometryDrawing Brush="Black" Geometry="M0,0 H7 V4 H0 Z" />
+                                                        </DrawingBrush.Drawing>
+                                                    </DrawingBrush>
+                                                </Border.OpacityMask>
+                                                <Rectangle x:Name="MirrorObsReflection" />
+                                            </Border>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
                                 <Border Style="{StaticResource Card}" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Style="{StaticResource CardTitle}" Text="Crop box"
