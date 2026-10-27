@@ -993,11 +993,13 @@ public partial class MainWindow : Window
         }
 
         StatusRows.Children.Clear();
-        ShowQuadViewsPage(status.QuadViewsInstalled);
+        ShowQuadViewsPage(status.QuadViewsInstalled || status.OwnQuadViewsInstalled);
+        ShowQuadViewsLayer(status);
         _obsPluginMissing = status.ObsPath != null && !status.ObsPluginPresent;
         UpdateStartSteps();
         AppLog.Write($"Status: gaze mirror layer {status.GazeMirror.Health} ({status.GazeMirror.Detail}); OBS {(status.ObsPath == null ? "not found" : status.ObsPluginPresent ? "plugin present" : "plugin missing")}; " +
-                     $"Quad-Views-Foveated {(status.QuadViewsInstalled ? status.QuadViews.Health.ToString() : "not installed")}; layer order {(status.OrderCorrect switch { true => "ok", false => "WRONG", null => "n/a" })}; {status.Layers.Count} layers.");
+                     $"Quad-Views-Foveated {(status.QuadViewsInstalled ? status.QuadViews.Health.ToString() : "not installed")}; own quad views layer {(status.OwnQuadViewsInstalled ? status.OwnQuadViews.Health.ToString() : "not installed")}; " +
+                     $"layer order {(status.OrderCorrect switch { true => "ok", false => "WRONG", null => "n/a" })}; {status.Layers.Count} layers.");
         var helper = HelperState();
         var layerActive = status.GazeMirror.Health == LayerHealth.Active;
         var obsReady = status.ObsPath != null && status.ObsPluginPresent;
@@ -1014,9 +1016,17 @@ public partial class MainWindow : Window
             : $"Not in OBS yet ({status.ObsPath}). Run the installer again now that OBS is there, or use its Repair option.",
             obsReady ? Colors.SeaGreen : status.ObsPath == null ? Colors.Gray : Colors.Firebrick);
         AddStatusRow("SteamVR helper", helper.Text + " It mirrors games that use SteamVR directly; the layer mirrors OpenXR games.", helper.Color);
-        AddStatusRow("Quad-Views-Foveated (optional)", status.QuadViews.Detail,
-            status.QuadViews.Health == LayerHealth.NotActive && !status.QuadViewsInstalled ? Colors.Gray : HealthColor(status.QuadViews.Health),
-            !status.QuadViewsInstalled && MirrorLive.FindQuadViewsInstaller() != null ? ("Install", OnQuadViewsInstall) : null);
+        if (status.OwnQuadViewsOn)
+        {
+            AddStatusRow("Quad views (optional)", "VR Gaze Mirror's quad views layer is on: Direct3D 11 and 12 games get quad views. The Quad Views page sets it up.",
+                HealthColor(status.OwnQuadViews.Health), tip: status.OwnQuadViews.Detail);
+        }
+        else
+        {
+            AddStatusRow("Quad-Views-Foveated (optional)", status.QuadViews.Detail,
+                status.QuadViews.Health == LayerHealth.NotActive && !status.QuadViewsInstalled ? Colors.Gray : HealthColor(status.QuadViews.Health),
+                !status.QuadViewsInstalled && !status.OwnQuadViewsInstalled && MirrorLive.FindQuadViewsInstaller() != null ? ("Install", OnQuadViewsInstall) : null);
+        }
         if (marker)
         {
             AddStatusRow("Calibration is ON",
@@ -1026,7 +1036,7 @@ public partial class MainWindow : Window
         if (status.OrderCorrect == false)
         {
             AddStatusRow("Layer order",
-                "The mirror layer sits above Quad-Views-Foveated, so it sees the wrong picture. Press \"Fix order\" on the Layers page.", Colors.Firebrick);
+                "The mirror layer sits above the quad views layer, so it sees the wrong picture. Press \"Fix order\" on the Layers page.", Colors.Firebrick);
         }
 
         BuildLayerRows(status.Layers);
@@ -1097,7 +1107,7 @@ public partial class MainWindow : Window
     private FrameworkElement BuildLayerRow(List<LayerEntry> group, int index, int position, bool pending)
     {
         var layer = group[index];
-        var ours = layer.LayerName is LayerStatus.QuadViewsLayer or LayerStatus.GazeMirrorLayer;
+        var ours = layer.LayerName is LayerStatus.QuadViewsLayer or LayerStatus.GazeMirrorLayer or LayerStatus.OwnQuadViewsLayer;
         var box = new CheckBox
         {
             IsChecked = layer.Enabled, VerticalAlignment = VerticalAlignment.Top, MinWidth = 0, Margin = new Thickness(0, 0, 4, 0),

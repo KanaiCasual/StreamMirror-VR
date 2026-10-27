@@ -442,6 +442,19 @@ public partial class App : Application
             return QuadViewsPixels.Compute(session!.StereoWidth, session.StereoHeight, e["peripheral_multiplier"], e["focus_multiplier"], e["horizontal_focus_section"], e["vertical_focus_section"]).Total;
         }
 
+        QuadViewsFile OwnPlan()
+        {
+            var own = QuadViewsSetting.All.ToDictionary(s => s.Id, s => s.ToSlider(QuadViewsFile.BuiltIn[s.Keys[0]]));
+            own["gaze_deadzone"] = 0.7;
+            return QuadViewsFile.Plan(QuadViewsFile.Parse(""), own, new HashSet<string> { "gaze_deadzone" }, ownLayer: true);
+        }
+        bool OwnOrderOk()
+        {
+            var mirror = new LayerEntry("mirror.json", true, LayerStatus.GazeMirrorLayer, null);
+            var quad = new LayerEntry("quad.json", true, LayerStatus.OwnQuadViewsLayer, null) { Extensions = ["XR_VARJO_quad_views", "XR_VARJO_foveated_rendering"] };
+            return LayerOrder.Problems([mirror, quad]).Count > 0 && LayerOrder.Suggest([mirror, quad]) is [var first, _] && ReferenceEquals(first, quad)
+                && LayerOrder.Problems([quad, mirror]).Count == 0;
+        }
         QuadViewsPixels.Result Logged() => QuadViewsPixels.Compute(session!.StereoWidth, session.StereoHeight, 0.32, 1.225, 0.35, 0.35);
         var before = QuadViewsFile.Evaluate([("test", file)], session);
         var sliders = QuadViewsSetting.All.ToDictionary(s => s.Id, _ => 0.0);
@@ -483,6 +496,12 @@ public partial class App : Application
             ("the lines under the sliders give the sizes the layer logged (sharp 3042 x 3178, surround 2270 x 2372) and its total (29 %)",
                 QuadViewsReadout.Focus(1.225, Logged()).Contains("3042 x 3178") && QuadViewsReadout.Peripheral(0.32, Logged(), 7096, 7412).Contains("2270 x 2372")
                 && QuadViewsReadout.Total(0.32, 1.225, 0.35, 0.35, Logged(), session!.StereoPixels).StartsWith("In all: 29 %")),
+            ("VR Gaze Mirror's layer: its own settings are written (gaze smoothing, deadzone 0.7 as typed, diagnostics), the official debug switch is not",
+                OwnPlan().InCommon("gaze_smoothing_ms") == "8" && OwnPlan().InCommon("gaze_deadzone_degrees") == "0.7" && OwnPlan().InCommon("show_diagnostics") == "0"
+                && OwnPlan().InCommon("debug_eye_gaze") == null),
+            ("...and the official layer's file gets none of them", untouched.InCommon("gaze_smoothing_ms") == null && untouched.InCommon("show_diagnostics") == null
+                && untouched.InCommon("debug_eye_gaze") != null),
+            ("VR Gaze Mirror's quad views layer must sit above the mirror, and Fix order puts it there", OwnOrderOk()),
             ("...and say the sharpness against the headset's", QuadViewsReadout.Sharpness(1.0) == "As sharp as the headset." && QuadViewsReadout.Sharpness(1.414).StartsWith("1.41x")
                 && QuadViewsReadout.Sharpness(0.5) == "0.5x the headset's sharpness on each side."),
         };

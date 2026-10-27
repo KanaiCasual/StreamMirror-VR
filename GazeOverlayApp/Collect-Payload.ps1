@@ -9,6 +9,9 @@ $files = @(
     @("$v2\bin\layer\XR_APILAYER_NOVENDOR_gaze_mirror.json", 'Layer'),
     @("$v2\bin\obs-plugin\gaze-mirror-capture.dll", 'OBSPlugin\obs-plugins\64bit'),
     @("$v2\bin\obs-plugin\data\obs-plugins\gaze-mirror-capture\locale\en-US.ini", 'OBSPlugin\data\obs-plugins\gaze-mirror-capture\locale'),
+    @("$v2\bin\quad-views\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.dll", 'QuadViews'),
+    @("$v2\bin\quad-views\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json", 'QuadViews'),
+    @("$v2\bin\quad-views\settings.cfg", 'QuadViews'),
     @("$v2\external\qvf\Quad-Views-Foveated-1.1.3.msi", 'Quad-Views-Foveated'),
     @("$v2\external\qvf\LICENSE", 'Quad-Views-Foveated')
 )
@@ -26,4 +29,7 @@ New-Item -ItemType Directory -Force $licences | Out-Null
 Copy-Item (Join-Path $root 'LICENSE') (Join-Path $licences 'LICENSE-VR-Gaze-Mirror.txt') -Force
 Copy-Item (Join-Path $v2 'external\libobs\COPYING') (Join-Path $licences 'LICENSE-OBS-plugin-GPL-2.txt') -Force
 Copy-Item (Join-Path $v2 'external\openvr\LICENSE') (Join-Path $licences 'LICENSE-OpenVR.txt') -Force
+# The quad views layer: mbucchia's licence for the code it is built on, and the notices of what that code uses.
+Copy-Item (Join-Path $v2 'quad-views\LICENSE') (Join-Path $licences 'LICENSE-Quad-Views-Foveated.txt') -Force
+Copy-Item (Join-Path $v2 'quad-views\THIRD_PARTY') (Join-Path $licences 'THIRD-PARTY-quad-views-layer.txt') -Force
 Get-ChildItem $payload -Recurse -File | ForEach-Object { '{0,9}  {1}' -f $_.Length, $_.FullName.Substring($payload.Length + 1) }

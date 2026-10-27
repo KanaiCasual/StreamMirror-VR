@@ -85,7 +85,7 @@ public partial class MainWindow
         if (_navQuadViews)
         {
             steps.Add(new(QuadViewsTab, () => null, "Quad Views",
-                "Quad-Views-Foveated's own settings: a game renders sharp where you look and cheaper elsewhere. Apply writes them, and a game takes them at its next start."));
+                "Quad views: a game renders sharp where you look and cheaper elsewhere. Pick the layer that does it at the top. With VR Gaze Mirror's own, changes reach a running game at once."));
         }
         steps.Add(new(LayersTab, () => Ancestor<Border>(LayerRows), "OpenXR layers",
             "Every OpenXR add-on on this PC, in the order games load them, with a switch for each. If the order breaks a rule the app knows, Fix order puts it right."));

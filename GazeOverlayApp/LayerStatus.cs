@@ -16,9 +16,13 @@ public sealed record LayerEntry(string JsonPath, bool Enabled, string? LayerName
 public sealed record LayerReport(LayerHealth Health, string Detail);
 
 /// <param name="QuadViewsInstalled">Any Quad-Views-Foveated is registered (on or off); false = the bundled installer can be offered.</param>
+/// <param name="OwnQuadViews">VR Gaze Mirror's own quad views layer (built on Quad-Views-Foveated), which the MSI installs switched off.</param>
 public sealed record SystemStatus(
     LayerReport QuadViews, LayerReport GazeMirror, string? ObsPath, bool ObsPluginPresent,
-    IReadOnlyList<LayerEntry> Layers, bool? OrderCorrect, bool QuadViewsInstalled);
+    IReadOnlyList<LayerEntry> Layers, bool? OrderCorrect, bool QuadViewsInstalled, LayerReport OwnQuadViews, bool OwnQuadViewsInstalled)
+{
+    public bool OwnQuadViewsOn => OwnQuadViews.Health == LayerHealth.Active;
+}
 
 /// <summary>
 /// Read-only look at how the OpenXR layers are set up. This app never installs or changes them - the MSI does that -
@@ -27,6 +31,7 @@ public sealed record SystemStatus(
 public static class LayerStatus
 {
     public const string QuadViewsLayer = "XR_APILAYER_MBUCCHIA_quad_views_foveated";
+    public const string OwnQuadViewsLayer = "XR_APILAYER_NOVENDOR_gaze_mirror_quad_views";
     public const string GazeMirrorLayer = "XR_APILAYER_NOVENDOR_gaze_mirror";
     public const string ObsPluginFile = "gaze-mirror-capture.dll";
     private const string LayersKey = @"SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit";
@@ -124,17 +129,20 @@ public static class LayerStatus
         var quadViews = Describe(layers, QuadViewsLayer, "Quad-Views-Foveated",
             "Not installed, and optional: foveated rendering and the Quad Views page need it; the mirror and the ring work without it. Press Install to set up the official version that ships with this app.");
         var gazeMirror = Describe(layers, GazeMirrorLayer, "the mirror layer", "Not installed. Run the VR Gaze Mirror installer (.msi), or its Repair option.");
+        var ownQuadViews = Describe(layers, OwnQuadViewsLayer, "VR Gaze Mirror's quad views layer",
+            "Not installed. Run the VR Gaze Mirror installer (.msi), or its Repair option.");
 
         var obsPath = FindObs();
         var pluginPresent = obsPath != null && File.Exists(Path.Combine(obsPath, "obs-plugins", "64bit", ObsPluginFile));
 
         // Quad views must sit closer to the game than the mirror, which only understands the final stereo image.
         var enabled = layers.Where(l => l.Enabled).ToList();
-        var quadIndex = enabled.FindIndex(l => l.LayerName == QuadViewsLayer);
+        var quadIndex = enabled.FindIndex(l => l.LayerName is QuadViewsLayer or OwnQuadViewsLayer);
         var mirrorIndex = enabled.FindIndex(l => l.LayerName == GazeMirrorLayer);
         bool? orderCorrect = quadIndex >= 0 && mirrorIndex >= 0 ? quadIndex < mirrorIndex : null;
 
-        return new SystemStatus(quadViews, gazeMirror, obsPath, pluginPresent, layers, orderCorrect, layers.Any(l => l.LayerName == QuadViewsLayer));
+        return new SystemStatus(quadViews, gazeMirror, obsPath, pluginPresent, layers, orderCorrect, layers.Any(l => l.LayerName == QuadViewsLayer),
+            ownQuadViews, layers.Any(l => l.LayerName == OwnQuadViewsLayer));
     }
 
     private static LayerReport Describe(List<LayerEntry> layers, string layerName, string friendlyName, string notInstalled)

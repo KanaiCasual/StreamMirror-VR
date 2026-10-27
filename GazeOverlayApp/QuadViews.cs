@@ -26,8 +26,14 @@ public sealed class QuadViewsSession
     public bool HasResolution => StereoWidth > 0 && StereoHeight > 0;
     public long StereoPixels => 2L * StereoWidth * StereoHeight;
 
-    public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Quad-Views-Foveated");
-    public static string LogPath => Path.Combine(Folder, "Quad-Views-Foveated.log");
+    /// <summary>True while VR Gaze Mirror's own quad views layer is the one the Quad Views page edits (its own folder, log
+    /// and settings file); false for the official Quad-Views-Foveated.</summary>
+    public static bool OwnLayer { get; set; }
+
+    public static string OfficialFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Quad-Views-Foveated");
+    public static string OwnFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GazeMirror", "QuadViews");
+    public static string Folder => OwnLayer ? OwnFolder : OfficialFolder;
+    public static string LogPath => OwnLayer ? Path.Combine(OwnFolder, "QuadViews.log") : Path.Combine(OfficialFolder, "Quad-Views-Foveated.log");
 
     private static readonly Regex Prefix = new(@"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) [+-]\d{4}: ", RegexOptions.Compiled);
 
@@ -121,7 +127,7 @@ public sealed class QuadViewsFile
     /// without it (the fixed fallback), and the rest. Each group gets a heading in the app's own files.</summary>
     private static readonly (string Heading, string[] Keys)[] Groups =
     [
-        ("# With eye tracking: the sharp region follows your eyes.", ["horizontal_focus_section", "vertical_focus_section", "vertical_focus_offset"]),
+        ("# With eye tracking: the sharp region follows your eyes.", ["horizontal_focus_section", "vertical_focus_section", "vertical_focus_offset", "gaze_smoothing_ms", "gaze_deadzone_degrees"]),
         ("# Without eye tracking: the sharp region stays in place.", ["horizontal_fixed_section", "vertical_fixed_section", "horizontal_fixed_offset", "vertical_fixed_offset"]),
         ("# Resolution, sharpening, Turbo and the debug views.", []),
     ];
@@ -145,6 +151,8 @@ public sealed class QuadViewsFile
         ["horizontal_fixed_offset"] = 0, ["vertical_fixed_offset"] = 0, ["vertical_focus_offset"] = 0,
         ["smoothen_focus_view_edges"] = 0.2, ["sharpen_focus_view"] = 0.7,
         ["turbo_mode"] = 1, ["debug_eye_gaze"] = 0, ["debug_focus_view"] = 0,
+        // VR Gaze Mirror's own layer only (gaze_filter.h and the diagnostics in its layer.cpp).
+        ["gaze_smoothing_ms"] = 8, ["gaze_deadzone_degrees"] = 0.5, ["show_diagnostics"] = 0,
     };
 
     public static QuadViewsFile Load(string path)
@@ -212,10 +220,12 @@ public sealed class QuadViewsFile
     /// set it for a runtime or game, and lines the page has no setting for (un-advertise). Headset and per-game values of
     /// the page's settings, the old comments and the old layout go: the page's values count everywhere.
     /// </summary>
-    public static QuadViewsFile Plan(QuadViewsFile current, IReadOnlyDictionary<string, double> values, IReadOnlySet<string> changed)
+    /// <param name="ownLayer">The file is VR Gaze Mirror's own layer's: its own settings are written, the official's debug
+    /// switch is not (and the other way round).</param>
+    public static QuadViewsFile Plan(QuadViewsFile current, IReadOnlyDictionary<string, double> values, IReadOnlySet<string> changed, bool ownLayer = false)
     {
         var common = new OrderedDictionary<string, string>();
-        foreach (var setting in QuadViewsSetting.All)
+        foreach (var setting in QuadViewsSetting.All.Where(s => s.AppliesTo(ownLayer)))
         {
             var value = values.GetValueOrDefault(setting.Id);
             var fromPage = setting.IsToggle ? (value != 0 ? "1" : "0") : setting.ToFile(value);
@@ -338,6 +348,8 @@ public sealed class QuadViewsFile
         "horizontal_fixed_offset" or "vertical_fixed_offset" or "vertical_focus_offset" => Math.Clamp(value, -0.5, 0.5),
         "smoothen_focus_view_edges" => Math.Clamp(value, 0, 0.5),
         "sharpen_focus_view" => Math.Clamp(value, 0, 1),
+        "gaze_smoothing_ms" => Math.Clamp(value, 0, 200),
+        "gaze_deadzone_degrees" => Math.Clamp(value, 0, 5),
         _ => value != 0 ? 1 : 0,
     };
 }
@@ -408,7 +420,12 @@ public static class QuadViewsReadout
     }
 }
 
-public enum QuadViewsScale { Fraction, PixelShare }
+/// <summary>Fraction: the file holds 0..1, the slider percent. PixelShare: a multiplier, the slider the share of pixels.
+/// Direct: the slider shows the file's number as it is (milliseconds, degrees).</summary>
+public enum QuadViewsScale { Fraction, PixelShare, Direct }
+
+/// <summary>Which layer a setting belongs to: both, only VR Gaze Mirror's own, or only the official Quad-Views-Foveated.</summary>
+public enum QuadViewsLayers { Both, OwnOnly, OfficialOnly }
 
 /// <summary>One control of the Quad Views tab. A slider can drive two keys: the eye-tracked one and its fixed fallback.</summary>
 public sealed class QuadViewsSetting
@@ -426,15 +443,29 @@ public sealed class QuadViewsSetting
     public double Step { get; init; } = 1;
     public QuadViewsScale Scale { get; init; }
     public bool NeedsRestartNote { get; init; }
+    public QuadViewsLayers Layers { get; init; }
 
-    /// <summary>File value -> what the slider shows (percent).</summary>
-    public double ToSlider(double fileValue) => Scale == QuadViewsScale.PixelShare ? fileValue * fileValue * 100 : fileValue * 100;
+    public bool AppliesTo(bool ownLayer) => Layers == QuadViewsLayers.Both || (Layers == QuadViewsLayers.OwnOnly) == ownLayer;
+
+    /// <summary>The value as the page shows it: tenths where the slider moves in tenths.</summary>
+    public string Show(double sliderValue) => sliderValue.ToString(Step < 1 ? "0.0" : "0");
+
+    /// <summary>File value -> what the slider shows (percent, or the number itself).</summary>
+    public double ToSlider(double fileValue) => Scale switch
+    {
+        QuadViewsScale.PixelShare => fileValue * fileValue * 100,
+        QuadViewsScale.Direct => fileValue,
+        _ => fileValue * 100,
+    };
 
     /// <summary>Slider percent -> the text written to the file. Resolution is a share of the pixel count, so the multiplier
     /// (which scales width and height alike) is its square root - the same logic as TallyMouse's QuadViews Companion.</summary>
-    public string ToFile(double sliderValue) => Scale == QuadViewsScale.PixelShare
-        ? Math.Round(Math.Sqrt(sliderValue / 100), 3).ToString("0.###", CultureInfo.InvariantCulture)
-        : Math.Round(sliderValue / 100, 2).ToString("0.##", CultureInfo.InvariantCulture);
+    public string ToFile(double sliderValue) => Scale switch
+    {
+        QuadViewsScale.PixelShare => Math.Round(Math.Sqrt(sliderValue / 100), 3).ToString("0.###", CultureInfo.InvariantCulture),
+        QuadViewsScale.Direct => Math.Round(sliderValue, 1).ToString("0.#", CultureInfo.InvariantCulture),
+        _ => Math.Round(sliderValue / 100, 2).ToString("0.##", CultureInfo.InvariantCulture),
+    };
 
     public double ToFileNumber(double sliderValue) => double.Parse(ToFile(sliderValue), CultureInfo.InvariantCulture);
 
@@ -457,6 +488,18 @@ public sealed class QuadViewsSetting
             Id = "offset_v", Label = "Vertical focus offset", Suffix = "% of FOV", Min = -50, Max = 50,
             Keys = ["vertical_focus_offset", "vertical_fixed_offset"],
             Description = "Moves the sharp region up (positive) or down.\n\nUse it if the region keeps sitting above or below your gaze.",
+        },
+        new()
+        {
+            Id = "gaze_smoothing", Label = "Gaze smoothing", Suffix = "ms", Min = 0, Max = 50, Scale = QuadViewsScale.Direct, Layers = QuadViewsLayers.OwnOnly,
+            Keys = ["gaze_smoothing_ms"],
+            Description = "How the sharp region catches up when your eyes move: the time it takes to cover most of the way.\n\n**0:** at once. A few milliseconds hides tracker jitter without a lag you can see. Takes effect while the game runs.",
+        },
+        new()
+        {
+            Id = "gaze_deadzone", Label = "Gaze deadzone", Suffix = "°", Min = 0, Max = 3, Step = 0.1, Scale = QuadViewsScale.Direct, Layers = QuadViewsLayers.OwnOnly,
+            Keys = ["gaze_deadzone_degrees"],
+            Description = "The sharp region stays where it is until your eyes move further than this. Tracker jitter then leaves it alone.\n\n**0:** it follows every movement. Takes effect while the game runs.",
         },
         new()
         {
@@ -490,7 +533,13 @@ public sealed class QuadViewsSetting
         },
         new()
         {
-            Id = "debug_gaze", Label = "Debug: show eye gaze", Suffix = "", IsToggle = true,
+            Id = "diagnostics", Label = "Show diagnostics in the headset", Suffix = "", IsToggle = true, Layers = QuadViewsLayers.OwnOnly,
+            Keys = ["show_diagnostics"],
+            Description = "Tints the view in the headset to check the settings while you play: the surround blue, the blend amber, the sharp region green. A ring marks where the tracker says you look (red while it has lost your eyes), a cross where the sharp region is aimed.\n\nSwitch it off before you stream: the mirror shows it too.",
+        },
+        new()
+        {
+            Id = "debug_gaze", Label = "Debug: show eye gaze", Suffix = "", IsToggle = true, Layers = QuadViewsLayers.OfficialOnly,
             Keys = ["debug_eye_gaze"],
             Description = "Draws a small square in the headset where Quad-Views-Foveated thinks you are looking.",
         },

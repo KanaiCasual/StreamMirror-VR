@@ -9,11 +9,18 @@ namespace GazeOverlay;
 
 /// <summary>
 /// The Quad Views tab: the settings TallyMouse's QuadViews Companion edits, plus how many pixels they make the game render.
-/// Unlike the ring's settings these only take effect when a game starts, so they are saved with Apply, not as you drag.
+/// It edits the settings of the layer that does quad views: VR Gaze Mirror's own (built on Quad-Views-Foveated), whose
+/// changes are saved as they are made and reach a running game at once, or the official Quad-Views-Foveated, which reads
+/// them when a game starts, so they are saved with Apply.
 /// </summary>
 public partial class MainWindow
 {
-    private readonly string _quadViewsPath = QuadViewsFile.DefaultPath;
+    private string _quadViewsPath => QuadViewsFile.DefaultPath;
+    /// <summary>The page edits VR Gaze Mirror's own layer's settings (see QuadViewsSession.OwnLayer).</summary>
+    private bool _quadViewsOwn;
+    private bool _quadViewsModeKnown;
+    private bool _quadViewsChoosing;
+    private readonly Dictionary<string, List<FrameworkElement>> _quadViewsRowsById = [];
     private QuadViewsFile _quadViewsFile = QuadViewsFile.Load(QuadViewsFile.DefaultPath);
     private QuadViewsSession? _quadViewsSession;
     private readonly Dictionary<string, double> _quadViewsValues = [];
@@ -30,7 +37,7 @@ public partial class MainWindow
         ShowToolTipsPatiently(QuadViewsTitle);
 
         // Two cards: where the sharp part is, and how much is rendered. Side by side when there is room.
-        var focusIds = new HashSet<string> { "focus_h", "focus_v", "offset_v", "transition" };
+        var focusIds = new HashSet<string> { "focus_h", "focus_v", "offset_v", "transition", "gaze_smoothing", "gaze_deadzone" };
         var focus = new StackPanel();
         var resolution = new StackPanel();
         var cards = new Grid { Margin = new Thickness(0, 0, -10, 0) };
@@ -81,18 +88,19 @@ public partial class MainWindow
                 Describe(slider, setting.Label, setting.Description + "\n\nDouble-click the slider for Quad-Views-Foveated's own default. Click the value to type one.");
                 slider.ValueChanged += (_, e) =>
                 {
-                    valueText.Text = $"{e.NewValue:0} {setting.Suffix}";
+                    valueText.Text = $"{setting.Show(e.NewValue)} {setting.Suffix}";
                     OnQuadViewsChanged(setting.Id, e.NewValue);
                 };
                 _quadViewsSetters[setting.Id] = v =>
                 {
                     slider.Value = Math.Clamp(Math.Round(v / setting.Step) * setting.Step, setting.Min, setting.Max);
-                    valueText.Text = $"{slider.Value:0} {setting.Suffix}";
+                    valueText.Text = $"{setting.Show(slider.Value)} {setting.Suffix}";
                 };
                 AddRowEditor(row, slider);
             }
             var card = focusIds.Contains(setting.Id) ? focus : resolution;
             card.Children.Add(row);
+            _quadViewsRowsById[setting.Id] = [row];
             // Under the sliders that set the pixel count: what they make (RefreshQuadViewsReadout fills them in).
             var readouts = setting.Id switch
             {
@@ -110,6 +118,7 @@ public partial class MainWindow
                 };
                 _quadViewsReadouts[id] = readout;
                 card.Children.Add(readout);
+                _quadViewsRowsById[setting.Id].Add(readout);
             }
         }
 
@@ -148,7 +157,7 @@ public partial class MainWindow
                 RefreshQuadViewsReadout();
             },
             describe: values => string.Join("\n", QuadViewsSetting.All.Where(s => !s.IsToggle && values.ContainsKey(s.Id)).Select(s =>
-                $"{s.Label}: {(double.TryParse(values[s.Id], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v.ToString("0") : values[s.Id])} {s.Suffix}"))
+                $"{s.Label}: {(double.TryParse(values[s.Id], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? s.Show(v) : values[s.Id])} {s.Suffix}"))
                 + "\n\nLike a preset, a slot sets the sliders; click Apply afterwards."));
 
         // Pick up what another tool (the Companion, a text editor) saved - when the tab is opened, not on a timer.
@@ -186,10 +195,73 @@ public partial class MainWindow
         RefreshQuadViewsReadout();
     }
 
+    /// <summary>
+    /// Shows which layer does quad views and switches the page to that layer's settings. With neither on, the page edits
+    /// VR Gaze Mirror's own layer's settings, ready for when it is switched on.
+    /// </summary>
+    private void ShowQuadViewsLayer(SystemStatus status)
+    {
+        var choice = status.OwnQuadViewsOn ? 0 : status.QuadViews.Health != LayerHealth.NotActive ? 1 : 2;
+        _quadViewsChoosing = true;
+        QuadViewsLayerChoice.SelectedIndex = choice;
+        ((ComboBoxItem)QuadViewsLayerChoice.Items[0]).IsEnabled = status.OwnQuadViewsInstalled;
+        ((ComboBoxItem)QuadViewsLayerChoice.Items[1]).IsEnabled = status.QuadViewsInstalled;
+        _quadViewsChoosing = false;
+        QuadViewsLayerNote.Text = choice switch
+        {
+            0 => "Direct3D 11 and 12 games. Changes reach a running game at once.",
+            1 => "mbucchia's layer: Direct3D 11 games. A game takes changes at its next start.",
+            _ => status.OwnQuadViewsInstalled ? "No game gets quad views. The settings below are VR Gaze Mirror's layer's, for when you switch it on." : "No game gets quad views.",
+        };
+
+        var own = choice != 1;
+        if (_quadViewsModeKnown && own == _quadViewsOwn) return;
+        _quadViewsModeKnown = true;
+        _quadViewsOwn = QuadViewsSession.OwnLayer = own;
+        foreach (var setting in QuadViewsSetting.All)
+        {
+            foreach (var element in _quadViewsRowsById[setting.Id]) element.Visibility = setting.AppliesTo(own) ? Visibility.Visible : Visibility.Collapsed;
+        }
+        // The own layer's settings are saved as they change: no Apply, no Revert, no "after Apply" line.
+        QuadViewsApply.Visibility = QuadViewsRevert.Visibility = QuadViewsLoadNext.Visibility = own ? Visibility.Collapsed : Visibility.Visible;
+        if (!own) SetQuadViewsStatus("");
+        LoadQuadViews();
+    }
+
+    private async void OnQuadViewsLayerChoice(object sender, SelectionChangedEventArgs e)
+    {
+        if (_quadViewsChoosing || !IsLoaded) return;
+        var choice = QuadViewsLayerChoice.SelectedIndex;
+        // One layer at a time, and above the mirror: the switches and, where needed, a new order go in one prompt.
+        var layers = LayerStatus.ReadLayers();
+        var switches = new Dictionary<string, bool>();
+        foreach (var layer in layers)
+        {
+            if (layer.LayerName == LayerStatus.OwnQuadViewsLayer) switches[layer.JsonPath] = choice == 0;
+            else if (layer.LayerName == LayerStatus.QuadViewsLayer) switches[layer.JsonPath] = choice == 1;
+        }
+        var after = layers.Select(l => switches.TryGetValue(l.JsonPath, out var on) ? l with { Enabled = on } : l).ToList();
+        var order = LayerOrder.Suggest(after) ?? after;
+        try
+        {
+            if (!await LayerOrder.ApplyAsync(false, order, switches)) SetQuadViewsStatus("Nothing changed: Windows' permission prompt was declined.");
+            else AppLog.Write($"Quad views now by: {((ComboBoxItem)QuadViewsLayerChoice.SelectedItem).Content}.");
+        }
+        catch (Exception error)
+        {
+            SetQuadViewsStatus("Could not switch: " + error.Message);
+            AppLog.Write("The quad views layer could not be switched", error);
+        }
+        RefreshStatus();
+    }
+
     private void LoadQuadViews(bool keepStatus = false)
     {
         _quadViewsSession = QuadViewsSession.Read(QuadViewsSession.LogPath);
-        _quadViewsFile = QuadViewsFile.Load(_quadViewsPath);
+        // The own layer's first settings are the official layer's, where there are any (the layer copies them too).
+        var official = Path.Combine(QuadViewsSession.OfficialFolder, "settings.cfg");
+        var imported = _quadViewsOwn && !File.Exists(_quadViewsPath) && File.Exists(official);
+        _quadViewsFile = QuadViewsFile.Load(imported ? official : _quadViewsPath);
         _quadViewsDirty.Clear();
 
         var effective = EvaluateQuadViews(_quadViewsFile);
@@ -207,7 +279,12 @@ public partial class MainWindow
         }
         _quadViewsLoading = false;
 
-        if (!keepStatus) SetQuadViewsStatus(_quadViewsFile.Existed ? "" : "No settings file yet, so the game uses Quad-Views-Foveated's defaults. Apply creates one.");
+        if (_quadViewsOwn)
+        {
+            SetQuadViewsStatus((imported ? "These are your Quad-Views-Foveated settings: VR Gaze Mirror's layer starts from them. " : "") +
+                               "Changes are saved as you make them. A running game takes them at once; resolution and Turbo from its next start.");
+        }
+        else if (!keepStatus) SetQuadViewsStatus(_quadViewsFile.Existed ? "" : "No settings file yet, so the game uses Quad-Views-Foveated's defaults. Apply creates one.");
         RefreshQuadViewsReadout();
         SyncFixedFocusKeys(); // The fixed centre's sharp area follows the file.
     }
@@ -215,7 +292,28 @@ public partial class MainWindow
     private static double? ParseQuadViewsValue(string key, string? text) =>
         text != null && double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ? QuadViewsFile.Clamp(key, number) : null;
 
-    private QuadViewsFile PlannedQuadViewsFile() => QuadViewsFile.Plan(_quadViewsFile, _quadViewsValues, _quadViewsDirty);
+    private QuadViewsFile PlannedQuadViewsFile() => QuadViewsFile.Plan(_quadViewsFile, _quadViewsValues, _quadViewsDirty, _quadViewsOwn);
+
+    /// <summary>The own layer's file follows the page: written whenever the page differs from it (the layer picks it up).
+    /// Not before the user has changed something when there is no file yet (the layer's first start makes it, from the
+    /// official layer's), and never in a self-test or screenshot run.</summary>
+    private void SaveOwnQuadViews()
+    {
+        if (App.Headless || (_quadViewsDirty.Count == 0 && !File.Exists(_quadViewsPath))) return;
+        var planned = PlannedQuadViewsFile();
+        if (planned.Text == _quadViewsFile.Text) return;
+        try
+        {
+            planned.Save(_quadViewsPath);
+            _quadViewsFile = QuadViewsFile.Parse(planned.Text);
+            _quadViewsDirty.Clear();
+        }
+        catch (Exception error)
+        {
+            SetQuadViewsStatus("Could not save: " + error.Message);
+            AppLog.Write("Quad Views settings could not be saved", error);
+        }
+    }
 
     private QuadViewsEffective EvaluateQuadViews(QuadViewsFile userFile, bool commonOnly = false)
     {
@@ -245,6 +343,7 @@ public partial class MainWindow
 
     private void RefreshQuadViewsReadout()
     {
+        if (_quadViewsOwn) SaveOwnQuadViews();
         var session = _quadViewsSession;
         var saved = EvaluateQuadViews(_quadViewsFile);
         var planned = PlannedQuadViewsFile();
@@ -264,7 +363,9 @@ public partial class MainWindow
                   $"sharp {session.FocusResolution}, surround {session.PeripheralResolution}. Runtime: {session.RuntimeName}."
                 : $"Last game start {session.When:g}: the game did not use quad views. Full resolution is {session.StereoWidth}x{session.StereoHeight} per eye.";
             var gameIsBehind = session.QuadPixels is { } ran && ran != savedPixels.Total;
-            QuadViewsLoadLast.Text = gameIsBehind ? "The game last ran with other settings. Restart it to use the saved ones." : "";
+            QuadViewsLoadLast.Text = !gameIsBehind ? ""
+                : _quadViewsOwn ? "The game last ran with another resolution. Restart it for the saved one; the other settings it takes at once."
+                : "The game last ran with other settings. Restart it to use the saved ones.";
             QuadViewsLoadLast.Visibility = gameIsBehind ? Visibility.Visible : Visibility.Collapsed;
             var savedShare = (double)savedPixels.Total / session.StereoPixels;
             var nextShare = (double)nextPixels.Total / session.StereoPixels;
@@ -283,7 +384,7 @@ public partial class MainWindow
         else
         {
             double Share(QuadViewsEffective e) { var (h, v) = QuadViewsSections(e); return 100 * QuadViewsPixels.Fraction(e["peripheral_multiplier"], e["focus_multiplier"], h, v); }
-            QuadViewsLoadLast.Text = "Quad-Views-Foveated has logged no game start yet, so the app does not know your headset's resolution. Run the game once to see real pixel counts here.";
+            QuadViewsLoadLast.Text = "The quad views layer has logged no game start yet, so the app does not know your headset's resolution. Run a game with quad views once to see real pixel counts here.";
             QuadViewsLoadLast.Visibility = Visibility.Visible;
             QuadViewsLoadSaved.Text = $"Saved settings: about {Share(saved):0.0} % of the full-resolution pixel count.";
             QuadViewsLoadNext.Text = $"After Apply: about {Share(next):0.0} %.";
@@ -311,7 +412,7 @@ public partial class MainWindow
             section = section.StartsWith("app:", StringComparison.Ordinal) || section.StartsWith("exe:", StringComparison.Ordinal) ? section[4..] : section;
             var setting = QuadViewsSetting.All.FirstOrDefault(s => s.Keys.Contains(o.Key));
             if (setting == null || !double.TryParse(o.Value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) return null;
-            var shown = setting.IsToggle ? (number != 0 ? "on" : "off") : $"{setting.ToSlider(number):0.#} {setting.Suffix}";
+            var shown = setting.IsToggle ? (number != 0 ? "on" : "off") : $"{setting.Show(setting.ToSlider(number))} {setting.Suffix}";
             return $"{section}: {setting.Label.ToLowerInvariant()} {shown}";
         }).Where(text => text != null).Distinct().ToList();
         QuadViewsOverrides.Text = overrides.Count > 0 ? "Set apart in the file: " + string.Join("; ", overrides) + "." : "";
@@ -321,12 +422,12 @@ public partial class MainWindow
         var problems = new List<string>();
         if (session != null)
         {
-            foreach (var setting in QuadViewsSetting.All.Where(s => !s.IsToggle))
+            foreach (var setting in QuadViewsSetting.All.Where(s => !s.IsToggle && s.AppliesTo(_quadViewsOwn)))
             {
                 var key = session.EyeTracking == false && setting.Keys.Length > 1 ? setting.Keys[1] : setting.Keys[0];
                 if (ParseQuadViewsValue(key, _quadViewsFile.Intended(key)) is not { } wanted || Math.Abs(wanted - saved[key]) < 0.0005) continue;
                 var source = saved.DecidedBy.TryGetValue(key, out var decidedBy) ? decidedBy : "the layer's built-in value";
-                problems.Add($"{setting.Label}: the file says {setting.ToSlider(wanted):0} %, the game gets {setting.ToSlider(saved[key]):0} % (from {source}).");
+                problems.Add($"{setting.Label}: the file says {setting.Show(setting.ToSlider(wanted))} {setting.Suffix}, the game gets {setting.Show(setting.ToSlider(saved[key]))} {setting.Suffix} (from {source}).");
             }
         }
         var turboNote = session != null && _quadViewsValues.GetValueOrDefault("turbo") != 0 && next["turbo_mode"] == 0 && next.DecidedBy.TryGetValue("turbo_mode", out var turboBy)

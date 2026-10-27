@@ -33,12 +33,13 @@ public static class LayerOrder
         new("XR_APILAYER_FREDEMMOTT_OpenKneeboard", [], [], [Overlay, UsesPoses]),
         new("XR_APILAYER_app_racelab_Overlay", [], [], [Overlay, UsesPoses]),
         new(LayerStatus.QuadViewsLayer, ["XR_EXT_eye_gaze_interaction"], [], []),
+        new(LayerStatus.OwnQuadViewsLayer, ["XR_EXT_eye_gaze_interaction"], [], []),
         new("XR_APILAYER_MBUCCHIA_toolkit", ["XR_EXT_eye_gaze_interaction", "XR_EXT_hand_tracking"], ["XR_VARJO_foveated_rendering"], [Overlay]),
         new("XR_APILAYER_NOVENDOR_motion_compensation", ["XR_APILAYER_FREDEMMOTT_HandTrackedCockpitClicking"], [], [TransformsPoses]),
         new("XR_APILAYER_MBUCCHIA_vulkan_d3d12_interop", ["XR_APILAYER_MBUCCHIA_toolkit", LayerStatus.GazeMirrorLayer], [], []),
         // The mirror must see the finished picture: below everything that draws into it, and below quad views (which
         // turns four views into the two the mirror understands - and, in this project, tells it where the eyes look).
-        new(LayerStatus.GazeMirrorLayer, [], [Overlay, "XR_VARJO_foveated_rendering", LayerStatus.QuadViewsLayer], []),
+        new(LayerStatus.GazeMirrorLayer, [], [Overlay, "XR_VARJO_foveated_rendering", LayerStatus.QuadViewsLayer, LayerStatus.OwnQuadViewsLayer], []),
         new("XR_APILAYER_NOVENDOR_XRNeckSafer", ["XR_APILAYER_FREDEMMOTT_HandTrackedCockpitClicking", Overlay], [], []),
     ];
 
@@ -155,7 +156,8 @@ public static class LayerOrder
     /// declined; throws with a readable message when it cannot or did not work. The PC-wide list is changed by Windows'
     /// own reg.exe importing a .reg file after a UAC prompt - this app never runs elevated.
     /// </summary>
-    public static async Task<bool> ApplyAsync(bool perUser, IReadOnlyList<LayerEntry> wanted)
+    /// <param name="switches">Layers to switch on (true) or off on the way, by manifest path: the same one prompt.</param>
+    public static async Task<bool> ApplyAsync(bool perUser, IReadOnlyList<LayerEntry> wanted, IReadOnlyDictionary<string, bool>? switches = null)
     {
         var current = ReadRaw(perUser);
         if (current.Any(v => v.Data == null)) throw new InvalidOperationException("The list holds an entry that is not a number (DWORD). Fix that with the OpenXR API Layers tool first.");
@@ -166,6 +168,7 @@ public static class LayerOrder
         if (wanted.Any(l => l.JsonPath.Contains('\n') || l.JsonPath.Contains('\r'))) throw new InvalidOperationException("A .reg file cannot hold this entry's name.");
 
         var data = current.ToDictionary(v => v.Name, v => v.Data!.Value);
+        foreach (var (name, on) in switches ?? new Dictionary<string, bool>()) if (data.ContainsKey(name)) data[name] = on ? 0 : 1;
         Directory.CreateDirectory(DataFolder);
         var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
         var backupPath = Path.Combine(DataFolder, $"layers-before-{stamp}.reg");

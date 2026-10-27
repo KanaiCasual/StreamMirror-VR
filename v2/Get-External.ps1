@@ -4,6 +4,7 @@
 #   external\openxr-sdk\  the OpenXR headers, release 1.1.43 (Apache-2.0) - for the layer and its test
 #   external\openvr\      Valve's OpenVR SDK v2.15.6: header, import library, redistributable DLL (BSD-3) - for the OpenVR helper
 #   external\qvf\         mbucchia's official Quad-Views-Foveated 1.1.3 installer (MIT) - bundled, offered by our installer
+#   external\qvf-deps\    what the quad views layer is built against: fmt, OpenXR SDK headers, XrUtility, WIL
 # Needs the GitHub CLI (gh) and Visual Studio 2022. Nothing is executed or installed.
 $ErrorActionPreference = 'Stop'
 $root = Join-Path $PSScriptRoot 'external'
@@ -52,5 +53,33 @@ if (-not (Test-Path "$root\qvf\Quad-Views-Foveated-1.1.3.msi")) {
     gh release download 1.1.3 --repo mbucchia/Quad-Views-Foveated --pattern 'Quad-Views-Foveated-1.1.3.msi' --dir "$root\qvf" --clobber
     Fetch 'mbucchia/Quad-Views-Foveated' '1.1.3' 'LICENSE' "$root\qvf\LICENSE"
     'Quad-Views-Foveated 1.1.3 installer fetched.'
+}
+if (-not (Test-Path "$root\qvf-deps\wil\include\wil\resource.h")) {
+    # What the quad views layer (v2\quad-views, built on Quad-Views-Foveated) is built against, at the versions upstream
+    # pins: fmt (MIT), the OpenXR SDK headers and loader_interfaces.h (Apache-2.0), Microsoft's XrUtility headers (MIT),
+    # and WIL (MIT) from its NuGet package. Downloaded straight to files: PowerShell's > would turn them into UTF-16.
+    $deps = Join-Path $root 'qvf-deps'
+    function Raw($repo, $sha, $path, $target) {
+        New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+        Invoke-WebRequest "https://raw.githubusercontent.com/$repo/$sha/$path" -OutFile $target -UseBasicParsing
+    }
+    function Tree($repo, $sha, $prefix) {
+        gh api "repos/$repo/git/trees/$sha`?recursive=1" --jq '.tree[] | select(.type == \"blob\") | .path' | Where-Object { $_.StartsWith($prefix) }
+    }
+    $fmt = 'f5e54359df4c26b6230fc61d38aa294581393084'
+    foreach ($path in (Tree 'fmtlib/fmt' $fmt 'include/fmt/') + 'src/format.cc' + 'LICENSE.rst') { Raw 'fmtlib/fmt' $fmt $path "$deps\fmt\$path" }
+    $sdk = '58a00cf85c39ad5ec4dc43a769624e420c06179a'
+    foreach ($path in (Tree 'KhronosGroup/OpenXR-SDK' $sdk 'include/openxr/') + 'src/common/loader_interfaces.h' + 'LICENSE') { Raw 'KhronosGroup/OpenXR-SDK' $sdk $path "$deps\openxr-sdk\$path" }
+    $mr = 'ef759465acd79e117c2650ea8eb32a4d31a6b675'
+    foreach ($path in (Tree 'microsoft/OpenXR-MixedReality' $mr 'shared/XrUtility/') + 'shared/SampleShared/ScopeGuard.h' + 'LICENSE') { Raw 'microsoft/OpenXR-MixedReality' $mr $path "$deps\xr-utility\$path" }
+    $package = Join-Path $env:TEMP 'wil.1.0.220201.1.zip'
+    Invoke-WebRequest 'https://www.nuget.org/api/v2/package/Microsoft.Windows.ImplementationLibrary/1.0.220201.1' -OutFile $package -UseBasicParsing
+    $unpacked = Join-Path $env:TEMP 'wil.1.0.220201.1'
+    Expand-Archive $package $unpacked -Force
+    New-Item -ItemType Directory -Force "$deps\wil" | Out-Null
+    Copy-Item "$unpacked\include" "$deps\wil\include" -Recurse -Force
+    Copy-Item "$unpacked\LICENSE" "$deps\wil\LICENSE" -Force
+    Remove-Item $package, $unpacked -Recurse -Force
+    'Quad views layer dependencies fetched.'
 }
 'External files are in place.'

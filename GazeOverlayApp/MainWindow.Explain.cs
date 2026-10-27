@@ -65,8 +65,9 @@ public partial class MainWindow
             new("", "A headset tracked by base stations (Lighthouse) does not look at the room and has no use for the cover."));
 
         AddExplanation(QuadViewsTab, ExplainQuadViews, "quadviews", HowThisPageWorks,
-            new("", "Quad-Views-Foveated makes a game render a small sharp region where you look and the rest of the view at a low resolution, which saves graphics card time. These are its own settings; the app lists this page while it is installed. It handles Direct3D 11 games: switch it off on the Status page for a Direct3D 12 game."),
-            new("Apply.", "A game reads these settings at its start, so press Apply and then restart the game. The lines above the buttons give the pixels per frame for the saved settings and for the sliders as they stand."),
+            new("", "Quad views make a game render a small sharp region where you look and the rest of the view at a low resolution, which saves graphics card time. Two layers can do it, one at a time: VR Gaze Mirror's own (built on mbucchia's Quad-Views-Foveated, for Direct3D 11 and 12 games) and the official Quad-Views-Foveated (Direct3D 11). Pick one at the top; the app switches the other off."),
+            new("Saving.", "With VR Gaze Mirror's layer every change is saved at once and a running game takes it at once; only the resolution and Turbo wait for the game's next start. With the official layer, press Apply and restart the game. The lines at the top give the pixels per frame."),
+            new("Checking.", "With VR Gaze Mirror's layer, Show diagnostics in the headset tints the zones and marks your gaze while you play. It stays out of games it cannot help (Vulkan, OpenGL) and out of the way of the official layer; its log says why."),
             new("Focus", "sets the size of the sharp region as a share of the field of view, moves it up or down, and sets the width of the blend into the surround. Without eye tracking the region stays in the middle of the view."),
             new("Resolution", "sets the pixel count of the sharp region and of the surround; most of the saving comes from the surround. Presets and your own three slots set the sliders, and Apply saves them."),
             AboutSliders);

@@ -491,16 +491,26 @@
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="20,16,20,10">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Button Content="File" ToolTip="Opens Quad-Views-Foveated's settings file in the program Windows uses for .cfg files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="6,0,0,0" Click="OnQuadViewsOpenFile" />
-                            <Button Content="Log" ToolTip="Opens Quad-Views-Foveated's log in the program Windows uses for .log files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="6,0,0,0" Click="OnQuadViewsOpenLog" />
+                            <Button Content="File" ToolTip="Opens the quad views layer's settings file in the program Windows uses for .cfg files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="6,0,0,0" Click="OnQuadViewsOpenFile" />
+                            <Button Content="Log" ToolTip="Opens the quad views layer's log in the program Windows uses for .log files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="6,0,0,0" Click="OnQuadViewsOpenLog" />
                         </StackPanel>
                         <TextBlock x:Name="QuadViewsTitle" Style="{StaticResource PageTitle}" Text="Quad Views"
-                                   ToolTip="Quad-Views-Foveated's own settings. A game reads them at its start: Apply, then restart the game.&#10;&#10;The sliders work like TallyMouse's QuadViews Companion and edit the same file.&#10;&#10;**One difference:** this app also writes the values where every OpenXR runtime reads them, beyond the list of known headsets." />
+                                   ToolTip="The quad views layer's settings: a game renders sharp where you look and cheaper elsewhere.&#10;&#10;The sliders work like TallyMouse's QuadViews Companion.&#10;&#10;**One difference:** this app also writes the values where every OpenXR runtime reads them, beyond the list of known headsets." />
                     </DockPanel>
                     <StackPanel x:Name="ExplainQuadViews" DockPanel.Dock="Top" Margin="20,0,20,10" />
-                    <!-- Stays in view while the sliders scroll: what the settings cost, Apply, and the presets. -->
+                    <!-- Stays in view while the sliders scroll: which layer does quad views, what the settings cost, Apply, and the presets. -->
                     <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="20,0,20,0">
                         <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <TextBlock Text="Quad views by" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox x:Name="QuadViewsLayerChoice" MinWidth="300" VerticalAlignment="Center" SelectionChanged="OnQuadViewsLayerChoice"
+                                          ToolTip="Which OpenXR layer gives games quad views. Only one at a time: the app switches the other one off.&#10;&#10;Windows asks for permission once.">
+                                    <ComboBoxItem Content="VR Gaze Mirror's quad views layer" />
+                                    <ComboBoxItem Content="Quad-Views-Foveated (official)" />
+                                    <ComboBoxItem Content="Off: no quad views" />
+                                </ComboBox>
+                                <TextBlock x:Name="QuadViewsLayerNote" Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0" />
+                            </DockPanel>
                             <TextBlock x:Name="QuadViewsLoadLast" Foreground="Orange" TextWrapping="Wrap" FontSize="12" />
                             <TextBlock x:Name="QuadViewsLoadSaved" TextWrapping="Wrap" Margin="0,1,0,0" />
                             <TextBlock x:Name="QuadViewsLoadNext" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,1,0,0" />

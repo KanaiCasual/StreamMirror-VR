@@ -95,12 +95,24 @@
                  After="AppSearch" Sequence="first" Condition="NOT QUADVIEWSPRESENT" />
     <SetProperty Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" After="AppSearch" Sequence="first" Condition="NOT QUADVIEWSPRESENT" />
     <Property Id="WixShellExecTarget" Value="[#QuadViewsInstallerFile]" />
+
+    <!--
+      Our own quad views layer is registered switched off (1); the app's Quad Views page switches it on. An update keeps
+      the user's choice: when the layer is switched on (0) at the default place, it stays on.
+    -->
+    <Property Id="OWNQUADVIEWSSTATE">
+      <RegistrySearch Id="FindOwnQuadViews" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
+                      Name="[ProgramFiles64Folder]VR-Gaze-Mirror\QuadViews\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="OWNQUADVIEWSOFF" Value="1" />
+    <SetProperty Id="OWNQUADVIEWSOFF" Value="0" After="AppSearch" Sequence="both" Condition="OWNQUADVIEWSSTATE = &quot;#0&quot;" />
     <CustomActionRef Id="Wix4ShellExec_X64" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="VR-Gaze-Mirror">
         <Directory Id="LayerDir" Name="Layer" />
         <Directory Id="QuadViewsDir" Name="Quad-Views-Foveated" />
+        <Directory Id="OwnQuadViewsDir" Name="QuadViews" />
         <Directory Id="LicencesDir" Name="Licences" />
       </Directory>
     </StandardDirectory>
@@ -127,6 +139,8 @@
       <ComponentRef Id="LayerRegistration" />
       <ComponentGroupRef Id="SettingsApp" />
       <ComponentGroupRef Id="QuadViewsInstaller" />
+      <ComponentGroupRef Id="OwnQuadViewsFiles" />
+      <ComponentRef Id="OwnQuadViewsRegistration" />
       <ComponentGroupRef Id="Licences" />
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
@@ -183,6 +197,25 @@
       <Files Include="$(var.AppDir)\**" />
     </ComponentGroup>
 
+    <!-- VR Gaze Mirror's quad views layer (built on Quad-Views-Foveated, MIT), with the settings it ships. -->
+    <ComponentGroup Id="OwnQuadViewsFiles" Directory="OwnQuadViewsDir">
+      <Component>
+        <File Id="OwnQuadViewsDll" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.dll" />
+      </Component>
+      <Component>
+        <File Id="OwnQuadViewsJson" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json" />
+      </Component>
+      <Component>
+        <File Id="OwnQuadViewsSettings" Source="$(var.PayloadDir)\QuadViews\settings.cfg" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Off unless the user switched it on (see OWNQUADVIEWSOFF); it belongs above the gaze mirror layer: Fix order. -->
+    <Component Id="OwnQuadViewsRegistration" Directory="OwnQuadViewsDir" Guid="3B8E6F2A-91C4-4D7B-8E05-6A2F1C9D4B37">
+      <RegistryValue Id="LayerOwnQuadViews" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
+                     Name="[OwnQuadViewsDir]XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json" Type="integer" Value="[OWNQUADVIEWSOFF]" KeyPath="yes" />
+    </Component>
+
     <!-- The official, unmodified Quad-Views-Foveated installer, for the offer on the last page and the app's Install button. -->
     <ComponentGroup Id="QuadViewsInstaller" Directory="QuadViewsDir">
       <Component>
@@ -202,6 +235,12 @@
       </Component>
       <Component>
         <File Id="LicenceOpenVR" Source="$(var.PayloadDir)\Licences\LICENSE-OpenVR.txt" />
+      </Component>
+      <Component>
+        <File Id="LicenceQuadViews" Source="$(var.PayloadDir)\Licences\LICENSE-Quad-Views-Foveated.txt" />
+      </Component>
+      <Component>
+        <File Id="LicenceQuadViewsThirdParty" Source="$(var.PayloadDir)\Licences\THIRD-PARTY-quad-views-layer.txt" />
       </Component>
     </ComponentGroup>
 
