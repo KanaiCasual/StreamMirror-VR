@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,12 +21,13 @@ public partial class MainWindow
         var live = MirrorLive.Read();
         var producing = live is { Producing: true };
         var reading = producing && live!.Width > 0; // a reader asked for the picture: the OBS source or the mirror window
+        var delivery = Deliveries(producing);
 
         UpdateStatusPicture();
         var hasPicture = StatusPicture.Source != null;
 
         var onAir = (Brush)FindResource("OnAir");
-        SetTally(StatusTally, StatusTallyDot, StatusTallyText, producing, reading, "Mirroring, nothing reads it yet");
+        SetTally(StatusTally, StatusTallyDot, StatusTallyText, producing, delivery, "Mirroring, nothing takes it yet");
 
         StatusWaitShade.Visibility = StatusWaitNote.Visibility = producing ? Visibility.Collapsed : Visibility.Visible;
         StatusWaitText.Text = "The mirror picks it up by itself, and OBS shows it." +
@@ -58,7 +60,7 @@ public partial class MainWindow
             ("Crop", cropOn ? ChoiceLabel("crop_aspect") : "Off, the whole image"),
             ("Steadying", steady.Count == 0 ? "Off" : char.ToUpper(steady[0][0]) + string.Join(", ", steady)[1..]),
         ]);
-        FillPath([("Headset", producing), ("Mirror", producing || _layerActive), ("OBS or window", reading)]);
+        FillDelivery(delivery);
         LayOutStatusHero();
     }
 
@@ -101,34 +103,97 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Headset, mirror, reader: a tick in a cyan ring for each part the picture has reached, an empty ring before.</summary>
-    private void FillPath((string Name, bool Reached)[] steps)
+    // ---- where the picture goes: the OBS source and the mirror window, and whether it gets there
+
+    private enum DeliveryState { Off, Ready, Receiving, Failing }
+
+    private sealed record Delivery(string Name, DeliveryState State, string Text);
+
+    private long _lastFrameNumber = -1;
+    private DateTime _frameChangedAt;
+    private readonly Dictionary<int, string> _processNames = [];
+
+    /// <summary>
+    /// For OBS and the mirror window: closed, ready (holds a place, no game), receiving (its heartbeat is fresh and the
+    /// game's frames move on), or failing (a game runs but the reader stopped answering, or no new frames come).
+    /// </summary>
+    private List<Delivery> Deliveries(bool producing)
+    {
+        var block = MirrorLive.ReadReaders();
+        var now = DateTime.UtcNow;
+        if (block is { } read && read.FrameNumber != _lastFrameNumber)
+        {
+            _lastFrameNumber = read.FrameNumber;
+            _frameChangedAt = now;
+        }
+        var framesMove = (now - _frameChangedAt).TotalSeconds < 2.5;
+
+        string NameOf(int pid)
+        {
+            if (_processNames.TryGetValue(pid, out var name)) return name;
+            try { name = Process.GetProcessById(pid).ProcessName; } catch { name = ""; }
+            return _processNames[pid] = name;
+        }
+
+        Delivery One(string label, string[] programs, string closed, string openNoPlace)
+        {
+            var mine = block?.Readers.Where(r => programs.Contains(NameOf(r.ProcessId), StringComparer.OrdinalIgnoreCase)).ToList() ?? [];
+            if (mine.Count == 0)
+            {
+                var running = programs.Any(p => Process.GetProcessesByName(p).Length > 0);
+                return running ? new(label, producing ? DeliveryState.Failing : DeliveryState.Off, openNoPlace) : new(label, DeliveryState.Off, closed);
+            }
+            if (!producing) return new(label, DeliveryState.Ready, "Ready, waiting for a game");
+            var fresh = mine.Any(r => r.HeartbeatAgeMs < MirrorLive.ReaderLiveMs);
+            return !fresh ? new(label, DeliveryState.Failing, "Not receiving: it stopped answering")
+                 : !framesMove ? new(label, DeliveryState.Failing, "No new pictures from the game")
+                 : new(label, DeliveryState.Receiving, "Receiving the picture");
+        }
+
+        return
+        [
+            One("OBS", ["obs64", "obs32"], "Closed", "Open, the source is in no shown scene"),
+            One("Mirror window", ["MirrorWindow"], "Closed", "Starting"),
+        ];
+    }
+
+    /// <summary>One line per destination: its name, a dot in the state's colour, and the state in words.</summary>
+    private void FillDelivery(List<Delivery> deliveries)
     {
         StatusPath.Children.Clear();
         StatusPath.ColumnDefinitions.Clear();
-        for (var i = 0; i < steps.Length; i++)
+        StatusPath.RowDefinitions.Clear();
+        StatusPath.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        StatusPath.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var heading = new TextBlock { Text = "Where the picture goes", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 4) };
+        Grid.SetColumnSpan(heading, 2);
+        StatusPath.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        StatusPath.Children.Add(heading);
+        foreach (var delivery in deliveries)
         {
-            if (i > 0)
+            var row = StatusPath.RowDefinitions.Count;
+            StatusPath.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var brush = (Brush)FindResource(delivery.State switch
             {
-                StatusPath.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                var bar = new Border { Height = 1, Background = (Brush)FindResource("Line"), Margin = new Thickness(8, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-                Grid.SetColumn(bar, StatusPath.ColumnDefinitions.Count - 1);
-                StatusPath.Children.Add(bar);
-            }
-            StatusPath.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var reached = steps[i].Reached;
-            var mark = new Border
+                DeliveryState.Receiving => "OnAir",
+                DeliveryState.Ready => "Accent",
+                DeliveryState.Failing => "Warn",
+                _ => "Muted",
+            });
+            var name = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 16, 6) };
+            name.Children.Add(new Ellipse { Width = 8, Height = 8, Fill = brush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 1, 8, 0) });
+            name.Children.Add(new TextBlock { Text = delivery.Name, VerticalAlignment = VerticalAlignment.Center });
+            Grid.SetRow(name, row);
+            var state = new TextBlock
             {
-                Width = 20, Height = 20, CornerRadius = new CornerRadius(10), Margin = new Thickness(0, 0, 7, 0),
-                Background = reached ? new SolidColorBrush(Color.FromArgb(0x2E, 0x2E, 0x9B, 0xFF)) : Brushes.Transparent,
-                BorderBrush = reached ? null : (Brush)FindResource("Muted"), BorderThickness = new Thickness(reached ? 0 : 1.5),
-                Child = reached ? new TextBlock { Text = "", Style = (Style)FindResource("Icon"), FontSize = 11, Foreground = (Brush)FindResource("Accent"), HorizontalAlignment = HorizontalAlignment.Center } : null,
+                Text = delivery.Text, TextAlignment = TextAlignment.Right, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center,
+                Foreground = delivery.State is DeliveryState.Off ? (Brush)FindResource("Muted") : delivery.State is DeliveryState.Failing ? brush : (Brush)FindResource("Text"),
+                FontWeight = delivery.State is DeliveryState.Off ? FontWeights.Normal : FontWeights.SemiBold,
             };
-            var step = new StackPanel { Orientation = Orientation.Horizontal };
-            step.Children.Add(mark);
-            step.Children.Add(new TextBlock { Text = steps[i].Name, FontSize = 13, VerticalAlignment = VerticalAlignment.Center, Foreground = (Brush)FindResource(reached ? "Text" : "Muted") });
-            Grid.SetColumn(step, StatusPath.ColumnDefinitions.Count - 1);
-            StatusPath.Children.Add(step);
+            Grid.SetRow(state, row);
+            Grid.SetColumn(state, 1);
+            StatusPath.Children.Add(name);
+            StatusPath.Children.Add(state);
         }
     }
 
@@ -173,18 +238,27 @@ public partial class MainWindow
     private BitmapSource? _statusShown;
 
     /// <summary>
-    /// A picture's light: Live (red) while a game goes out to a reader - the OBS source or the mirror window -, cyan while
-    /// it is mirrored and nothing reads it, an outlined "Waiting for a game" otherwise.
+    /// A picture's light: Live (red) while the picture reaches OBS or the mirror window, amber while one of them should get
+    /// it and does not, cyan while a game is mirrored and nothing takes it, an outlined "Waiting for a game" otherwise.
     /// </summary>
-    private void SetTally(Border tally, Ellipse dot, TextBlock text, bool producing, bool reading, string mirroringText)
+    private void SetTally(Border tally, Ellipse dot, TextBlock text, bool producing, List<Delivery> deliveries, string mirroringText)
     {
-        if (reading)
+        var failing = deliveries.FirstOrDefault(d => d.State == DeliveryState.Failing);
+        if (producing && deliveries.Any(d => d.State == DeliveryState.Receiving) && failing == null)
         {
             tally.Background = (Brush)FindResource("OnAir");
             dot.Fill = Brushes.White;
             dot.Stroke = null;
             text.Foreground = Brushes.White;
             text.Text = "Live";
+        }
+        else if (producing && failing != null)
+        {
+            tally.Background = (Brush)FindResource("Warn");
+            dot.Fill = (Brush)FindResource("OnAccent");
+            dot.Stroke = null;
+            text.Foreground = (Brush)FindResource("OnAccent");
+            text.Text = "Not reaching " + failing.Name;
         }
         else if (producing)
         {
@@ -207,6 +281,7 @@ public partial class MainWindow
 
     private DateTime _mirrorLiveRead;
     private MirrorState? _mirrorLiveLast;
+    private List<Delivery> _mirrorDeliveries = [];
 
     /// <summary>
     /// The Mirror page's "What OBS gets": the box's picture as it is drawn now. Follows every change of the box; the game's
@@ -227,11 +302,11 @@ public partial class MainWindow
         {
             _mirrorLiveRead = DateTime.UtcNow;
             _mirrorLiveLast = MirrorLive.Read();
+            _mirrorDeliveries = Deliveries(_mirrorLiveLast is { Producing: true });
         }
         var producing = _mirrorLiveLast is { Producing: true };
-        var reading = producing && _mirrorLiveLast!.Width > 0;
         MirrorObsTally.Visibility = producing ? Visibility.Visible : Visibility.Collapsed;
-        if (producing) SetTally(MirrorObsTally, MirrorObsTallyDot, MirrorObsTallyText, producing, reading, "Mirroring");
+        if (producing) SetTally(MirrorObsTally, MirrorObsTallyDot, MirrorObsTallyText, producing, _mirrorDeliveries, "Mirroring");
         MirrorObsLineDot.Fill = (Brush)FindResource(producing ? "OnAir" : "Muted");
         MirrorObsFacts.Text = ChoiceLabel("mirror_eye") + (_obsGets is { } gets ? $", {gets.Width} × {gets.Height}" : "");
     }

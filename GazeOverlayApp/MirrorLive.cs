@@ -59,6 +59,37 @@ public static class MirrorLive
         }
     }
 
+    private const int FrameNumberOffset = 88, ReadersOffset = 304, ReaderSize = 24, ReaderCount = 4;
+    /// <summary>A reader is live while its heartbeat is younger than this (ReaderLiveMs in the header).</summary>
+    public const long ReaderLiveMs = 2000;
+
+    /// <summary>
+    /// The readers that hold a place - the OBS source while it shows in a scene, the mirror window while it is open - with
+    /// the age of their heartbeat, and how many frames the producer has published so far.
+    /// </summary>
+    public static (long FrameNumber, List<(int ProcessId, long HeartbeatAgeMs)> Readers)? ReadReaders()
+    {
+        try
+        {
+            using var mapping = MemoryMappedFile.OpenExisting(FramesName, MemoryMappedFileRights.Read);
+            using var view = mapping.CreateViewAccessor(0, ReadersOffset + ReaderCount * ReaderSize, MemoryMappedFileAccess.Read);
+            if (view.ReadUInt32(0) != FramesMagic) return null;
+            var now = Environment.TickCount64; // GetTickCount64, the clock the readers write
+            var readers = new List<(int, long)>();
+            for (var i = 0; i < ReaderCount; i++)
+            {
+                var at = ReadersOffset + i * ReaderSize;
+                var pid = view.ReadInt32(at);
+                if (pid != 0) readers.Add((pid, now - view.ReadInt64(at + 8)));
+            }
+            return (view.ReadInt64(FrameNumberOffset), readers);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>Who publishes right now: kind (0 nobody, 1 the layer inside an OpenXR game, 2 the SteamVR helper), its process, and the game's program file.</summary>
     public static (int Kind, int ProcessId, string Program)? ReadProducer()
     {
