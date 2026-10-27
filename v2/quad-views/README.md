@@ -12,6 +12,7 @@ What it changes against upstream 1.1.4:
   into the runtime's image on the game's queue, all ordered by one shared fence. The layer adds the sharing extensions
   to the game's Vulkan instance and device and has the swapchains made readable (and its own writable).
 - **Stands aside** (`StandAsideReason`, decided in `framework\dispatch.cpp` when the game makes its instance) when the
+  game does not ask for quad views at all, or when the
   game may render with OpenGL, with none of Direct3D 11, 12 and Vulkan, with Direct3D 12 where D3D11on12 fails, with
   Vulkan where the PC cannot share Vulkan images with Direct3D, or
   when another `*quad_views_foveated` layer is below it. Standing aside, it hands the quad views request on where a

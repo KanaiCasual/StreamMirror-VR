@@ -12,7 +12,7 @@
 // read back from the runtime's Vulkan image.
 //
 //   qvf_test.exe <layer dll> <output folder> <case>
-//   case: d3d11 | d3d12 | d3d12-array | d3d11-and-d3d12 | vulkan | opengl-declared | official-below | gaze-filter
+//   case: d3d11 | d3d12 | d3d12-array | d3d11-and-d3d12 | vulkan | opengl-declared | official-below | stereo-game | gaze-filter
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -771,7 +771,7 @@ int main(int argc, char** argv) {
     DeleteFileA(settings.c_str());
     CreateDirectoryA((folder + "\\Quad-Views-Foveated").c_str(), nullptr);
     WriteText(folder + "\\Quad-Views-Foveated\\settings.cfg", "# the official layer's file\nsharpen_focus_view=0.3\n");
-    const bool standsAside = name == "opengl-declared" || name == "official-below";
+    const bool standsAside = name == "opengl-declared" || name == "official-below" || name == "stereo-game";
     g_vulkan = name == "vulkan";
     g_belowOffersQuadViews = name == "official-below";
 
@@ -822,6 +822,7 @@ int main(int argc, char** argv) {
                                            : g_d3d12 ? XR_KHR_D3D12_ENABLE_EXTENSION_NAME
                                                      : XR_KHR_D3D11_ENABLE_EXTENSION_NAME,
                                            XR_VARJO_QUAD_VIEWS_EXTENSION_NAME};
+    if (name == "stereo-game") extensions.pop_back(); // A game that never asks for quad views (Star Citizen, say).
     if (name == "d3d11-and-d3d12") extensions.push_back(XR_KHR_D3D12_ENABLE_EXTENSION_NAME);
     if (name == "opengl-declared") extensions.push_back("XR_KHR_opengl_enable");
     XrInstanceCreateInfo instanceInfo{XR_TYPE_INSTANCE_CREATE_INFO};

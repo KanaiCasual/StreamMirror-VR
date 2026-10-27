@@ -14,7 +14,7 @@ if errorlevel 1 exit /b 1
 del qvf_test.obj 2>nul
 set LAYER=%~dp0..\..\bin\quad-views\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll
 set FAILED=0
-for %%c in (gaze-filter d3d11 d3d12 d3d12-array d3d11-and-d3d12 vulkan opengl-declared official-below) do (
+for %%c in (gaze-filter d3d11 d3d12 d3d12-array d3d11-and-d3d12 vulkan opengl-declared official-below stereo-game) do (
     "%OUT%\qvf_test.exe" "%LAYER%" "%OUT%\out" %%c
     if errorlevel 1 set FAILED=1
 )

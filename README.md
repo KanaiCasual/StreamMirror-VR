@@ -476,7 +476,7 @@ foveate and peripheral resolution, sharpening, transition, Turbo mode. On top of
 - **Show diagnostics in the headset**: the surround tinted blue, the blend amber, the sharp region green, a ring where
   the tracker says you look (red while it has lost your eyes) and a cross where the sharp region is aimed. The mirror
   shows it too: switch it off before you stream.
-- It stays out of games it cannot help: a game that may render with OpenGL, or one where the official layer
+- It stays out of games it cannot help: a game that never asks for quad views, one that may render with OpenGL, or one where the official layer
   sits below it. Its log says why. The first time, it starts from your Quad-Views-Foveated settings.
 - **Render load:** the pixels per frame your settings make the game render, for the last game start and the saved
   file.

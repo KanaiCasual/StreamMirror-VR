@@ -3671,16 +3671,22 @@ namespace openxr_api_layer {
         static const std::string_view otherGraphics[] = {"XR_KHR_opengl_enable",
                                                           "XR_KHR_opengl_es_enable",
                                                           "XR_MNDX_egl_enable"};
-        bool d3d11 = false, d3d12 = false, vulkan = false;
+        bool d3d11 = false, d3d12 = false, vulkan = false, quadViews = false;
         std::string others;
         for (uint32_t i = 0; i < createInfo.enabledExtensionCount; i++) {
             const std::string_view ext(createInfo.enabledExtensionNames[i]);
             d3d11 = d3d11 || ext == XR_KHR_D3D11_ENABLE_EXTENSION_NAME;
             d3d12 = d3d12 || ext == XR_KHR_D3D12_ENABLE_EXTENSION_NAME;
+            quadViews = quadViews || ext == XR_VARJO_QUAD_VIEWS_EXTENSION_NAME;
             vulkan = vulkan || ext == XR_KHR_VULKAN_ENABLE_EXTENSION_NAME || ext == XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME;
             if (std::find(std::cbegin(otherGraphics), std::cend(otherGraphics), ext) != std::cend(otherGraphics)) {
                 others += (others.empty() ? "" : ", ") + std::string(ext);
             }
+        }
+        // A game that does not ask for quad views gets nothing from this layer: it stays out entirely (nothing added to
+        // the game's graphics setup, which matters most in games with anti-cheat).
+        if (!quadViews) {
+            return "the game does not ask for quad views";
         }
         if (!others.empty()) {
             return fmt::format("the game may render with {}, which this layer cannot compose", others);
