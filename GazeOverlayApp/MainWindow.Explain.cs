@@ -18,7 +18,7 @@ public partial class MainWindow
     /// <summary>One paragraph: a few words that name its subject (may be empty), and the text.</summary>
     private readonly record struct Part(string Lead, string Text);
 
-    private const string HowThisPageWorks = "HOW THIS PAGE WORKS";
+    private const string HowThisPageWorks = "How this page works";
     private static readonly Part AboutSliders = new("Sliders.", "Click a value to type one. Double-click a slider for its default.");
 
     private readonly List<(TabItem Page, string Key, Action<bool> Show)> _explanations = [];
@@ -61,7 +61,7 @@ public partial class MainWindow
             new("Motion.", "Raw eye tracking jitters, and eyes close in a blink. Adaptive smoothing holds the ring still while your eye rests and lets it jump as you look elsewhere.\n\nDwell tightens the ring after a held gaze, so viewers can tell reading a gauge from passing over it.\n\nThe last three settings say what the ring does in a blink and when tracking counts as lost."),
             AboutSliders);
 
-        AddExplanation(CoverTab, ExplainCover, "cover", "FOR HEADSETS WITH CAMERA-BASED TRACKING (INSIDE-OUT, SLAM)",
+        AddExplanation(CoverTab, ExplainCover, "cover", "For headsets with camera-based tracking (inside-out, SLAM)",
             new("", "A headset with camera-based tracking holds its place in the room by anchors: fixed points its cameras pick out around you, such as corners, edges and patterns on walls and furniture.\n\nIt works out how your head moved from the way those points shift between one camera picture and the next. For that it needs points that stand still."),
             new("", "A monitor that shows the game gives it points that move. The picture is bright and full of sharp detail, so the cameras find plenty of points in it, and it turns as you turn your head. If the headset takes those points for anchors, it places your head wrong: the view can drift, shake or jump.\n\nThe effect grows with the share of the cameras' view the monitor fills: close to the screen in a racing or flight rig, with several monitors, or in a dim room where the monitor is the brightest thing in sight."),
             new("", "The cover puts black over the game's window, so the cameras find no moving points there and keep to the room. It covers the game's own window and nothing else.\n\nIt stays while the game is the window in front: bring another window to the front and the cover goes at once."),

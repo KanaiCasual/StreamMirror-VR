@@ -86,7 +86,7 @@ replaces a saved picture by itself.
 
 On the Mirror page, the blue box on the picture is what your viewers get.
 
-1. Tick **Crop the picture** and pick the shape: **16:9** for a normal stream.
+1. Switch on **Crop the picture** and pick the shape: **16:9** for a normal stream.
 2. **Measure where your view ends** (worth it once per headset): press **Measure in headset** on the **View edges**
    card. In the headset, the view goes black and a white block flashes at one side. Push it out with the arrow keys
    until it is gone from your view, press Enter, and do the next side. The picture then shows a dashed box: the part
@@ -134,7 +134,7 @@ that profile by itself whenever that game starts. Make one per game that needs a
 
 Changes you make afterwards show on the stream at once, but the profile keeps them only when you press **Save**. An
 orange line under the bar tells you something is unsaved, and **Revert** goes back. That way trying something out never
-spoils a profile by accident. Prefer every change saved as you go? Tick **Save edits automatically**; **Revert** then
+spoils a profile by accident. Prefer every change saved as you go? Switch on **Save edits automatically**; **Revert** then
 takes you back to how the profile was when you opened it. And on any page, **Ctrl+Z** undoes your last change there.
 
 ## 9. Before you go live
@@ -142,7 +142,7 @@ takes you back to how the profile was when you opened it. And on any page, **Ctr
 - [ ] The Status page shows the game's name and, with eye tracking, "gaze arriving".
 - [ ] The OBS source fills the canvas (Ctrl+F done) and moves smoothly.
 - [ ] The ring sits where you look (marker checked, then switched **off**).
-- [ ] Nothing you don't want on stream: tool panels such as OpenKneeboard come along by default; untick **Show other
+- [ ] Nothing you don't want on stream: tool panels such as OpenKneeboard come along by default; switch off **Show other
       tools' panels** on the Picture card to keep them off. The game's own panels stay.
 
 ## 10. Which setup is yours?

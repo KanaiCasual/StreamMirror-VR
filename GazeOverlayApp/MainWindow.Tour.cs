@@ -69,7 +69,7 @@ public partial class MainWindow
             new(CropTab, () => Ancestor<WrapPanel>(CropProfile), "Profiles",
                 "A profile keeps a framing under a name. New starts one from the default framing, Save as... copies the current one, and the ... button renames or deletes it.\n\nGive it a game's program file under For game (DCS.exe, say) and the mirror switches to it by itself when that game starts."),
             new(CropTab, () => Ancestor<DockPanel>(CropProfileAutoSave), "Saving a profile",
-                "Changes show on the stream at once, but go into the profile only when you press Save, so trying something out never spoils it. This line turns orange while something is unsaved, and Revert goes back.\n\nTick Save edits automatically to save every change as you make it; Revert then goes back to how the profile was when you opened it.\n\nOn any page, Ctrl+Z undoes one change and Ctrl+Y redoes it."),
+                "Changes show on the stream at once, but go into the profile only when you press Save, so trying something out never spoils it. This line turns orange while something is unsaved, and Revert goes back.\n\nSwitch on Save edits automatically to save every change as you make it; Revert then goes back to how the profile was when you opened it.\n\nOn any page, Ctrl+Z undoes one change and Ctrl+Y redoes it."),
             new(CropTab, () => MirrorToggle, "The mirror window",
                 "For Discord and other programs that capture windows: a window with the same picture, behind your other windows. This button opens and closes it.\n\nWith the Gaze Mirror source in OBS you do not need it."),
             new(CropTab, () => MirrorWindowExpander, "Mirror window settings",

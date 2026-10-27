@@ -149,13 +149,14 @@ public partial class MainWindow : Window
 
     private void FillNav()
     {
-        // The pages in their order, with a heading where a group begins: the mirror is what the program is for and comes
-        // first; the ring's four pages stand together; what is neither comes after them.
+        // The pages in their order, with a heading where a group begins: what goes to the stream comes first (Status,
+        // Mirror, Desktop cover); the ring's pages stand together; then what belongs to the headset; About last.
+        TabItem[] order = [StatusTab, CropTab, CoverTab, GazeTab, LookTab, QuadViewsTab, LayersTab, AboutTab];
         var items = new List<NavItem>();
-        foreach (var tab in Tabs.Items.Cast<TabItem>().Where(t => _navQuadViews || !ReferenceEquals(t, QuadViewsTab)))
+        foreach (var tab in order.Concat(Tabs.Items.Cast<TabItem>().Except(order)).Where(t => _navQuadViews || !ReferenceEquals(t, QuadViewsTab)))
         {
-            if (ReferenceEquals(tab, GazeTab)) items.Add(new NavItem("GAZE RING", "", null, isHeading: true));
-            if (ReferenceEquals(tab, CoverTab)) items.Add(new NavItem("EXTRAS", "", null, isHeading: true));
+            if (ReferenceEquals(tab, GazeTab)) items.Add(new NavItem("Gaze ring", "", null, isHeading: true));
+            if (ReferenceEquals(tab, QuadViewsTab) || (ReferenceEquals(tab, LayersTab) && !_navQuadViews)) items.Add(new NavItem("Headset", "", null, isHeading: true));
             if (ReferenceEquals(tab, AboutTab)) items.Add(new NavItem("", "", null, isHeading: true));
             items.Add(new NavItem((string)tab.Header, PageIcons.GetValueOrDefault((string)tab.Header) ?? "\uE713", tab));
         }
@@ -190,8 +191,8 @@ public partial class MainWindow : Window
     /// <summary>The Gaze page's cards, one topic each; a key of its group not named here goes in the last card.</summary>
     private static readonly (string Title, string[] Keys)[] PlacementCards =
     [
-        ("WHERE THE RING LANDS", ["projection", "focus_distance", "offset_x", "offset_y"]),
-        ("CALIBRATION", ["headset_marker", "use_raw_gaze"]),
+        ("Where the ring lands", ["projection", "focus_distance", "offset_x", "offset_y"]),
+        ("Calibration", ["headset_marker", "use_raw_gaze"]),
     ];
 
     /// <summary>The Ring page's first card: what most people set (a preset does the rest).</summary>
@@ -205,19 +206,19 @@ public partial class MainWindow : Window
     [
         ("ring-look", "More of the look: line, glow and blending", Settings.GroupLook,
         [
-            ("LINE", ["thickness", "feather"]),
-            ("GLOW AND BLENDING", ["glow", "glow_strength", "opacity", "blend", "solidity", "fill_opacity", "shadow_opacity"]),
+            ("Line", ["thickness", "feather"]),
+            ("Glow and blending", ["glow", "glow_strength", "opacity", "blend", "solidity", "fill_opacity", "shadow_opacity"]),
         ]),
         ("ring-tail", "Tail: the trace behind the ring", Settings.GroupTail,
         [
-            ("TAIL", ["tail_opacity", "trail_ms", "blob_trail_ms", "tail_space", "tail_max"]),
-            ("HEATMAP STYLE", ["heat_ms", "heat_cool_ms"]),
+            ("Tail", ["tail_opacity", "trail_ms", "blob_trail_ms", "tail_space", "tail_max"]),
+            ("Heatmap style", ["heat_ms", "heat_cool_ms"]),
         ]),
         ("ring-motion", "Motion: smoothing, dwell and blinks", Settings.GroupMotion,
         [
-            ("SMOOTHING", ["filter", "filter_min_cutoff", "filter_beta", "smoothing_ms"]),
-            ("DWELL", ["dwell_ms", "dwell_shrink"]),
-            ("BLINKS AND TRACKING LOSS", ["hold_ms", "fade_ms", "timeout_ms"]),
+            ("Smoothing", ["filter", "filter_min_cutoff", "filter_beta", "smoothing_ms"]),
+            ("Dwell", ["dwell_ms", "dwell_shrink"]),
+            ("Blinks and tracking loss", ["hold_ms", "fade_ms", "timeout_ms"]),
         ]),
     ];
 
@@ -259,14 +260,14 @@ public partial class MainWindow : Window
         LookHeaderBar.Children.Add(BuildPresets());
         var basics = new StackPanel();
         AddRows(basics, Settings.GroupLook, RingBasics);
-        PanelLook.Children.Add(NewCard("RING", basics, 0));
+        PanelLook.Children.Add(NewCard("Ring", basics, 0));
         for (var i = 0; i < RingSections.Length; i++)
         {
             var (key, header, group, topics) = RingSections[i];
             var body = new StackPanel();
             foreach (var (topic, keys) in topics)
             {
-                body.Children.Add(new TextBlock { Text = topic, Style = (Style)FindResource("CardTitle"), Margin = new Thickness(0, body.Children.Count == 0 ? 0 : 12, 0, 4) });
+                body.Children.Add(new TextBlock { Text = topic, Style = (Style)FindResource("SubTitle"), Margin = new Thickness(0, body.Children.Count == 0 ? 0 : 12, 0, 4) });
                 AddRows(body, group, keys);
             }
             if (i == RingSections.Length - 1 || RingSections[i + 1].Group != group) AddRows(body, group, NotPlaced(group));

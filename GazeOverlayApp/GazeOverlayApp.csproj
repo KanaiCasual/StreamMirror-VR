@@ -37,6 +37,7 @@
     <!-- The installer payload lives next to the project for the MSI build; it is not part of the app. -->
     <None Remove="Payload\**" />
     <Resource Include="Assets\icon.ico" />
+    <Resource Include="Assets\logo-64.png" />
     <!-- The changelog, shown on the About page. -->
     <EmbeddedResource Include="..\CHANGELOG.md" Link="CHANGELOG.md" LogicalName="CHANGELOG.md" />
     <!-- owner/name of the GitHub repository whose releases the app looks at. Empty = no update checks. Set by

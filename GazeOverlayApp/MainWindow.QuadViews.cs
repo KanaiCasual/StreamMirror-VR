@@ -35,8 +35,8 @@ public partial class MainWindow
         var focus = new StackPanel();
         var resolution = new StackPanel();
         var cards = new Grid { Margin = new Thickness(0, 0, -10, 0) };
-        var focusCard = NewCard("LIVE: A RUNNING GAME SHOWS CHANGES AT ONCE", focus, 0);
-        var resolutionCard = NewCard("NEXT START: CHANGES WAIT FOR THE GAME TO START AGAIN", resolution, 0);
+        var focusCard = NewCard("Live: a running game shows changes at once", focus, 0);
+        var resolutionCard = NewCard("Next start: changes wait for the game to start again", resolution, 0);
         focusCard.Margin = resolutionCard.Margin = new Thickness(0, 0, 10, 10);
         cards.Children.Add(focusCard);
         cards.Children.Add(resolutionCard);

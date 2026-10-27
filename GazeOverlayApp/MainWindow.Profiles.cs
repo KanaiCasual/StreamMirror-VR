@@ -34,7 +34,7 @@ public partial class MainWindow
             var def = Settings.All.First(d => d.Key == key);
             var row = (Grid)BuildRow(def);
             // In a card a third of the page wide, the label column gives way to the drop-down.
-            row.ColumnDefinitions[0].Width = new GridLength(78);
+            row.ColumnDefinitions[0].Width = new GridLength(104);
             PanelOutput.Children.Add(row);
         }
         foreach (var key in new[] { "gaze_source" })

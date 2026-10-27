@@ -342,7 +342,7 @@ public static class Settings
         {
             Key = "use_raw_gaze", Group = GroupPlacement, Kind = SettingKind.Toggle, Default = "0",
             Label = "Ignore Quad-Views-Foveated's focus offsets",
-            Description = "Legacy placement.\n\nQuad-Views-Foveated lets you shift its sharp region; tick this to keep that shift from moving the ring.",
+            Description = "Legacy placement.\n\nQuad-Views-Foveated lets you shift its sharp region; switch this on to keep that shift from moving the ring.",
         },
 
         // ---------------------------------------------------------------- Crop (its own tab and tool)
