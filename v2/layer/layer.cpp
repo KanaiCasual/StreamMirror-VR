@@ -1063,7 +1063,7 @@ namespace gaze_mirror::layer {
             width = std::max(64, int32_t(lroundf(float(width) * shrink)) & ~1);
             height = std::max(64, int32_t(lroundf(float(height) * shrink)) & ~1);
             if (!g->flatFrames) {
-                Log("frame: flat screens alone (%zu): drawn onto a black %d x %d eye image where the headset shows them", layers.size(), width, height);
+                Log("frame: flat screens alone (%zu): drawn onto a black %d x %d eye image where the headset shows them, counted as %d x %d", layers.size(), width, height, g->worldWidth > 0 ? g->worldWidth : width, g->worldHeight > 0 ? g->worldHeight : height);
                 g->flatFrames = true;
             }
             FrameInput input;
@@ -1101,9 +1101,15 @@ namespace gaze_mirror::layer {
                 image.width = width;
                 image.height = height;
                 image.linearLight = true;
+                // Crop, ring and the picture go by the eye image's size as last seen, as with quad views: the picture
+                // keeps its size when a game goes from its world to a menu and back.
+                if (g->worldWidth > 0 && g->worldHeight > 0) {
+                    image.nominalWidth = g->worldWidth;
+                    image.nominalHeight = g->worldHeight;
+                }
                 EyeView& view = input.views[eye];
-                view.width = float(width);
-                view.height = float(height);
+                view.width = float(image.fullWidth());
+                view.height = float(image.fullHeight());
                 view.fov = {tanf(located[eye].fov.angleLeft), tanf(located[eye].fov.angleRight), tanf(located[eye].fov.angleUp), tanf(located[eye].fov.angleDown)};
                 view.orientation = {located[eye].pose.orientation.x, located[eye].pose.orientation.y, located[eye].pose.orientation.z,
                                     located[eye].pose.orientation.w};
