@@ -1885,6 +1885,26 @@ int wmain(int argc, wchar_t** argv) {
             frameWithPanel();
             const bool readOver = pixelAt(0.42f, 0.58f, inside) && pixelAt(0.30f, 0.58f, outside);
             Check(readOver && isMagenta(inside) && !isMagenta(outside), "a second projection layer over the world is in the picture too");
+            // A frame with the flat screen alone, no world (a game's menu or loading screen): the screen on a black eye
+            // image, where the headset shows it; then the world again.
+            const int worldOutside[3] = {outside[0], outside[1], outside[2]};
+            const XrCompositionLayerBaseHeader* flatOnly[] = {reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
+            XrFrameEndInfo flatFrame = frameEnd;
+            flatFrame.layerCount = 1;
+            flatFrame.layers = flatOnly;
+            for (int i = 0; i < 2; i++) {
+                me.heartbeatMs = static_cast<LONGLONG>(GetTickCount64());
+                endFrame(session, &flatFrame);
+            }
+            const bool readFlat = pixelAt(0.42f, 0.58f, inside) && pixelAt(0.30f, 0.58f, outside);
+            printf("       flat screen alone: at 42 %%, 58 %%: %d, %d, %d; at 30 %%, 58 %%: %d, %d, %d\n", inside[0], inside[1], inside[2], outside[0], outside[1], outside[2]);
+            Check(readFlat && isMagenta(inside) && outside[0] < 10 && outside[1] < 10 && outside[2] < 10,
+                  "a frame with flat screens alone (a menu): the screen on a black picture, where the headset shows it");
+            frameWithPanel();
+            frameWithPanel();
+            const bool readBack = pixelAt(0.30f, 0.58f, outside);
+            Check(readBack && abs(outside[0] - worldOutside[0]) < 8 && abs(outside[1] - worldOutside[1]) < 8 && abs(outside[2] - worldOutside[2]) < 8,
+                  "and when the world is back, so is the game's picture");
             withPanel[1] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad);
             FILE* noPanels = nullptr;
             _wfopen_s(&noPanels, settingsFile.c_str(), L"w");

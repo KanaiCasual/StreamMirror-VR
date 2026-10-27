@@ -134,6 +134,12 @@ namespace gaze_mirror::layer {
             int logOverlay = 0;
             int logAids = 0;
             int32_t nominalWidth = 0, nominalHeight = 0; // Quad views: the eye image's size at the inner image's sharpness.
+            // Frames with flat screens alone (a menu, a loading screen, a game shown on a screen in VR): the screens are
+            // drawn onto a black eye image of our own, the size of the eye image last seen (so the crop stays put).
+            Microsoft::WRL::ComPtr<ID3D11Texture2D> flatCanvas[2];
+            Microsoft::WRL::ComPtr<ID3D11RenderTargetView> flatTarget[2];
+            int32_t worldWidth = 0, worldHeight = 0;
+            bool flatFrames = false; // The last mirrored frame was one of those.
         };
         State* g = nullptr;
 
@@ -241,6 +247,8 @@ namespace gaze_mirror::layer {
             g->panels.start(device);
             g->lastPanelCount = 0;
             g->logPanels = 0;
+            g->worldWidth = g->worldHeight = 0;
+            g->flatFrames = false;
             g->logOtherLayers = 0;
             g->frameCount = 0;
             g->gaze.onSessionCreated(*session, createInfo->systemId);
@@ -263,6 +271,10 @@ namespace gaze_mirror::layer {
                 g->pipeline.stop(); // Before the runtime frees its images: we hold views of them.
                 g->marker.stop();
                 g->panels.stop();
+                for (int eye = 0; eye < 2; eye++) {
+                    g->flatTarget[eye].Reset();
+                    g->flatCanvas[eye].Reset();
+                }
                 g->pipelineReady = false;
                 g->mirrorDevice = nullptr;
                 {
@@ -788,6 +800,17 @@ namespace gaze_mirror::layer {
             return true;
         }
 
+        // What the next hand-backs of a swapchain copy: this sub-image's slice and rectangle too.
+        void NeedForMirror(SwapchainState& state, const XrSwapchainSubImage& sub) {
+            if (sub.imageArrayIndex < 32) state.neededSlices |= 1u << sub.imageArrayIndex;
+            const XrRect2Di& rect = sub.imageRect;
+            D3D11_BOX& box = state.neededBox;
+            box.left = std::min(box.left, UINT(std::max(rect.offset.x, 0)));
+            box.top = std::min(box.top, UINT(std::max(rect.offset.y, 0)));
+            box.right = std::max(box.right, UINT(std::max(rect.offset.x + rect.extent.width, 0)));
+            box.bottom = std::max(box.bottom, UINT(std::max(rect.offset.y + rect.extent.height, 0)));
+        }
+
         // The world: the frame's first projection layer (its views 0 and 1 are the eyes), and where it lies in the frame.
         const XrCompositionLayerProjection* WorldOf(const XrFrameEndInfo* frame, uint32_t* index = nullptr) {
             for (uint32_t i = 0; i < frame->layerCount; i++) {
@@ -817,7 +840,14 @@ namespace gaze_mirror::layer {
         std::vector<const XrCompositionLayerBaseHeader*> PanelLayers(const XrFrameEndInfo* frame) {
             std::vector<const XrCompositionLayerBaseHeader*> panels;
             uint32_t worldIndex = 0;
-            if (g->pipeline.settings().showPanels && WorldOf(frame, &worldIndex)) {
+            if (!WorldOf(frame)) {
+                for (uint32_t i = 0; i < frame->layerCount; i++) {
+                    const XrCompositionLayerBaseHeader* layer = frame->layers[i];
+                    if (layer && (layer->type == XR_TYPE_COMPOSITION_LAYER_QUAD || layer->type == XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR)) {
+                        panels.push_back(layer);
+                    }
+                }
+            } else if (g->pipeline.settings().showPanels && WorldOf(frame, &worldIndex)) {
                 for (uint32_t i = worldIndex + 1; i < frame->layerCount; i++) {
                     const XrCompositionLayerBaseHeader* layer = frame->layers[i];
                     if (!layer) continue;
@@ -967,6 +997,148 @@ namespace gaze_mirror::layer {
             if (g->on12) g->immediate11->Flush();
         }
 
+        // Where the eyes sit in the head (some headsets' displays are turned outwards), and where the gaze points.
+        void HeadAndGaze(const XrFrameEndInfo* frame, FrameInput& input) {
+            XrViewLocateInfo locate{XR_TYPE_VIEW_LOCATE_INFO};
+            locate.viewConfigurationType = g->viewConfiguration;
+            locate.displayTime = frame->displayTime;
+            locate.space = g->gaze.viewSpace();
+            XrViewState viewState{XR_TYPE_VIEW_STATE};
+            XrView views[4] = {{XR_TYPE_VIEW}, {XR_TYPE_VIEW}, {XR_TYPE_VIEW}, {XR_TYPE_VIEW}};
+            uint32_t viewCount = 0;
+            if (locate.space != XR_NULL_HANDLE && XR_SUCCEEDED(g->next.xrLocateViews(g->session, &locate, &viewState, 4, &viewCount, views)) &&
+                viewCount >= 2 && (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT)) {
+                for (int eye = 0; eye < 2; eye++) {
+                    input.eyeInHead[eye].position = {views[eye].pose.position.x, views[eye].pose.position.y, views[eye].pose.position.z};
+                    input.eyeInHead[eye].orientation = {views[eye].pose.orientation.x, views[eye].pose.orientation.y, views[eye].pose.orientation.z,
+                                                        views[eye].pose.orientation.w};
+                }
+                const GazeSample gaze = g->gaze.locate(frame->displayTime);
+                if (gaze.valid) {
+                    input.gaze.valid = true;
+                    input.gaze.hasRay = true;
+                    input.gaze.origin = {gaze.pose.position.x, gaze.pose.position.y, gaze.pose.position.z};
+                    const Quat q{gaze.pose.orientation.x, gaze.pose.orientation.y, gaze.pose.orientation.z, gaze.pose.orientation.w};
+                    input.gaze.direction = Rotate(q, {0, 0, -1});
+                }
+            }
+        }
+
+        // A frame with flat screens alone - a game's menu or loading screen, a game shown on a screen in VR: the screens
+        // are drawn onto a black eye image where the headset shows them, and that goes out as the eye's picture. The image
+        // has the size of the eye image last seen (at most 4096 on its long side), so the crop stays where it was.
+        void MirrorFlatFrame(const XrFrameEndInfo* frame, const std::vector<const XrCompositionLayerBaseHeader*>& layers) {
+            const int mirrored = g->pipeline.settings().eye == 0 ? 0 : 1;
+            const bool snapshotDue = g->pipeline.snapshotDue();
+            // The eyes at the frame's time, in the first screen's space: a stand-in for the world the panels go by.
+            const XrCompositionLayerBaseHeader* first = layers.front();
+            const XrSpace space = first->type == XR_TYPE_COMPOSITION_LAYER_QUAD ? reinterpret_cast<const XrCompositionLayerQuad*>(first)->space
+                                                                                  : reinterpret_cast<const XrCompositionLayerCylinderKHR*>(first)->space;
+            XrViewLocateInfo locate{XR_TYPE_VIEW_LOCATE_INFO};
+            locate.viewConfigurationType = g->viewConfiguration;
+            locate.displayTime = frame->displayTime;
+            locate.space = space;
+            XrViewState viewState{XR_TYPE_VIEW_STATE};
+            XrView located[4] = {{XR_TYPE_VIEW}, {XR_TYPE_VIEW}, {XR_TYPE_VIEW}, {XR_TYPE_VIEW}};
+            uint32_t locatedCount = 0;
+            const XrViewStateFlags both = XR_VIEW_STATE_POSITION_VALID_BIT | XR_VIEW_STATE_ORIENTATION_VALID_BIT;
+            if (XR_FAILED(g->next.xrLocateViews(g->session, &locate, &viewState, 4, &locatedCount, located)) || locatedCount < 2 ||
+                (viewState.viewStateFlags & both) != both) {
+                LogFewTimes(g->logFrame, 3, "frame: flat screens alone, but the eyes cannot be located in their space - not mirrored");
+                return;
+            }
+            XrCompositionLayerProjectionView worldViews[2] = {{XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW}, {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW}};
+            XrCompositionLayerProjection world{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+            world.space = space;
+            world.viewCount = 2;
+            world.views = worldViews;
+            for (int eye = 0; eye < 2; eye++) {
+                worldViews[eye].pose = located[eye].pose;
+                worldViews[eye].fov = located[eye].fov;
+            }
+
+            // The black image, made when its size changes.
+            int32_t width = g->worldWidth > 0 ? g->worldWidth : 2048, height = g->worldHeight > 0 ? g->worldHeight : 2048;
+            const float shrink = std::min(1.f, 4096.f / float(std::max(width, height)));
+            width = std::max(64, int32_t(lroundf(float(width) * shrink)) & ~1);
+            height = std::max(64, int32_t(lroundf(float(height) * shrink)) & ~1);
+            if (!g->flatFrames) {
+                Log("frame: flat screens alone (%zu): drawn onto a black %d x %d eye image where the headset shows them", layers.size(), width, height);
+                g->flatFrames = true;
+            }
+            FrameInput input;
+            SourceImage canvas[2];
+            for (int eye = 0; eye < 2; eye++) {
+                if (eye != mirrored && !snapshotDue) continue;
+                D3D11_TEXTURE2D_DESC desc{};
+                if (g->flatCanvas[eye]) g->flatCanvas[eye]->GetDesc(&desc);
+                if (!g->flatCanvas[eye] || int32_t(desc.Width) != width || int32_t(desc.Height) != height) {
+                    if (g->flatCanvas[eye]) g->panels.forget({g->flatCanvas[eye].Get()});
+                    g->flatTarget[eye].Reset();
+                    g->flatCanvas[eye].Reset();
+                    desc = {};
+                    desc.Width = UINT(width);
+                    desc.Height = UINT(height);
+                    desc.MipLevels = desc.ArraySize = 1;
+                    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+                    desc.SampleDesc.Count = 1;
+                    desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+                    if (FAILED(g->mirrorDevice->CreateTexture2D(&desc, nullptr, &g->flatCanvas[eye])) ||
+                        FAILED(g->mirrorDevice->CreateRenderTargetView(g->flatCanvas[eye].Get(), nullptr, &g->flatTarget[eye]))) {
+                        g->flatCanvas[eye].Reset();
+                        LogFewTimes(g->logFrame, 3, "frame: no %d x %d image for flat screens - not mirrored", width, height);
+                        return;
+                    }
+                }
+                Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
+                g->mirrorDevice->GetImmediateContext(&context);
+                const float black[4] = {0.f, 0.f, 0.f, 1.f};
+                context->ClearRenderTargetView(g->flatTarget[eye].Get(), black);
+
+                SourceImage& image = canvas[eye];
+                image.texture = g->flatCanvas[eye].Get();
+                image.viewFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+                image.width = width;
+                image.height = height;
+                image.linearLight = true;
+                EyeView& view = input.views[eye];
+                view.width = float(width);
+                view.height = float(height);
+                view.fov = {tanf(located[eye].fov.angleLeft), tanf(located[eye].fov.angleRight), tanf(located[eye].fov.angleUp), tanf(located[eye].fov.angleDown)};
+                view.orientation = {located[eye].pose.orientation.x, located[eye].pose.orientation.y, located[eye].pose.orientation.z,
+                                    located[eye].pose.orientation.w};
+                view.valid = true;
+                std::vector<Panel> panels;
+                for (const XrCompositionLayerBaseHeader* layer : layers) {
+                    panels.clear();
+                    PanelsOf(layer, eye, frame, &world, panels);
+                    for (const Panel& panel : panels) g->panels.draw(image, view.fov, panel);
+                }
+                input.images[eye] = &image;
+            }
+            // What the next hand-backs copy: the screens' pictures; the eyes' swapchains are not read meanwhile.
+            {
+                std::lock_guard<std::mutex> guard(g->lock);
+                for (auto& entry : g->swapchains) {
+                    entry.second.layoutKnown = true;
+                    entry.second.neededSlices = 0;
+                }
+                for (const XrCompositionLayerBaseHeader* layer : layers) {
+                    ForEachSubImage(layer, [&](const XrSwapchainSubImage& sub) {
+                        const auto found = g->swapchains.find(sub.swapchain);
+                        if (found != g->swapchains.end()) NeedForMirror(found->second, sub);
+                    });
+                }
+                for (auto& entry : g->swapchains) {
+                    if (!entry.second.neededSlices) ReleaseCopy(entry.second);
+                }
+            }
+            HeadAndGaze(frame, input);
+            input.gazeSupport = g->gaze.supported() ? 1 : 2;
+            g->pipeline.frame(input);
+            if (g->on12) g->immediate11->Flush();
+        }
+
         void MirrorFrame(const XrFrameEndInfo* frame, const std::vector<const XrCompositionLayerBaseHeader*>& panelLayers) {
             const XrCompositionLayerProjection* projection = WorldOf(frame);
             if (!projection || projection->viewCount < 2) return;
@@ -985,15 +1157,7 @@ namespace gaze_mirror::layer {
                     entry.second.layoutKnown = true;
                     entry.second.neededSlices = 0;
                 }
-                const auto need = [](SwapchainState& state, const XrSwapchainSubImage& sub) {
-                    if (sub.imageArrayIndex < 32) state.neededSlices |= 1u << sub.imageArrayIndex;
-                    const XrRect2Di& rect = sub.imageRect;
-                    D3D11_BOX& box = state.neededBox;
-                    box.left = std::min(box.left, UINT(std::max(rect.offset.x, 0)));
-                    box.top = std::min(box.top, UINT(std::max(rect.offset.y, 0)));
-                    box.right = std::max(box.right, UINT(std::max(rect.offset.x + rect.extent.width, 0)));
-                    box.bottom = std::max(box.bottom, UINT(std::max(rect.offset.y + rect.extent.height, 0)));
-                };
+                const auto need = NeedForMirror;
                 for (uint32_t i = 0; i < projection->viewCount && i < 4; i++) {
                     const int eyeOfView = int(i % 2);
                     const auto found = g->swapchains.find(projection->views[i].subImage.swapchain);
@@ -1067,36 +1231,21 @@ namespace gaze_mirror::layer {
                     input.views[eye].height = float(g->nominalHeight);
                 }
             }
+            if (input.views[mirrored].valid) {
+                g->worldWidth = int32_t(input.views[mirrored].width);
+                g->worldHeight = int32_t(input.views[mirrored].height);
+            }
+            if (g->flatFrames) {
+                Log("frame: the game's world is back");
+                g->flatFrames = false;
+            }
             if (!input.images[mirrored]) g->pipeline.renderMissed();
             if (!input.images[0] && !input.images[1]) {
                 LogFewTimes(g->logFrame, 3, "frame: the eyes' swapchains are unknown or have no released image yet");
                 return;
             }
 
-            // Where the eyes sit in the head (some headsets' displays are turned outwards), and where the gaze points.
-            XrViewLocateInfo locate{XR_TYPE_VIEW_LOCATE_INFO};
-            locate.viewConfigurationType = g->viewConfiguration;
-            locate.displayTime = frame->displayTime;
-            locate.space = g->gaze.viewSpace();
-            XrViewState viewState{XR_TYPE_VIEW_STATE};
-            XrView views[4] = {{XR_TYPE_VIEW}, {XR_TYPE_VIEW}, {XR_TYPE_VIEW}, {XR_TYPE_VIEW}};
-            uint32_t viewCount = 0;
-            if (locate.space != XR_NULL_HANDLE && XR_SUCCEEDED(g->next.xrLocateViews(g->session, &locate, &viewState, 4, &viewCount, views)) &&
-                viewCount >= 2 && (viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT)) {
-                for (int eye = 0; eye < 2; eye++) {
-                    input.eyeInHead[eye].position = {views[eye].pose.position.x, views[eye].pose.position.y, views[eye].pose.position.z};
-                    input.eyeInHead[eye].orientation = {views[eye].pose.orientation.x, views[eye].pose.orientation.y, views[eye].pose.orientation.z,
-                                                        views[eye].pose.orientation.w};
-                }
-                const GazeSample gaze = g->gaze.locate(frame->displayTime);
-                if (gaze.valid) {
-                    input.gaze.valid = true;
-                    input.gaze.hasRay = true;
-                    input.gaze.origin = {gaze.pose.position.x, gaze.pose.position.y, gaze.pose.position.z};
-                    const Quat q{gaze.pose.orientation.x, gaze.pose.orientation.y, gaze.pose.orientation.z, gaze.pose.orientation.w};
-                    input.gaze.direction = Rotate(q, {0, 0, -1});
-                }
-            }
+            HeadAndGaze(frame, input);
 
             if (!panelLayers.empty() || g->lastPanelCount) DrawPanels(frame, projection, panelLayers, images, inner, input);
 
@@ -1145,7 +1294,11 @@ namespace gaze_mirror::layer {
                 const std::vector<const XrCompositionLayerBaseHeader*> panelLayers = PanelLayers(frame);
                 const bool due = g->pipeline.wanted();
                 g->imagesNeeded = g->pipeline.imagesNeeded();
-                if (due) MirrorFrame(frame, panelLayers);
+                if (due && WorldOf(frame)) {
+                    MirrorFrame(frame, panelLayers);
+                } else if (due && !panelLayers.empty()) {
+                    MirrorFlatFrame(frame, panelLayers);
+                }
             } else {
                 g->imagesNeeded = false;
             }
