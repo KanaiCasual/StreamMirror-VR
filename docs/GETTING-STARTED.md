@@ -142,8 +142,8 @@ takes you back to how the profile was when you opened it. And on any page, **Ctr
 - [ ] The Status page shows the game's name and, with eye tracking, "gaze arriving".
 - [ ] The OBS source fills the canvas (Ctrl+F done) and moves smoothly.
 - [ ] The ring sits where you look (marker checked, then switched **off**).
-- [ ] Nothing you don't want on stream: flat panels (the game's own, and tools' such as OpenKneeboard) come along
-      by default; untick **Show panels** on the Picture card to keep them off.
+- [ ] Nothing you don't want on stream: tool panels such as OpenKneeboard come along by default; untick **Show other
+      tools' panels** on the Picture card to keep them off. The game's own panels stay.
 
 ## 10. Which setup is yours?
 

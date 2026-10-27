@@ -1103,7 +1103,7 @@ public partial class MainWindow : Window
     private FrameworkElement BuildLayerRow(List<LayerEntry> group, int index, int position, bool pending)
     {
         var layer = group[index];
-        var ours = layer.LayerName is LayerStatus.QuadViewsLayer or LayerStatus.GazeMirrorLayer or LayerStatus.OwnQuadViewsLayer;
+        var ours = layer.LayerName is LayerStatus.QuadViewsLayer or LayerStatus.GazeMirrorLayer or LayerStatus.OwnQuadViewsLayer or LayerStatus.GameLayersLayer;
         var box = new CheckBox
         {
             IsChecked = layer.Enabled, VerticalAlignment = VerticalAlignment.Top, MinWidth = 0, Margin = new Thickness(0, 0, 4, 0),

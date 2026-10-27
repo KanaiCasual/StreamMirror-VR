@@ -13,7 +13,7 @@ namespace GazeOverlay;
 /// The ordering knowledge is the same set of facts as the linter of Fred Emmott's OpenXR-API-Layers-GUI (LayerRules.cpp,
 /// ISC licence) - re-expressed here, plus this project's own layer pair. "Above" means earlier in the list = closer to
 /// the game. A target can be a layer name, an extension name (= every layer whose manifest provides that extension) or a
-/// "#facet" (= every layer that is known to have that trait).
+/// "#facet" (= every layer that is known to have that trait), or "*" (= every other layer).
 /// </summary>
 public static class LayerOrder
 {
@@ -28,6 +28,8 @@ public static class LayerOrder
 
     private static readonly Rule[] Rules =
     [
+        // It notes what the game itself sends, before any other layer adds to it: first in the list.
+        new(LayerStatus.GameLayersLayer, ["*"], [], []),
         new(TransformsPoses, [], [UsesPoses], []),
         new("XR_APILAYER_FREDEMMOTT_HandTrackedCockpitClicking", ["XR_EXT_hand_tracking"], [], []),
         new("XR_APILAYER_FREDEMMOTT_OpenKneeboard", [], [], [Overlay, UsesPoses]),
@@ -77,7 +79,11 @@ public static class LayerOrder
         foreach (var other in layers)
         {
             if (ReferenceEquals(other, self) || other.LayerName == null || other.LayerName == self.LayerName) continue;
-            if (target.StartsWith('#'))
+            if (target == "*")
+            {
+                yield return (other, $"{Short(self)} notes the game's own layers before any other layer adds to them");
+            }
+            else if (target.StartsWith('#'))
             {
                 if (Rules.Any(r => r.Id == other.LayerName && r.Facets.Contains(target))) yield return (other, $"{Short(other)} {Why[target]}");
             }
@@ -174,9 +180,10 @@ public static class LayerOrder
         var backupPath = Path.Combine(DataFolder, $"layers-before-{stamp}.reg");
         File.WriteAllText(backupPath, RegFile(perUser, [.. current.Select(v => (v.Name, v.Data!.Value))]), Encoding.Unicode);
 
-        if (perUser)
+        // This user's list, or the PC-wide one when already running elevated (the installer's last step): written directly.
+        if (perUser || Elevated)
         {
-            using var hive = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Registry64);
+            using var hive = RegistryKey.OpenBaseKey(perUser ? RegistryHive.CurrentUser : RegistryHive.LocalMachine, RegistryView.Registry64);
             using var key = hive.OpenSubKey(LayerStatus.LayersKeyPath, writable: true) ?? throw new InvalidOperationException("The list is no longer there.");
             foreach (var layer in wanted) key.DeleteValue(layer.JsonPath, throwOnMissingValue: false);
             foreach (var layer in wanted) key.SetValue(layer.JsonPath, data[layer.JsonPath], RegistryValueKind.DWord);
@@ -220,6 +227,46 @@ public static class LayerOrder
             throw new InvalidOperationException($"The order did not come out as asked. {backupPath} holds your previous order (double-click it to restore).");
         }
         return true;
+    }
+
+    private static bool Elevated
+    {
+        get
+        {
+            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            return new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+        }
+    }
+
+    /// <summary>
+    /// The installer's last step, run elevated after every install and update: the PC-wide list put in the order Fix order
+    /// would choose, so the game-layers watcher lands at the top without a press. The previous order is backed up as with
+    /// Fix order. Nothing here may fail an install: the Layers page still offers Fix order.
+    /// </summary>
+    public static void ApplyAfterInstall()
+    {
+        try
+        {
+            var layers = LayerStatus.ReadLayers();
+            var problems = Problems(layers);
+            if (problems.Count == 0)
+            {
+                AppLog.Write("Layer order after install: as it should be.");
+                return;
+            }
+            var suggestion = Suggest(layers);
+            if (suggestion == null || Problems(suggestion).Count > 0)
+            {
+                AppLog.Write("Layer order after install: the known rules contradict each other here; left as it is. " + string.Join(" ", problems));
+                return;
+            }
+            Task.Run(() => ApplyAsync(perUser: false, suggestion)).GetAwaiter().GetResult();
+            AppLog.Write("Layer order after install: put right (" + string.Join(" ", problems) + ") Now: " + string.Join(", ", suggestion.Select(Short)));
+        }
+        catch (Exception e)
+        {
+            AppLog.Write("Layer order after install: not changed", e);
+        }
     }
 
     private static List<(string Name, int? Data)> ReadRaw(bool perUser)

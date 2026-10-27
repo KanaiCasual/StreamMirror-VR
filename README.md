@@ -254,12 +254,16 @@ games. **OpenXR capture** has the mirror layer take the picture inside the game,
 choice is saved with the crop profile, so one game can stay clean. SteamVR games always use SteamVR capture, and native
 OpenXR runtimes always use OpenXR capture.
 
-**Show panels** (on the Picture card, on by default): with OpenXR capture, every flat panel over the game's world
-appears in the picture where it sits in the headset. That covers the game's own panels (a screen of text in VAIL's
-start-up room, a floating menu) and what other OpenXR tools lay over the game: OpenKneeboard's kneeboards, curved
-panels, a tool's own 3D layer. A tool's layer has to come before the mirror layer in the OpenXR layer list; the order
-check on the Status page sees to that. Off keeps all of them off the stream. A menu or loading screen with no world
-behind it is mirrored either way. What the headset's runtime adds itself (its own menus, the play-area boundary)
+**Show other tools' panels** (on the Picture card, on by default): with OpenXR capture, what other OpenXR tools lay
+over the game appears in the picture where it sits in the headset: OpenKneeboard's kneeboards, curved panels, a tool's
+own 3D layer. A tool's layer has to come before the mirror layer in the OpenXR layer list; the order check on the
+Layers page sees to that. Off keeps the tools' panels off the stream.
+
+The game's own panels (a screen of text in VAIL's start-up room, a floating menu) show either way. The mirror tells
+them apart through its second, small layer, `XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers`, which sits first in the
+list, right under the game, and notes what the game itself sends. The installer puts it first after every install and
+update; Fix order on the Layers page puts it back if another tool moves above it. Without it, Off hides the game's
+panels too. A menu or loading screen with no world behind it is mirrored either way. What the headset's runtime adds itself (its own menus, the play-area boundary)
 never passes through the mirror layer; only SteamVR capture has that.
 
 **Follow my gaze (up / down):** a 16:9 box covers about half the height of the eye image, so a look down at your knees
@@ -513,7 +517,9 @@ The desktop cover's hotkey and the mirror window work from the tray.
 One core, two producers, any number of readers:
 
 - **The mirror layer** (`XR_APILAYER_KANAICASUAL_GazeMirror`) sits in OpenXR games. Each frame it reads the game's eye
-  images, the head pose and (if the runtime gives it) the eye gaze, and makes the mirror picture.
+  images, the head pose and (if the runtime gives it) the eye gaze, and makes the mirror picture. The same DLL is a
+  second layer too, `XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers`, at the top of the list: it notes which panels the
+  game itself sends, so the mirror can keep other tools' panels off the stream and the game's on it.
 - **The SteamVR helper** (`GazeMirrorHelper.exe`) does the same for SteamVR games from SteamVR's own mirror texture,
   eye tracking and poses. SteamVR starts it with itself, and it leaves as SteamVR closes.
 - **The core** they share does its work in a single pass on the game's image: crop, gaze-following, picture steadying,

@@ -120,6 +120,7 @@
     <Feature Id="Main" Title="VR Gaze Mirror" Level="1">
       <ComponentGroupRef Id="LayerFiles" />
       <ComponentRef Id="LayerRegistration" />
+      <ComponentRef Id="GameLayersRegistration" />
       <ComponentGroupRef Id="SettingsApp" />
       <ComponentGroupRef Id="OwnQuadViewsFiles" />
       <ComponentRef Id="OwnQuadViewsRegistration" />
@@ -142,8 +143,16 @@
     <SetProperty Id="ForgetStartWithWindows" Before="ForgetStartWithWindows" Sequence="execute"
                  Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v &quot;VR Gaze Mirror&quot; /f" />
     <CustomAction Id="ForgetStartWithWindows" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="yes" Return="ignore" />
+    <!--
+      After every install, repair and update: the app puts the OpenXR layer list in the order its Fix order button would
+      (the game-layers watcher at the top, the mirror below whatever draws into the picture), backing up the old order.
+      It runs elevated, with no window; its result is in the app's log. It never fails the install.
+    -->
+    <SetProperty Id="OrderLayers" Before="OrderLayers" Sequence="execute" Value="&quot;[INSTALLFOLDER]GazeMirror.exe&quot; --order-layers" />
+    <CustomAction Id="OrderLayers" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="no" Return="ignore" />
     <InstallExecuteSequence>
       <Custom Action="ForgetStartWithWindows" Before="InstallFinalize" Condition="REMOVE = &quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="OrderLayers" After="WriteRegistryValues" Condition="NOT REMOVE = &quot;ALL&quot;" />
     </InstallExecuteSequence>
 
     <!-- Pages: GazeUI.wxs. Pictures: tools\make_installer_art.py draws them from the app logo. -->
@@ -162,6 +171,9 @@
       <Component>
         <File Id="LayerJson" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_GazeMirror.json" />
       </Component>
+      <Component>
+        <File Id="GameLayersJson" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json" />
+      </Component>
     </ComponentGroup>
 
     <!--
@@ -174,6 +186,16 @@
     <Component Id="LayerRegistration" Directory="INSTALLFOLDER" Guid="2BF5E720-C196-4C2C-9E81-AFBFCB3407BC">
       <RegistryValue Id="LayerGazeMirror" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
                      Name="[LayerDir]XR_APILAYER_KANAICASUAL_GazeMirror.json" Type="integer" Value="0" KeyPath="yes" />
+    </Component>
+
+    <!--
+      The mirror DLL's second layer, the game-layers watcher: it belongs at the TOP of the list, above quad views and every
+      tool, so it sees what the game itself sends. A new value lands at the bottom, so the install's last step puts the
+      list in order (OrderLayers below).
+    -->
+    <Component Id="GameLayersRegistration" Directory="INSTALLFOLDER" Guid="8E3B6F14-2C7A-4D95-B1E8-63A0C5D7F249">
+      <RegistryValue Id="LayerGameLayers" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
+                     Name="[LayerDir]XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json" Type="integer" Value="0" KeyPath="yes" />
     </Component>
 
     <!-- The settings app, the mirror window and the SteamVR helper (with Valve's OpenVR library), harvested as published. -->

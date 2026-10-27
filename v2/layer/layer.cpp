@@ -28,6 +28,7 @@
 #include "gaze_input.h"
 #include "marker.h"
 #include "panels.h"
+#include "game_layers.h"
 #include "next.h"
 #include "vulkan_bridge.h"
 
@@ -112,6 +113,7 @@ namespace gaze_mirror::layer {
             Panels panels;
             int logPanels = 0;
             int logOtherLayers = 0;
+            int logGameLayers = 0;
             size_t lastPanelCount = 0;
             uint64_t frameCount = 0; // The session's frames, for how often a panel is handed back.
             GazeInput gaze;
@@ -250,6 +252,7 @@ namespace gaze_mirror::layer {
             g->worldWidth = g->worldHeight = 0;
             g->flatFrames = false;
             g->logOtherLayers = 0;
+            g->logGameLayers = 0;
             g->frameCount = 0;
             g->gaze.onSessionCreated(*session, createInfo->systemId);
             Log("session: created (%s), mirror %s", api, g->pipelineReady ? "ready" : "NOT available");
@@ -834,26 +837,71 @@ namespace gaze_mirror::layer {
             }
         }
 
+        // A layer the game itself sent: one of its pictures is among those the watcher at the top of the list noted.
+        bool IsGames(const XrCompositionLayerBaseHeader* layer, const GameFrame& game) {
+            bool found = false;
+            ForEachSubImage(layer, [&](const XrSwapchainSubImage& sub) {
+                found = found || std::find(game.swapchains.begin(), game.swapchains.end(), sub.swapchain) != game.swapchains.end();
+            });
+            return found;
+        }
+
+        // The game's own frame, as the watcher at the top of the layer list saw it. null when there is none, or when not
+        // all of the game's panels arrived here with their pictures (a layer between swapped them for its own): then the
+        // game's panels cannot be told from other tools'.
+        const GameFrame* GameFrameOf(const XrFrameEndInfo* frame) {
+            const GameFrame* game = GameFrameNow();
+            if (!game) {
+                LogFewTimes(g->logGameLayers, 1, "panels: the game's own layers are not known (the GameLayers layer is not at the top of the OpenXR layer list) - "
+                                                 "with other tools' panels off, no panel over the world is drawn");
+                return nullptr;
+            }
+            uint32_t found = 0;
+            bool world = false;
+            for (uint32_t i = 0; i < frame->layerCount; i++) {
+                const XrCompositionLayerBaseHeader* layer = frame->layers[i];
+                if (!layer) continue;
+                if (layer->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION && !world) {
+                    world = true;
+                } else if ((layer->type == XR_TYPE_COMPOSITION_LAYER_QUAD || layer->type == XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR ||
+                            layer->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) && IsGames(layer, *game)) {
+                    found++;
+                }
+            }
+            if (found < game->panels) {
+                LogFewTimes(g->logGameLayers, 1, "panels: %u of the game's %u panels arrived with other pictures (a layer between swapped them) - "
+                                                 "with other tools' panels off, no panel over the world is drawn", game->panels - found, game->panels);
+                return nullptr;
+            }
+            LogFewTimes(g->logGameLayers, 1, "panels: other tools' panels are off - the game's own (%u in this frame) are still drawn", game->panels);
+            return game;
+        }
+
         // What other tools (or the game) lay over the world - the layers after it that the mirror draws in: flat panels
         // (OpenKneeboard's kneeboards, say), curved ones, and further projection layers. Layers before the world lie
-        // behind it. Every frame, mirrored or not, so the hand-backs know which pictures are panels.
+        // behind it. With other tools' panels off, the game's own panels still count, when the watcher at the top of the
+        // list says which they are. Every frame, mirrored or not, so the hand-backs know which pictures are panels.
         std::vector<const XrCompositionLayerBaseHeader*> PanelLayers(const XrFrameEndInfo* frame) {
             std::vector<const XrCompositionLayerBaseHeader*> panels;
             uint32_t worldIndex = 0;
+            const bool showAll = g->pipeline.settings().showPanels;
+            const GameFrame* game = showAll ? nullptr : GameFrameOf(frame);
+            const auto wanted = [&](const XrCompositionLayerBaseHeader* layer) { return showAll || !game || IsGames(layer, *game); };
             if (!WorldOf(frame)) {
+                // A menu or loading screen: its panels are drawn either way - the game's alone, when they are known.
                 for (uint32_t i = 0; i < frame->layerCount; i++) {
                     const XrCompositionLayerBaseHeader* layer = frame->layers[i];
-                    if (layer && (layer->type == XR_TYPE_COMPOSITION_LAYER_QUAD || layer->type == XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR)) {
+                    if (layer && (layer->type == XR_TYPE_COMPOSITION_LAYER_QUAD || layer->type == XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR) && wanted(layer)) {
                         panels.push_back(layer);
                     }
                 }
-            } else if (g->pipeline.settings().showPanels && WorldOf(frame, &worldIndex)) {
+            } else if ((showAll || game) && WorldOf(frame, &worldIndex)) {
                 for (uint32_t i = worldIndex + 1; i < frame->layerCount; i++) {
                     const XrCompositionLayerBaseHeader* layer = frame->layers[i];
                     if (!layer) continue;
                     if (layer->type == XR_TYPE_COMPOSITION_LAYER_QUAD || layer->type == XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR ||
                         layer->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
-                        panels.push_back(layer);
+                        if (wanted(layer)) panels.push_back(layer);
                     } else {
                         // Cube and equirect layers (skies, 360 video) and the like: seen, not drawn.
                         LogFewTimes(g->logOtherLayers, 3, "panels: a layer of type %d over the world is not drawn into the mirror", int(layer->type));

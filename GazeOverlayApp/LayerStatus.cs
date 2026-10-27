@@ -33,6 +33,8 @@ public static class LayerStatus
     public const string QuadViewsLayer = "XR_APILAYER_MBUCCHIA_quad_views_foveated";
     public const string OwnQuadViewsLayer = "XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews";
     public const string GazeMirrorLayer = "XR_APILAYER_KANAICASUAL_GazeMirror";
+    /// <summary>The mirror DLL's second layer: at the top of the list it notes the game's own layers, so the mirror can tell them from other tools' panels.</summary>
+    public const string GameLayersLayer = "XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers";
     public const string ObsPluginFile = "gaze-mirror-capture.dll";
     private const string LayersKey = @"SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit";
 

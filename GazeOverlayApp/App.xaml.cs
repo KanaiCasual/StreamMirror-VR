@@ -20,6 +20,14 @@ public partial class App : Application
     {
         base.OnStartup(e);
         var args = e.Args;
+        if (args.Length >= 1 && args[0] == "--order-layers")
+        {
+            // The installer's last step, elevated, with no window: no single-instance check, as the app may be open.
+            AppLog.Start(false);
+            LayerOrder.ApplyAfterInstall();
+            Shutdown(0);
+            return;
+        }
         Headless = args.Length >= 1 && args[0] is "--selftest" or "--screenshots" or "--cover-dummy";
         // Before the log starts: a second copy must not touch the running one's log.
         if (!Headless && !TakeSingleInstance())
@@ -316,6 +324,8 @@ public partial class App : Application
         var quadViews = Layer(LayerStatus.QuadViewsLayer, "XR_VARJO_quad_views", "XR_VARJO_foveated_rendering");
         var eyeTracking = Layer("XR_APILAYER_EXAMPLE_eye_tracker", "XR_EXT_eye_gaze_interaction");
         var unknown = Layer("XR_APILAYER_EXAMPLE_unknown");
+        var gameLayers = Layer(LayerStatus.GameLayersLayer);
+        var gameLayersLast = LayerOrder.Suggest([quadViews, toolkit, mirror, gameLayers]);
 
         var bad = new List<LayerEntry> { mirror, unknown, eyeTracking, toolkit, quadViews };
         var problems = LayerOrder.Problems(bad);
@@ -374,6 +384,9 @@ public partial class App : Application
                 suggested != null && LayerOrder.Problems(suggested).Count == 0 && suggested.IndexOf(unknown) < suggested.IndexOf(eyeTracking)),
             ("a good order has no problems", LayerOrder.Problems(good).Count == 0),
             ("a layer that is switched off is not complained about", LayerOrder.Problems(mirrorOff).Count == 0),
+            ("the game-layers watcher at the bottom is reported, and the suggestion puts it first, the rest as they were",
+                LayerOrder.Problems([quadViews, toolkit, mirror, gameLayers]).Count == 3 &&
+                gameLayersLast is [var top, var second, var third, var last] && top == gameLayers && second == quadViews && third == toolkit && last == mirror),
             (observable ? "reg.exe import re-creates the values in the wanted order, names with spaces and quotes included (" + mechanism + ")"
                         : "reordering by reg.exe import: NOT TESTABLE HERE - this registry view is virtualised and always sorted; run the selftest from a normal terminal",
                 !observable || mechanism == "ok"),

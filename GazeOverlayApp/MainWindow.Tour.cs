@@ -62,7 +62,7 @@ public partial class MainWindow
             new(CropTab, () => ViewEdgesCard, "View edges",
                 "The headset draws more than your eye sees through the lens.\n\nMeasure where your view ends once, in the headset. Then Crop to view edges makes the largest box that fits: no black lens corners."),
             new(CropTab, () => Ancestor<Border>(PanelOutput), "What goes out",
-                "Which eye, how the picture is taken, the resolution OBS gets and the most pictures a second.\n\nEach Picture size choice names the resolution your crop box gets. Pick the one you record or stream at, 1920 x 1080 for 1080p: more only costs more.\n\nShow panels brings flat panels along: the game's own, and kneeboards such as OpenKneeboard."),
+                "Which eye, how the picture is taken, the resolution OBS gets and the most pictures a second.\n\nEach Picture size choice names the resolution your crop box gets. Pick the one you record or stream at, 1920 x 1080 for 1080p: more only costs more.\n\nThe game's own flat panels always come along. Show other tools' panels brings kneeboards such as OpenKneeboard too."),
             new(CropTab, () => StabilizeExpander, "A calm picture",
                 "Steady the picture takes small head movement and tracking jitter out. Tilt set to Level keeps the horizon level when you lean.\n\nThe green band on the picture is the room the box may move in.\n\nFollow my gaze, just above, moves the box up and down after your eyes.",
                 StabilizeExpander),

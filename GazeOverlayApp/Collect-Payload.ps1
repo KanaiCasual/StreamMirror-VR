@@ -7,6 +7,7 @@ $v2 = Join-Path $root 'v2'
 $files = @(
     @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror.dll", 'Layer'),
     @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror.json", 'Layer'),
+    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json", 'Layer'),
     @("$v2\bin\obs-plugin\gaze-mirror-capture.dll", 'OBSPlugin\obs-plugins\64bit'),
     @("$v2\bin\obs-plugin\data\obs-plugins\gaze-mirror-capture\locale\en-US.ini", 'OBSPlugin\data\obs-plugins\gaze-mirror-capture\locale'),
     @("$v2\bin\quad-views\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll", 'QuadViews'),

@@ -43,7 +43,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_GazeMirror.json" "$(OutDir)" &gt; nul</Command>
+      <Command>copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_GazeMirror.json" "$(OutDir)" &gt; nul &amp;&amp; copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json" "$(OutDir)" &gt; nul</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -54,6 +54,7 @@
     <ClCompile Include="gaze_input.cpp" />
     <ClCompile Include="marker.cpp" />
     <ClCompile Include="panels.cpp" />
+    <ClCompile Include="game_layers.cpp" />
     <ClCompile Include="vulkan_bridge.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -62,6 +63,7 @@
     <ClInclude Include="gaze_input.h" />
     <ClInclude Include="marker.h" />
     <ClInclude Include="panels.h" />
+    <ClInclude Include="game_layers.h" />
     <ClInclude Include="vulkan_bridge.h" />
   </ItemGroup>
   <ItemGroup>

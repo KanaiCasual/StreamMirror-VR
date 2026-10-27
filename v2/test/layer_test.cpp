@@ -48,6 +48,7 @@ using namespace gaze_mirror;
 namespace {
 
     constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_GazeMirror";
+    constexpr char GameLayersName[] = "XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers";
     constexpr uint32_t ImageWidth = 2000, ImageHeight = 2100;
     constexpr float HalfFov = 0.7853982f;                   // 45 degrees each way.
     constexpr float GazeYaw = 0.1745329f, GazePitch = 0.0872665f; // Looking 10 degrees right, 5 degrees up.
@@ -326,6 +327,29 @@ namespace {
             if (strcmp(info->enabledExtensionNames[i], XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME) == 0) g_sawEyeGazeExtension = true;
         }
         return MakeHandle(instance);
+    }
+
+    // Another OpenXR tool, between the game-layers watcher at the top of the list and the mirror, as OpenKneeboard sits:
+    // while g_toolPanel is set, it lays that panel of its own over the game's frame.
+    PFN_xrGetInstanceProcAddr g_mirrorGet = nullptr;
+    PFN_xrEndFrame g_mirrorEndFrame = nullptr;
+    const XrCompositionLayerBaseHeader* g_toolPanel = nullptr;
+    XrResult XRAPI_CALL ToolEndFrame(XrSession session, const XrFrameEndInfo* frame) {
+        if (!g_toolPanel) return g_mirrorEndFrame(session, frame);
+        std::vector<const XrCompositionLayerBaseHeader*> layers(frame->layers, frame->layers + frame->layerCount);
+        layers.push_back(g_toolPanel);
+        XrFrameEndInfo withTool = *frame;
+        withTool.layerCount = static_cast<uint32_t>(layers.size());
+        withTool.layers = layers.data();
+        return g_mirrorEndFrame(session, &withTool);
+    }
+    XrResult XRAPI_CALL ToolGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function) {
+        if (strcmp(name, "xrEndFrame") == 0) {
+            g_mirrorGet(instance, name, reinterpret_cast<PFN_xrVoidFunction*>(&g_mirrorEndFrame));
+            *function = reinterpret_cast<PFN_xrVoidFunction>(ToolEndFrame);
+            return XR_SUCCESS;
+        }
+        return g_mirrorGet(instance, name, function);
     }
 
     // ---- helpers ------------------------------------------------------------------------------------------------
@@ -833,6 +857,11 @@ int wmain(int argc, wchar_t** argv) {
     Check(negotiate && XR_SUCCEEDED(negotiate(&loaderInfo, LayerName, &request)), "the layer accepts the loader");
     Check(negotiate && XR_FAILED(negotiate(&loaderInfo, "XR_APILAYER_other", &request)), "and refuses another layer's name");
     if (!request.getInstanceProcAddr || !request.createApiLayerInstance) return 1;
+    // The same DLL as the game-layers watcher: its own entry point, under its own name.
+    const auto negotiateGameLayers = reinterpret_cast<Negotiate>(GetProcAddress(library, "xrNegotiateLoaderApiLayerInterface_GameLayers"));
+    XrNegotiateApiLayerRequest watchRequest{XR_LOADER_INTERFACE_STRUCT_API_LAYER_REQUEST, XR_API_LAYER_INFO_STRUCT_VERSION, sizeof(XrNegotiateApiLayerRequest)};
+    Check(negotiateGameLayers && XR_SUCCEEDED(negotiateGameLayers(&loaderInfo, GameLayersName, &watchRequest)), "the game-layers watcher accepts the loader under its own name");
+    Check(negotiateGameLayers && XR_FAILED(negotiateGameLayers(&loaderInfo, LayerName, &request)), "and refuses the mirror's name");
 
     // The "game" and the "reader" are different Direct3D devices, as in real life.
     ComPtr<ID3D11Device> gameDevice, readerDevice;
@@ -857,6 +886,7 @@ int wmain(int argc, wchar_t** argv) {
         {"steamvr-helper", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2000, 2100, false, false, false, true},
         {"takes-back", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2000, 2100, false, false, false, false, true},
         {"plain", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2000, 2100},
+        {"game-layers", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2000, 2100},
         {"gaze-from-helper", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2000, 2100, false, true},
         {"quad-views", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2160, 2268, false, false, true},
         {"fixed-centre", "enabled=1\ngaze_source=fixed\nfixed_focus_width=0.5\nfixed_focus_height=0.45\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2000, 2100},
@@ -908,9 +938,21 @@ int wmain(int argc, wchar_t** argv) {
                 Sleep(10);
             }
         }
-        Check(XR_SUCCEEDED(request.createApiLayerInstance(&instanceInfo, &layerInfo, &instance)), "instance is created");
+        // The game-layers case: the watcher at the top of the list, another tool below it, then the mirror.
+        const bool gameLayers = !strcmp(test.name, "game-layers");
+        XrApiLayerNextInfo watchNext{XR_LOADER_INTERFACE_STRUCT_API_LAYER_NEXT_INFO, XR_API_LAYER_NEXT_INFO_STRUCT_VERSION, sizeof(XrApiLayerNextInfo)};
+        strcpy_s(watchNext.layerName, GameLayersName);
+        watchNext.nextGetInstanceProcAddr = ToolGetInstanceProcAddr;
+        watchNext.nextCreateApiLayerInstance = request.createApiLayerInstance;
+        watchNext.next = &nextInfo;
+        XrApiLayerCreateInfo watchInfo = layerInfo;
+        watchInfo.nextInfo = &watchNext;
+        g_mirrorGet = request.getInstanceProcAddr;
+        g_toolPanel = nullptr;
+        Check(XR_SUCCEEDED(gameLayers ? watchRequest.createApiLayerInstance(&instanceInfo, &watchInfo, &instance)
+                                   : request.createApiLayerInstance(&instanceInfo, &layerInfo, &instance)), "instance is created");
         Check(g_sawEyeGazeExtension, "the eye-gaze extension was added to the game's request");
-        const auto get = request.getInstanceProcAddr;
+        const auto get = gameLayers ? watchRequest.getInstanceProcAddr : request.getInstanceProcAddr;
 
         const auto createSession = Get<PFN_xrCreateSession>(get, instance, "xrCreateSession");
         const auto beginSession = Get<PFN_xrBeginSession>(get, instance, "xrBeginSession");
@@ -1769,7 +1811,7 @@ int wmain(int argc, wchar_t** argv) {
             if (signalMapping) CloseHandle(signalMapping);
             CloseHandle(coverKey);
         }
-        if (!strcmp(test.name, "plain")) {
+        if (!strcmp(test.name, "plain") || gameLayers) {
             // Another tool's flat panel (a quad layer after the world, as OpenKneeboard adds): half a metre square, a metre
             // straight ahead, solid magenta. The eye sees 45 degrees each way, so it covers the middle quarter of the picture
             // (37.5 % to 62.5 % across and down); with show_panels=0 it is not there.
@@ -1909,6 +1951,37 @@ int wmain(int argc, wchar_t** argv) {
             Check(readBack && abs(outside[0] - worldOutside[0]) < 8 && abs(outside[1] - worldOutside[1]) < 8 && abs(outside[2] - worldOutside[2]) < 8,
                   "and when the world is back, so is the game's picture");
             withPanel[1] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad);
+            // The game-layers case: the panel above is the game's own (it came through the watcher). Another tool's, green,
+            // goes to its right (65 % to 75 % across), made and handed back straight through the mirror, below the watcher.
+            XrSwapchain toolSwapchain = XR_NULL_HANDLE;
+            XrCompositionLayerQuad toolQuad = quad;
+            const auto isGreen = [](const int rgb[3]) { return rgb[0] < 25 && rgb[1] > 235 && rgb[2] < 25; };
+            const auto toolAcquire = Get<PFN_xrAcquireSwapchainImage>(request.getInstanceProcAddr, instance, "xrAcquireSwapchainImage");
+            const auto toolRelease = Get<PFN_xrReleaseSwapchainImage>(request.getInstanceProcAddr, instance, "xrReleaseSwapchainImage");
+            int tool[3] = {};
+            if (gameLayers) {
+                Get<PFN_xrCreateSwapchain>(request.getInstanceProcAddr, instance, "xrCreateSwapchain")(session, &panelInfo, &toolSwapchain);
+                uint32_t toolImageCount = 0;
+                const auto toolEnumerate = Get<PFN_xrEnumerateSwapchainImages>(request.getInstanceProcAddr, instance, "xrEnumerateSwapchainImages");
+                toolEnumerate(toolSwapchain, 0, &toolImageCount, nullptr);
+                std::vector<XrSwapchainImageD3D11KHR> toolImages(toolImageCount, {XR_TYPE_SWAPCHAIN_IMAGE_D3D11_KHR});
+                toolEnumerate(toolSwapchain, toolImageCount, &toolImageCount, reinterpret_cast<XrSwapchainImageBaseHeader*>(toolImages.data()));
+                std::vector<uint8_t> green(512 * 512 * 4);
+                for (size_t i = 0; i < green.size(); i += 4) green[i] = 0, green[i + 1] = 255, green[i + 2] = 0, green[i + 3] = 255;
+                for (const auto& image : toolImages) gameContext->UpdateSubresource(image.texture, 0, nullptr, green.data(), 512 * 4, 0);
+                toolQuad.subImage.swapchain = toolSwapchain;
+                toolQuad.pose = {{0, 0, 0, 1}, {0.4f, 0, -1}};
+                toolQuad.size = {0.2f, 0.5f};
+                g_toolPanel = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&toolQuad);
+                frameWithPanel();
+                toolAcquire(toolSwapchain, nullptr, &index);
+                toolRelease(toolSwapchain, nullptr);
+                frameWithPanel();
+                frameWithPanel();
+                const bool readBoth = pixelAt(0.70f, 0.58f, tool) && pixelAt(0.42f, 0.58f, inside);
+                printf("       game-layers, all panels: tool at 70 %%: %d, %d, %d; game at 42 %%: %d, %d, %d\n", tool[0], tool[1], tool[2], inside[0], inside[1], inside[2]);
+                Check(readBoth && isGreen(tool) && isMagenta(inside), "game-layers: with other tools' panels on, the tool's panel and the game's are both in the picture");
+            }
             FILE* noPanels = nullptr;
             _wfopen_s(&noPanels, settingsFile.c_str(), L"w");
             fputs(test.settings, noPanels);
@@ -1919,8 +1992,27 @@ int wmain(int argc, wchar_t** argv) {
             if (panelSignal) InterlockedIncrement(&panelSignal[2]); // generation: the settings changed
             frameWithPanel();
             frameWithPanel();
-            const bool readOff = pixelAt(0.42f, 0.58f, inside);
-            Check(readOff && !isMagenta(inside), "show_panels=0: the panel stays out of the picture");
+            if (gameLayers) {
+                const bool readOff = pixelAt(0.70f, 0.58f, tool) && pixelAt(0.42f, 0.58f, inside);
+                printf("       game-layers, tools' panels off: tool at 70 %%: %d, %d, %d; game at 42 %%: %d, %d, %d\n", tool[0], tool[1], tool[2], inside[0], inside[1], inside[2]);
+                Check(readOff && isMagenta(inside) && !isGreen(tool), "game-layers: other tools' panels off - the tool's panel is out, the game's own stays");
+                // A menu: the game's flat screen alone, and the tool still lays its panel over it.
+                for (int i = 0; i < 2; i++) {
+                    me.heartbeatMs = static_cast<LONGLONG>(GetTickCount64());
+                    endFrame(session, &flatFrame);
+                }
+                const bool readMenu = pixelAt(0.70f, 0.58f, tool) && pixelAt(0.42f, 0.58f, inside);
+                printf("       game-layers, menu: tool at 70 %%: %d, %d, %d; game at 42 %%: %d, %d, %d\n", tool[0], tool[1], tool[2], inside[0], inside[1], inside[2]);
+                Check(readMenu && isMagenta(inside) && tool[0] < 10 && tool[1] < 10 && tool[2] < 10,
+                      "game-layers: in a menu too, the game's screen is drawn and the tool's panel is not");
+                g_toolPanel = nullptr;
+                frameWithPanel(); // The world back, as at the end of the plain case.
+                frameWithPanel();
+                Get<PFN_xrDestroySwapchain>(request.getInstanceProcAddr, instance, "xrDestroySwapchain")(toolSwapchain);
+            } else {
+                const bool readOff = pixelAt(0.42f, 0.58f, inside);
+                Check(readOff && !isMagenta(inside), "show_panels=0: the panel stays out of the picture");
+            }
             if (panelSignal) UnmapViewOfFile(const_cast<LONG*>(panelSignal));
             if (panelSignalMapping) CloseHandle(panelSignalMapping);
             destroySwapchain(panelSwapchain);
