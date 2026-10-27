@@ -1017,7 +1017,7 @@ public partial class MainWindow : Window
             obsReady ? Colors.SeaGreen : status.ObsPath == null ? Colors.Gray : Colors.Firebrick);
         AddStatusRow("SteamVR helper", helper.Text + " It mirrors games that use SteamVR directly; the layer mirrors OpenXR games.", helper.Color);
         AddStatusRow("Quad views (optional)",
-            status.OwnQuadViewsOn ? "On: Direct3D 11 and 12 games get quad views. The Quad Views page sets it up."
+            status.OwnQuadViewsOn ? "On: Direct3D 11, Direct3D 12 and Vulkan games get quad views. The Quad Views page sets it up."
             : !status.OwnQuadViewsInstalled ? status.OwnQuadViews.Detail
             : status.QuadViews.Health != LayerHealth.NotActive ? "Off here. The official Quad-Views-Foveated is on and does quad views; switching it on on the Quad Views page turns that one off."
             : "Off. The Quad Views page switches it on; the mirror and the ring work without it.",

@@ -7,8 +7,13 @@
 What it changes against upstream 1.1.4:
 
 - **Direct3D 12** games, through D3D11on12 on the game's own queue (`layer.cpp`, `m_on12Device`).
+- **Vulkan** games (`vulkan_interop.cpp`): the composition stays Direct3D 11, on a device of our own on the game's GPU.
+  Each colour swapchain gets one shared texture; the game's images are copied in and the composed picture copied out
+  into the runtime's image on the game's queue, all ordered by one shared fence. The layer adds the sharing extensions
+  to the game's Vulkan instance and device and has the swapchains made readable (and its own writable).
 - **Stands aside** (`StandAsideReason`, decided in `framework\dispatch.cpp` when the game makes its instance) when the
-  game may render with Vulkan or OpenGL, with neither Direct3D 11 nor 12, with Direct3D 12 where D3D11on12 fails, or
+  game may render with OpenGL, with none of Direct3D 11, 12 and Vulkan, with Direct3D 12 where D3D11on12 fails, with
+  Vulkan where the PC cannot share Vulkan images with Direct3D, or
   when another `*quad_views_foveated` layer is below it. Standing aside, it hands the quad views request on where a
   layer or runtime below offers it.
 - **Its own name and folder**: settings and log in `%LOCALAPPDATA%\GazeMirror\QuadViews`; the first start copies the
@@ -24,6 +29,6 @@ What it changes against upstream 1.1.4:
 
 Build: `v2\Get-External.ps1` once (fmt, the OpenXR SDK headers, XrUtility and WIL at upstream's versions, into
 `v2\external\qvf-deps`), then `v2\Build-Dev.ps1`, which builds `layer\QuadViewsLayer.vcxproj` and runs `test\build.cmd`
-(the offline test: a fake runtime and game, D3D11 and D3D12, the stand-aside cases and the gaze filter).
+(the offline test: a fake runtime and game, D3D11, D3D12 and Vulkan, the stand-aside cases and the gaze filter).
 `framework\dispatch.gen.*` are upstream's generated dispatch code, kept as files: a function the layer starts to
 intercept has to be added there by hand.

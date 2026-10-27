@@ -26,6 +26,7 @@
 
 #define XR_USE_GRAPHICS_API_D3D11
 #define XR_USE_GRAPHICS_API_D3D12
+#define XR_USE_GRAPHICS_API_VULKAN
 
 // Standard library.
 #include <algorithm>
@@ -71,6 +72,10 @@ using Microsoft::WRL::ComPtr;
 #ifdef XR_USE_GRAPHICS_API_D3D12
 #include <d3d12.h>
 #include <d3d11on12.h>
+#include <dxgi1_2.h>
+
+#define VK_USE_PLATFORM_WIN32_KHR
+#include <vulkan/vulkan.h>
 #endif
 
 // OpenXR + Windows-specific definitions.

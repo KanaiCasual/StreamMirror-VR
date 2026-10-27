@@ -69,9 +69,9 @@ public partial class MainWindow
             new("", "A headset tracked by base stations (Lighthouse) does not look at the room and has no use for the cover."));
 
         AddExplanation(QuadViewsTab, ExplainQuadViews, "quadviews", HowThisPageWorks,
-            new("", "Quad views make a game render a small sharp region where you look and the rest of the view at a low resolution, which saves graphics card time.\n\nVR Gaze Mirror's quad views layer (built on mbucchia's Quad-Views-Foveated) does it for Direct3D 11 and 12 games. The switch at the top turns it on or off; on, it also turns the official Quad-Views-Foveated off, if that is installed."),
+            new("", "Quad views make a game render a small sharp region where you look and the rest of the view at a low resolution, which saves graphics card time.\n\nVR Gaze Mirror's quad views layer (built on mbucchia's Quad-Views-Foveated) does it for Direct3D 11, Direct3D 12 and Vulkan games. The switch at the top turns it on or off; on, it also turns the official Quad-Views-Foveated off, if that is installed."),
             new("Live and Next start.", "Every change is saved as you make it. Settings under Live show in a running game at once. Settings under Next start (resolution, Turbo) wait for the game to start again.\n\nThe lines at the top give the pixels per frame."),
-            new("Checking.", "Show diagnostics in the headset tints the zones and marks your gaze while you play.\n\nThe layer stays out of games it cannot help (Vulkan, OpenGL); its log says why."),
+            new("Checking.", "Show diagnostics in the headset tints the zones and marks your gaze while you play.\n\nThe layer stays out of games it cannot help (OpenGL); its log says why."),
             new("Focus", "sets the size of the sharp region as a share of the field of view, moves it up or down, and sets the width of the blend into the surround. Without eye tracking the region stays in the middle of the view."),
             new("Resolution", "sets the pixel count of the sharp region and of the surround; most of the saving comes from the surround. Presets and your own three slots set the sliders."),
             AboutSliders);

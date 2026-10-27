@@ -199,7 +199,7 @@ public partial class MainWindow
         QuadViewsLayerOn.IsEnabled = status.OwnQuadViewsInstalled;
         QuadViewsLayerNote.Text =
             !status.OwnQuadViewsInstalled ? "The quad views layer is not installed. Run the VR Gaze Mirror installer's Repair."
-            : status.OwnQuadViewsOn ? "On: Direct3D 11 and 12 games that offer quad views get them, at their next start."
+            : status.OwnQuadViewsOn ? "On: Direct3D 11, Direct3D 12 and Vulkan games that offer quad views get them, at their next start."
             : status.QuadViews.Health != LayerHealth.NotActive ? "Off. The official Quad-Views-Foveated is on and does quad views now; switching this on turns it off."
             : "Off: no game gets quad views. The settings below wait for it.";
     }

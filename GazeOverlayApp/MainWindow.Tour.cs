@@ -88,13 +88,13 @@ public partial class MainWindow
                 "Foveated rendering: the game draws a small sharp area where you look and the rest of the view at a lower resolution. That frees up graphics card time for a higher frame rate.\n\nIt works in games that offer quad views, such as DCS and VAIL.\n\nThis switch turns it on for every OpenXR game, from the game's next start."));
             steps.Add(new(QuadViewsTab, () => PanelQuadViews, "Why this quad views layer",
                 "It is built on mbucchia's Quad-Views-Foveated and adds to it:\n" +
-                "  - Direct3D 12 games too (VAIL)\n" +
+                "  - Direct3D 12 and Vulkan games too (VAIL; DCS, should it move to Vulkan)\n" +
                 "  - no visible seam around the sharp area\n" +
                 "  - steadier when your eyes jitter or blink\n" +
                 "  - sharpening without halos\n" +
                 "  - a diagnostics view in the headset\n\n" +
                 "The settings under Live show in a running game at once; those under Next start wait for the game to start again.\n\n" +
-                "Games it cannot help (Vulkan, OpenGL) run as usual instead of going black. Switched on, it takes over from the official layer if you had that."));
+                "Games it cannot help (OpenGL) run as usual instead of going black. Switched on, it takes over from the official layer if you had that."));
         }
         steps.Add(new(LayersTab, () => Ancestor<Border>(LayerRows), "OpenXR layers",
             "Every OpenXR add-on on this PC, in the order games load them, with a switch for each.\n\nIf the order breaks a rule the app knows, Fix order puts it right."));

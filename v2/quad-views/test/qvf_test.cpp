@@ -6,12 +6,13 @@
 // view lies, the peripheral view's colour around it, and fade out to nothing at the focus view's edge. Halfway through,
 // the settings file switches the diagnostics on: the last picture must show them (settings apply while a game runs).
 // The case gaze-filter checks the gaze the focus view follows, without a device. The layer's first start copies the
-// official layer's settings. Cases where it must stand aside: vulkan-declared (the game may pick Vulkan) and
+// official layer's settings. Cases where it must stand aside: opengl-declared (the game may pick OpenGL) and
 // official-below (Quad-Views-Foveated below it does the work); d3d11-and-d3d12 declares both, as Unreal does, and
-// gets quad views.
+// gets quad views. vulkan: a real Vulkan device, its images handed out as colour attachments; the composed picture is
+// read back from the runtime's Vulkan image.
 //
 //   qvf_test.exe <layer dll> <output folder> <case>
-//   case: d3d11 | d3d12 | d3d12-array | d3d11-and-d3d12 | vulkan-declared | official-below | gaze-filter
+//   case: d3d11 | d3d12 | d3d12-array | d3d11-and-d3d12 | vulkan | opengl-declared | official-below | gaze-filter
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -33,6 +34,9 @@
 #define XR_USE_PLATFORM_WIN32
 #define XR_USE_GRAPHICS_API_D3D11
 #define XR_USE_GRAPHICS_API_D3D12
+#define XR_USE_GRAPHICS_API_VULKAN
+#define VK_USE_PLATFORM_WIN32_KHR
+#include <vulkan/vulkan.h>
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 #include <loader_interfaces.h>
@@ -46,7 +50,8 @@ namespace {
     constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews";
     constexpr uint32_t StereoWidth = 2000, StereoHeight = 2100;
     constexpr int ImagesPerSwapchain = 3;
-    constexpr int64_t Format = 29; // DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
+    constexpr int64_t Format = 29;       // DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
+    constexpr int64_t FormatVulkan = 43; // VK_FORMAT_R8G8B8A8_SRGB
 
     int g_failures = 0;
     void Check(bool ok, const char* what) {
@@ -93,11 +98,133 @@ namespace {
         }
     }
 
+    // ---- the Vulkan game: its own instance and device, and the one queue it renders on ---------------------------
+    bool g_vulkan = false;
+    struct Vulkan {
+        PFN_vkGetInstanceProcAddr gipa = nullptr;
+        VkInstance instance = VK_NULL_HANDLE;
+        VkPhysicalDevice physical = VK_NULL_HANDLE;
+        VkDevice device = VK_NULL_HANDLE;
+        VkQueue queue = VK_NULL_HANDLE;
+        uint32_t family = 0;
+        VkCommandPool pool = VK_NULL_HANDLE;
+
+        template <typename Function> Function Fn(const char* name) { return reinterpret_cast<Function>(gipa(instance, name)); }
+
+        uint32_t MemoryType(uint32_t bits, VkMemoryPropertyFlags wanted) {
+            VkPhysicalDeviceMemoryProperties properties{};
+            Fn<PFN_vkGetPhysicalDeviceMemoryProperties>("vkGetPhysicalDeviceMemoryProperties")(physical, &properties);
+            for (uint32_t i = 0; i < properties.memoryTypeCount; i++) {
+                if ((bits & (1u << i)) && (properties.memoryTypes[i].propertyFlags & wanted) == wanted) return i;
+            }
+            return UINT32_MAX;
+        }
+
+        static std::vector<std::string> Split(const std::string& list) {
+            std::vector<std::string> names;
+            for (size_t at = 0; at < list.size();) {
+                const size_t end = std::min(list.find(' ', at), list.size());
+                if (end > at) names.push_back(list.substr(at, end - at));
+                at = end + 1;
+            }
+            return names;
+        }
+
+        bool make(const std::string& instanceExtensions, const std::string& deviceExtensions) {
+            const HMODULE loader = LoadLibraryW(L"vulkan-1.dll");
+            gipa = loader ? reinterpret_cast<PFN_vkGetInstanceProcAddr>(GetProcAddress(loader, "vkGetInstanceProcAddr")) : nullptr;
+            if (!gipa) return false;
+            const std::vector<std::string> instanceNames = Split(instanceExtensions), deviceNames = Split(deviceExtensions);
+            std::vector<const char*> names;
+            for (const std::string& name : instanceNames) names.push_back(name.c_str());
+            VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
+            app.pApplicationName = "Layer test";
+            app.apiVersion = VK_API_VERSION_1_1;
+            VkInstanceCreateInfo instanceInfo{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+            instanceInfo.pApplicationInfo = &app;
+            instanceInfo.enabledExtensionCount = uint32_t(names.size());
+            instanceInfo.ppEnabledExtensionNames = names.data();
+            if (Fn<PFN_vkCreateInstance>("vkCreateInstance")(&instanceInfo, nullptr, &instance) != VK_SUCCESS) return false;
+            uint32_t count = 1;
+            Fn<PFN_vkEnumeratePhysicalDevices>("vkEnumeratePhysicalDevices")(instance, &count, &physical);
+            if (!physical) return false;
+            uint32_t families = 0;
+            Fn<PFN_vkGetPhysicalDeviceQueueFamilyProperties>("vkGetPhysicalDeviceQueueFamilyProperties")(physical, &families, nullptr);
+            std::vector<VkQueueFamilyProperties> familyList(families);
+            Fn<PFN_vkGetPhysicalDeviceQueueFamilyProperties>("vkGetPhysicalDeviceQueueFamilyProperties")(physical, &families, familyList.data());
+            while (family < families && !(familyList[family].queueFlags & VK_QUEUE_GRAPHICS_BIT)) family++;
+            if (family == families) return false;
+            const float priority = 1.f;
+            VkDeviceQueueCreateInfo queueInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+            queueInfo.queueFamilyIndex = family;
+            queueInfo.queueCount = 1;
+            queueInfo.pQueuePriorities = &priority;
+            names.clear();
+            for (const std::string& name : deviceNames) names.push_back(name.c_str());
+            VkDeviceCreateInfo deviceInfo{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+            deviceInfo.queueCreateInfoCount = 1;
+            deviceInfo.pQueueCreateInfos = &queueInfo;
+            deviceInfo.enabledExtensionCount = uint32_t(names.size());
+            deviceInfo.ppEnabledExtensionNames = names.data();
+            if (Fn<PFN_vkCreateDevice>("vkCreateDevice")(physical, &deviceInfo, nullptr, &device) != VK_SUCCESS) return false;
+            Fn<PFN_vkGetDeviceQueue>("vkGetDeviceQueue")(device, family, 0, &queue);
+            VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+            poolInfo.queueFamilyIndex = family;
+            return Fn<PFN_vkCreateCommandPool>("vkCreateCommandPool")(device, &poolInfo, nullptr, &pool) == VK_SUCCESS;
+        }
+
+        // Records into one command buffer, runs it on the game's queue and waits for it.
+        template <typename Record> void Run(Record record) {
+            VkCommandBufferAllocateInfo allocate{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+            allocate.commandPool = pool;
+            allocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocate.commandBufferCount = 1;
+            VkCommandBuffer commands = VK_NULL_HANDLE;
+            Fn<PFN_vkAllocateCommandBuffers>("vkAllocateCommandBuffers")(device, &allocate, &commands);
+            VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+            Fn<PFN_vkBeginCommandBuffer>("vkBeginCommandBuffer")(commands, &begin);
+            record(commands);
+            Fn<PFN_vkEndCommandBuffer>("vkEndCommandBuffer")(commands);
+            VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+            submit.commandBufferCount = 1;
+            submit.pCommandBuffers = &commands;
+            Fn<PFN_vkQueueSubmit>("vkQueueSubmit")(queue, 1, &submit, VK_NULL_HANDLE);
+            Fn<PFN_vkQueueWaitIdle>("vkQueueWaitIdle")(queue);
+            Fn<PFN_vkFreeCommandBuffers>("vkFreeCommandBuffers")(device, pool, 1, &commands);
+        }
+
+        void Barrier(VkCommandBuffer commands, VkImage image, uint32_t layers, VkImageLayout from, VkImageLayout to) {
+            VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+            barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image = image;
+            barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, layers};
+            barrier.oldLayout = from;
+            barrier.newLayout = to;
+            barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+            Fn<PFN_vkCmdPipelineBarrier>("vkCmdPipelineBarrier")(commands, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0,
+                                                                 nullptr, 0, nullptr, 1, &barrier);
+        }
+
+        void destroy() {
+            if (device) {
+                Fn<PFN_vkDeviceWaitIdle>("vkDeviceWaitIdle")(device);
+                if (pool) Fn<PFN_vkDestroyCommandPool>("vkDestroyCommandPool")(device, pool, nullptr);
+                Fn<PFN_vkDestroyDevice>("vkDestroyDevice")(device, nullptr);
+            }
+            if (instance) Fn<PFN_vkDestroyInstance>("vkDestroyInstance")(instance, nullptr);
+            device = VK_NULL_HANDLE;
+            instance = VK_NULL_HANDLE;
+        }
+    } g_vk;
+
     // ---- the fake runtime ---------------------------------------------------------------------------------------
     struct FakeSwapchain {
         XrSwapchainCreateInfo info{};
         std::vector<ComPtr<ID3D11Texture2D>> images11;
         std::vector<ComPtr<ID3D12Resource>> images12;
+        std::vector<VkImage> imagesVk;
+        std::vector<VkDeviceMemory> memoriesVk;
         std::vector<ULONG> references; // Of each image, when it was made.
         uint32_t next = 0;
         int acquired = -1, released = -1;
@@ -119,6 +246,21 @@ namespace {
     }
 
     void Fill(FakeSwapchain& swapchain, uint32_t image) {
+        if (g_vulkan) {
+            // Cleared slice by slice, then handed out as a colour attachment (the OpenXR rule for Vulkan).
+            const VkImage target = swapchain.imagesVk[image];
+            g_vk.Run([&](VkCommandBuffer commands) {
+                g_vk.Barrier(commands, target, swapchain.info.arraySize, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                for (uint32_t slice = 0; slice < swapchain.info.arraySize; slice++) {
+                    VkClearColorValue color{};
+                    memcpy(color.float32, g_fill[slice], sizeof(color.float32));
+                    const VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, slice, 1};
+                    g_vk.Fn<PFN_vkCmdClearColorImage>("vkCmdClearColorImage")(commands, target, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &color, 1, &range);
+                }
+                g_vk.Barrier(commands, target, swapchain.info.arraySize, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+            });
+            return;
+        }
         for (uint32_t slice = 0; slice < swapchain.info.arraySize; slice++) {
             if (g_d3d12) {
                 ComPtr<ID3D12DescriptorHeap> heap;
@@ -196,7 +338,30 @@ namespace {
         FakeSwapchain& made = Of(*swapchain);
         made.info = *info;
         for (int i = 0; i < ImagesPerSwapchain; i++) {
-            if (g_d3d12) {
+            if (g_vulkan) {
+                VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+                imageInfo.imageType = VK_IMAGE_TYPE_2D;
+                imageInfo.format = static_cast<VkFormat>(info->format);
+                imageInfo.extent = {info->width, info->height, 1};
+                imageInfo.mipLevels = 1;
+                imageInfo.arrayLayers = info->arraySize;
+                imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+                imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+                imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+                VkImage image = VK_NULL_HANDLE;
+                VkDeviceMemory memory = VK_NULL_HANDLE;
+                if (g_vk.Fn<PFN_vkCreateImage>("vkCreateImage")(g_vk.device, &imageInfo, nullptr, &image) != VK_SUCCESS) return XR_ERROR_RUNTIME_FAILURE;
+                VkMemoryRequirements needs{};
+                g_vk.Fn<PFN_vkGetImageMemoryRequirements>("vkGetImageMemoryRequirements")(g_vk.device, image, &needs);
+                VkMemoryAllocateInfo allocate{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+                allocate.allocationSize = needs.size;
+                allocate.memoryTypeIndex = g_vk.MemoryType(needs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                if (g_vk.Fn<PFN_vkAllocateMemory>("vkAllocateMemory")(g_vk.device, &allocate, nullptr, &memory) != VK_SUCCESS) return XR_ERROR_RUNTIME_FAILURE;
+                g_vk.Fn<PFN_vkBindImageMemory>("vkBindImageMemory")(g_vk.device, image, memory, 0);
+                made.imagesVk.push_back(image);
+                made.memoriesVk.push_back(memory);
+            } else if (g_d3d12) {
                 D3D12_HEAP_PROPERTIES heap{D3D12_HEAP_TYPE_DEFAULT};
                 D3D12_RESOURCE_DESC desc{};
                 desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -244,7 +409,10 @@ namespace {
         *count = ImagesPerSwapchain;
         if (capacity == 0 || !images) return XR_SUCCESS;
         for (uint32_t i = 0; i < *count && i < capacity; i++) {
-            if (g_d3d12) {
+            if (g_vulkan) {
+                if (images->type != XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR) return XR_ERROR_VALIDATION_FAILURE;
+                reinterpret_cast<XrSwapchainImageVulkanKHR*>(images)[i].image = from.imagesVk[i];
+            } else if (g_d3d12) {
                 if (images->type != XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR) return XR_ERROR_VALIDATION_FAILURE;
                 reinterpret_cast<XrSwapchainImageD3D12KHR*>(images)[i].texture = from.images12[i].Get();
             } else {
@@ -300,6 +468,12 @@ namespace {
         }
         return XR_SUCCESS;
     }
+    // XR_KHR_vulkan_enable: the runtime itself needs no Vulkan extensions; the layer adds its own.
+    XrResult XRAPI_CALL StubVulkanExtensions(XrInstance, XrSystemId, uint32_t capacity, uint32_t* count, char* buffer) {
+        *count = 1;
+        if (capacity && buffer) buffer[0] = 0;
+        return XR_SUCCESS;
+    }
     XrResult XRAPI_CALL StubStringToPath(XrInstance, const char*, XrPath* path) {
         *path = 1;
         return XR_SUCCESS;
@@ -324,6 +498,8 @@ namespace {
             {"xrWaitFrame", reinterpret_cast<PFN_xrVoidFunction>(StubWaitFrame)},
             {"xrEndFrame", reinterpret_cast<PFN_xrVoidFunction>(StubEndFrame)},
             {"xrStringToPath", reinterpret_cast<PFN_xrVoidFunction>(StubStringToPath)},
+            {"xrGetVulkanInstanceExtensionsKHR", reinterpret_cast<PFN_xrVoidFunction>(StubVulkanExtensions)},
+            {"xrGetVulkanDeviceExtensionsKHR", reinterpret_cast<PFN_xrVoidFunction>(StubVulkanExtensions)},
         };
         const auto found = table.find(name);
         *function = found != table.end() ? found->second : reinterpret_cast<PFN_xrVoidFunction>(StubSuccess);
@@ -372,6 +548,39 @@ namespace {
         picture.width = swapchain.info.width;
         picture.height = swapchain.info.height;
         picture.pixels.resize(size_t(picture.width) * picture.height * 4);
+        if (g_vulkan) {
+            // Copied into a buffer the CPU can read, on the game's queue - after the layer's own copy into the image.
+            VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+            bufferInfo.size = picture.pixels.size();
+            bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            VkBuffer buffer = VK_NULL_HANDLE;
+            VkDeviceMemory memory = VK_NULL_HANDLE;
+            g_vk.Fn<PFN_vkCreateBuffer>("vkCreateBuffer")(g_vk.device, &bufferInfo, nullptr, &buffer);
+            VkMemoryRequirements needs{};
+            g_vk.Fn<PFN_vkGetBufferMemoryRequirements>("vkGetBufferMemoryRequirements")(g_vk.device, buffer, &needs);
+            VkMemoryAllocateInfo allocate{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+            allocate.allocationSize = needs.size;
+            allocate.memoryTypeIndex = g_vk.MemoryType(needs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            g_vk.Fn<PFN_vkAllocateMemory>("vkAllocateMemory")(g_vk.device, &allocate, nullptr, &memory);
+            g_vk.Fn<PFN_vkBindBufferMemory>("vkBindBufferMemory")(g_vk.device, buffer, memory, 0);
+            const VkImage source = swapchain.imagesVk[image];
+            g_vk.Run([&](VkCommandBuffer commands) {
+                g_vk.Barrier(commands, source, 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                VkBufferImageCopy region{};
+                region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                region.imageExtent = {picture.width, picture.height, 1};
+                g_vk.Fn<PFN_vkCmdCopyImageToBuffer>("vkCmdCopyImageToBuffer")(commands, source, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
+                g_vk.Barrier(commands, source, 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+            });
+            void* mapped = nullptr;
+            g_vk.Fn<PFN_vkMapMemory>("vkMapMemory")(g_vk.device, memory, 0, VK_WHOLE_SIZE, 0, &mapped);
+            if (mapped) memcpy(picture.pixels.data(), mapped, picture.pixels.size());
+            g_vk.Fn<PFN_vkUnmapMemory>("vkUnmapMemory")(g_vk.device, memory);
+            g_vk.Fn<PFN_vkDestroyBuffer>("vkDestroyBuffer")(g_vk.device, buffer, nullptr);
+            g_vk.Fn<PFN_vkFreeMemory>("vkFreeMemory")(g_vk.device, memory, nullptr);
+            if (!mapped) return {};
+            return picture;
+        }
         if (g_d3d12) {
             ID3D12Resource* texture = swapchain.images12[image].Get();
             const D3D12_RESOURCE_DESC desc = texture->GetDesc();
@@ -562,7 +771,8 @@ int main(int argc, char** argv) {
     DeleteFileA(settings.c_str());
     CreateDirectoryA((folder + "\\Quad-Views-Foveated").c_str(), nullptr);
     WriteText(folder + "\\Quad-Views-Foveated\\settings.cfg", "# the official layer's file\nsharpen_focus_view=0.3\n");
-    const bool standsAside = name == "vulkan-declared" || name == "official-below";
+    const bool standsAside = name == "opengl-declared" || name == "official-below";
+    g_vulkan = name == "vulkan";
     g_belowOffersQuadViews = name == "official-below";
 
     printf("case %s\n", name.c_str());
@@ -583,7 +793,7 @@ int main(int argc, char** argv) {
             printf("no Direct3D 12 device\n");
             return 2;
         }
-    } else {
+    } else if (!g_vulkan) { // The Vulkan game makes its device once the layer has said which extensions it needs.
         D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION, &g_device11, nullptr, &g_context11);
         if (!g_device11) {
             printf("no Direct3D 11 device\n");
@@ -608,9 +818,12 @@ int main(int argc, char** argv) {
     if (!request.getInstanceProcAddr || !request.createApiLayerInstance) return 1;
 
     // ---- the instance
-    std::vector<const char*> extensions = {g_d3d12 ? XR_KHR_D3D12_ENABLE_EXTENSION_NAME : XR_KHR_D3D11_ENABLE_EXTENSION_NAME, XR_VARJO_QUAD_VIEWS_EXTENSION_NAME};
+    std::vector<const char*> extensions = {g_vulkan  ? XR_KHR_VULKAN_ENABLE_EXTENSION_NAME
+                                           : g_d3d12 ? XR_KHR_D3D12_ENABLE_EXTENSION_NAME
+                                                     : XR_KHR_D3D11_ENABLE_EXTENSION_NAME,
+                                           XR_VARJO_QUAD_VIEWS_EXTENSION_NAME};
     if (name == "d3d11-and-d3d12") extensions.push_back(XR_KHR_D3D12_ENABLE_EXTENSION_NAME);
-    if (name == "vulkan-declared") extensions.push_back("XR_KHR_vulkan_enable2");
+    if (name == "opengl-declared") extensions.push_back("XR_KHR_opengl_enable");
     XrInstanceCreateInfo instanceInfo{XR_TYPE_INSTANCE_CREATE_INFO};
     strcpy_s(instanceInfo.applicationInfo.applicationName, "Layer test");
     instanceInfo.applicationInfo.apiVersion = XR_MAKE_VERSION(1, 0, 0);
@@ -671,13 +884,44 @@ int main(int argc, char** argv) {
     Check(imported.find("# Copied from") != std::string::npos && imported.find("sharpen_focus_view=0.3") != std::string::npos,
           "the first start copies the official layer's settings");
 
+    // ---- the Vulkan game's device, with the extensions the layer asks for (XR_KHR_vulkan_enable's two questions)
+    XrGraphicsBindingVulkanKHR bindingVk{XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR};
+    if (g_vulkan) {
+        const auto ask = [&](const char* function) {
+            PFN_xrGetVulkanInstanceExtensionsKHR question = Get<PFN_xrGetVulkanInstanceExtensionsKHR>(getter, instance, function);
+            uint32_t count = 0;
+            if (!question || XR_FAILED(question(instance, system, 0, &count, nullptr))) return std::string();
+            std::string list(count, '\0');
+            question(instance, system, count, &count, list.data());
+            list.resize(strnlen(list.c_str(), list.size()));
+            return list;
+        };
+        const std::string instanceExtensions = ask("xrGetVulkanInstanceExtensionsKHR");
+        const std::string deviceExtensions = ask("xrGetVulkanDeviceExtensionsKHR");
+        printf("  note  Vulkan extensions asked for: instance \"%s\", device \"%s\"\n", instanceExtensions.c_str(), deviceExtensions.c_str());
+        Check(deviceExtensions.find("VK_KHR_external_memory_win32") != std::string::npos &&
+                  deviceExtensions.find("VK_KHR_external_semaphore_win32") != std::string::npos,
+              "the layer adds the sharing extensions to the game's Vulkan device");
+        if (!g_vk.make(instanceExtensions, deviceExtensions)) {
+            printf("no Vulkan device\n");
+            return 2;
+        }
+        bindingVk.instance = g_vk.instance;
+        bindingVk.physicalDevice = g_vk.physical;
+        bindingVk.device = g_vk.device;
+        bindingVk.queueFamilyIndex = g_vk.family;
+        bindingVk.queueIndex = 0;
+    }
+
     // ---- the session
     XrGraphicsBindingD3D11KHR binding11{XR_TYPE_GRAPHICS_BINDING_D3D11_KHR};
     binding11.device = g_device11.Get();
     XrGraphicsBindingD3D12KHR binding12{XR_TYPE_GRAPHICS_BINDING_D3D12_KHR};
     binding12.device = g_device12.Get();
     binding12.queue = g_queue12.Get();
-    XrSessionCreateInfo sessionInfo{XR_TYPE_SESSION_CREATE_INFO, g_d3d12 ? static_cast<const void*>(&binding12) : static_cast<const void*>(&binding11)};
+    XrSessionCreateInfo sessionInfo{XR_TYPE_SESSION_CREATE_INFO, g_vulkan  ? static_cast<const void*>(&bindingVk)
+                                                                 : g_d3d12 ? static_cast<const void*>(&binding12)
+                                                                           : static_cast<const void*>(&binding11)};
     sessionInfo.systemId = system;
     XrSession session = XR_NULL_HANDLE;
     const ULONG deviceReferencesBefore = g_d3d12 ? References(g_device12.Get()) : 0;
@@ -719,7 +963,7 @@ int main(int argc, char** argv) {
         }
         XrSwapchainCreateInfo info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
         info.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-        info.format = Format;
+        info.format = g_vulkan ? FormatVulkan : Format;
         info.sampleCount = 1;
         info.width = sizes[view].recommendedImageRectWidth;
         info.height = sizes[view].recommendedImageRectHeight;
@@ -731,6 +975,11 @@ int main(int argc, char** argv) {
         Check(XR_SUCCEEDED(createSwapchain(session, &info, &swapchains[view])), "a swapchain is made");
     }
     memset(g_fill, 0, sizeof(g_fill)); // The layer's own swapchains start black.
+    if (g_vulkan) {
+        bool readable = true;
+        for (int view = 0; view < 4; view++) readable = readable && (Of(swapchains[view]).info.usageFlags & XR_SWAPCHAIN_USAGE_TRANSFER_SRC_BIT);
+        Check(readable, "the layer has the game's Vulkan swapchains made readable for its copy");
+    }
 
     // ---- frames
     XrView views[4]{{XR_TYPE_VIEW}, {XR_TYPE_VIEW}, {XR_TYPE_VIEW}, {XR_TYPE_VIEW}};
@@ -862,6 +1111,21 @@ int main(int argc, char** argv) {
         }
     }
     Check(allGone, "the layer destroyed its own swapchains too");
+    if (g_vulkan) {
+        bool writable = true;
+        for (auto& entry : g_swapchains) {
+            const FakeSwapchain& made = entry.second;
+            if (made.info.width == StereoWidth && made.info.height == StereoHeight) {
+                writable = writable && (made.info.usageFlags & XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT);
+            }
+            for (size_t i = 0; i < made.imagesVk.size(); i++) {
+                g_vk.Fn<PFN_vkDestroyImage>("vkDestroyImage")(g_vk.device, made.imagesVk[i], nullptr);
+                g_vk.Fn<PFN_vkFreeMemory>("vkFreeMemory")(g_vk.device, made.memoriesVk[i], nullptr);
+            }
+        }
+        Check(writable, "the layer's full view swapchains are written by a copy (made for it)");
+        g_vk.destroy(); // After the session: the layer has let go of the game's device by now.
+    }
     Check(released, "no reference to the runtime's images is kept");
     if (g_d3d12) {
         printf("  note  references to the game's device: %lu before the session, %lu with it, now %lu\n", deviceReferencesBefore, deviceReferences,

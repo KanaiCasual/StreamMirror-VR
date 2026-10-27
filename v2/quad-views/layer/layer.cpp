@@ -31,6 +31,7 @@
 
 #include "views.h"
 #include "gaze_filter.h"
+#include "vulkan_interop.h"
 
 #include <ProjectionVS.h>
 #include <ProjectionPS.h>
@@ -75,6 +76,12 @@ namespace openxr_api_layer {
                std::abs(a.angleUp - b.angleUp) < 1e-4f && std::abs(a.angleDown - b.angleDown) < 1e-4f;
     }
 
+    // Vulkan games: ours in front of the runtime's (defined after the class).
+    XrResult XRAPI_CALL VulkanInstanceExtensions(XrInstance, XrSystemId, uint32_t, uint32_t*, char*);
+    XrResult XRAPI_CALL VulkanDeviceExtensions(XrInstance, XrSystemId, uint32_t, uint32_t*, char*);
+    XrResult XRAPI_CALL CreateVulkanInstance(XrInstance, const XrVulkanInstanceCreateInfoKHR*, VkInstance*, VkResult*);
+    XrResult XRAPI_CALL CreateVulkanDevice(XrInstance, const XrVulkanDeviceCreateInfoKHR*, VkDevice*, VkResult*);
+
     // This class implements our API layer.
     class OpenXrLayer : public openxr_api_layer::OpenXrApi {
       public:
@@ -95,6 +102,25 @@ namespace openxr_api_layer {
 
             XrResult result = m_bypassApiLayer ? m_xrGetInstanceProcAddr(instance, name, function)
                                                : OpenXrApi::xrGetInstanceProcAddr(instance, name, function);
+
+            // Vulkan games: the extensions the sharing with Direct3D needs go into what the game enables. These
+            // functions exist only when the game enabled XR_KHR_vulkan_enable(2); ours stand in front of the next ones.
+            if (!m_bypassApiLayer && XR_SUCCEEDED(result) && *function) {
+                const std::string_view api(name);
+                const auto standIn = [&](auto& next, auto ours) {
+                    next = reinterpret_cast<std::remove_reference_t<decltype(next)>>(*function);
+                    *function = reinterpret_cast<PFN_xrVoidFunction>(ours);
+                };
+                if (api == "xrGetVulkanInstanceExtensionsKHR") {
+                    standIn(m_nextGetVulkanInstanceExtensions, VulkanInstanceExtensions);
+                } else if (api == "xrGetVulkanDeviceExtensionsKHR") {
+                    standIn(m_nextGetVulkanDeviceExtensions, VulkanDeviceExtensions);
+                } else if (api == "xrCreateVulkanInstanceKHR") {
+                    standIn(m_nextCreateVulkanInstance, CreateVulkanInstance);
+                } else if (api == "xrCreateVulkanDeviceKHR") {
+                    standIn(m_nextCreateVulkanDevice, CreateVulkanDevice);
+                }
+            }
 
             TraceLoggingWrite(g_traceProvider, "xrGetInstanceProcAddr", TLPArg(*function, "Function"));
 
@@ -151,6 +177,8 @@ namespace openxr_api_layer {
                     m_requestedD3D11 = true;
                 } else if (ext == XR_KHR_D3D12_ENABLE_EXTENSION_NAME) {
                     m_requestedD3D12 = true;
+                } else if (ext == XR_KHR_VULKAN_ENABLE_EXTENSION_NAME || ext == XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME) {
+                    m_requestedVulkan = true;
                 }
             }
 
@@ -684,6 +712,17 @@ namespace openxr_api_layer {
                             Log("Session is using Direct3D 11\n");
                             break;
                         }
+                        if (m_requestedVulkan && entry->type == XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR) {
+                            // (XR_KHR_vulkan_enable2's binding is the same structure.) The composition runs on a
+                            // Direct3D 11 device of our own, and the images go across through shared memory.
+                            m_isSupportedGraphicsApi =
+                                m_vulkan.start(*reinterpret_cast<const XrGraphicsBindingVulkanKHR*>(entry));
+                            if (m_isSupportedGraphicsApi) {
+                                initializeDeviceContext(m_vulkan.device());
+                                Log("Session is using Vulkan (shared with Direct3D 11)\n");
+                            }
+                            break;
+                        }
                         if (m_requestedD3D12 && entry->type == XR_TYPE_GRAPHICS_BINDING_D3D12_KHR) {
                             const XrGraphicsBindingD3D12KHR* d3dBindings =
                                 reinterpret_cast<const XrGraphicsBindingD3D12KHR*>(entry);
@@ -781,6 +820,7 @@ namespace openxr_api_layer {
                     }
                     m_applicationDevice.Reset();
                     m_renderContext.Reset();
+                    m_vulkan.stop();
 
                     m_session = XR_NULL_HANDLE;
                 }
@@ -1156,7 +1196,21 @@ namespace openxr_api_layer {
                               TLArg(createInfo->sampleCount, "SampleCount"),
                               TLArg(createInfo->usageFlags, "UsageFlags"));
 
-            const XrResult result = OpenXrApi::xrCreateSwapchain(session, createInfo, swapchain);
+            XrResult result;
+            if (isSessionHandled(session) && m_vulkan.active() &&
+                !(createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
+                !(createInfo->usageFlags & XR_SWAPCHAIN_USAGE_TRANSFER_SRC_BIT)) {
+                XrSwapchainCreateInfo readable = *createInfo;
+                readable.usageFlags |= XR_SWAPCHAIN_USAGE_TRANSFER_SRC_BIT;
+                result = OpenXrApi::xrCreateSwapchain(session, &readable, swapchain);
+                if (XR_FAILED(result)) {
+                    ErrorLog(fmt::format("The runtime refused a readable Vulkan swapchain ({}): made as the game asked\n",
+                                         xr::ToCString(result)));
+                    result = OpenXrApi::xrCreateSwapchain(session, createInfo, swapchain);
+                }
+            } else {
+                result = OpenXrApi::xrCreateSwapchain(session, createInfo, swapchain);
+            }
 
             if (XR_SUCCEEDED(result)) {
                 TraceLoggingWrite(g_traceProvider, "xrCreateSwapchain", TLXArg(*swapchain, "Swapchain"));
@@ -1208,8 +1262,10 @@ namespace openxr_api_layer {
                 auto it = m_swapchains.find(swapchain);
                 if (it != m_swapchains.end()) {
                     Swapchain& entry = it->second;
+                    m_vulkan.removeSwapchain(swapchain);
                     for (uint32_t i = 0; i < xr::StereoView::Count; i++) {
                         if (entry.fullFovSwapchain[i] != XR_NULL_HANDLE) {
+                            m_vulkan.removeSwapchain(entry.fullFovSwapchain[i]);
                             OpenXrApi::xrDestroySwapchain(entry.fullFovSwapchain[i]);
                         }
                     }
@@ -1635,6 +1691,11 @@ namespace openxr_api_layer {
                                     createInfo.height = m_fullFovResolution.height;
                                     // We will use a Pixel Shader for rendering into this swapchain.
                                     createInfo.usageFlags |= XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+                                    if (m_vulkan.active()) {
+                                        // With Vulkan, a copy writes our picture into it, one sample a pixel.
+                                        createInfo.usageFlags |= XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT;
+                                        createInfo.sampleCount = 1;
+                                    }
                                     TraceLoggingWrite(g_traceProvider,
                                                       "xrEndFrame_CreateSwapchain",
                                                       TLArg(m_fullFovResolution.width, "Width"),
@@ -2339,7 +2400,8 @@ namespace openxr_api_layer {
             const auto populateSwapchainImagesCache = [&](std::vector<ID3D11Texture2D*>& images,
                                                           std::vector<ComPtr<ID3D11Texture2D>>& wrappedImages,
                                                           XrSwapchain swapchain,
-                                                          bool isRenderTarget) {
+                                                          bool isRenderTarget,
+                                                          const XrSwapchainCreateInfo& info) {
                 if (!images.empty()) {
                     return;
                 }
@@ -2349,6 +2411,22 @@ namespace openxr_api_layer {
                     local, "xrEndFrame_GatherInputOutput_PopulateImagesCache", TLXArg(swapchain, "Swapchain"));
                 uint32_t count;
                 CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(swapchain, 0, &count, nullptr));
+                if (m_vulkan.active()) {
+                    std::vector<XrSwapchainImageVulkanKHR> vkImages(count, {XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR});
+                    CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
+                        swapchain, count, &count, reinterpret_cast<XrSwapchainImageBaseHeader*>(vkImages.data())));
+                    std::vector<VkImage> list;
+                    for (const auto& image : vkImages) {
+                        list.push_back(image.image);
+                    }
+                    ID3D11Texture2D* shared = m_vulkan.addSwapchain(swapchain, info, std::move(list));
+                    if (!shared) {
+                        throw std::runtime_error("A Vulkan swapchain cannot be shared with Direct3D 11");
+                    }
+                    images.assign(count, shared);
+                    TraceLoggingWriteStop(local, "xrEndFrame_GatherInputOutput_PopulateImagesCache");
+                    return;
+                }
                 if (m_on12Device) {
                     std::vector<XrSwapchainImageD3D12KHR> d3d12Images(count, {XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
                     CHECK_XRCMD(OpenXrApi::xrEnumerateSwapchainImages(
@@ -2403,6 +2481,7 @@ namespace openxr_api_layer {
             ID3D11Texture2D* sourceImage = nullptr;
             ID3D11Texture2D* sourceFocusImage;
             ID3D11Texture2D* destinationImage;
+            uint32_t destinationIndex = 0;
             {
                 TraceLocalActivity(local);
                 TraceLoggingWriteStart(local, "xrEndFrame_GatherInputOutput");
@@ -2412,13 +2491,15 @@ namespace openxr_api_layer {
                     populateSwapchainImagesCache(swapchainForStereoView.images,
                                                  swapchainForStereoView.wrappedImages,
                                                  stereoView.subImage.swapchain,
-                                                 false);
+                                                 false,
+                                                 swapchainForStereoView.createInfo);
                     sourceImage = swapchainForStereoView.images[swapchainForStereoView.lastReleasedIndex];
                 }
                 populateSwapchainImagesCache(swapchainForFocusView.images,
                                              swapchainForFocusView.wrappedImages,
                                              focusView.subImage.swapchain,
-                                             false);
+                                             false,
+                                             swapchainForFocusView.createInfo);
                 sourceFocusImage = swapchainForFocusView.images[swapchainForFocusView.lastReleasedIndex];
 
                 // Grab the output texture.
@@ -2426,7 +2507,7 @@ namespace openxr_api_layer {
                     TraceLoggingWriteTagged(local,
                                             "xrEndFrame_GatherInputOutput_AcquireOutput",
                                             TLXArg(swapchainForStereoView.fullFovSwapchain[viewIndex], "Swapchain"));
-                    uint32_t acquiredImageIndex;
+                    uint32_t& acquiredImageIndex = destinationIndex;
                     CHECK_XRCMD(OpenXrApi::xrAcquireSwapchainImage(
                         swapchainForStereoView.fullFovSwapchain[viewIndex], nullptr, &acquiredImageIndex));
                     XrSwapchainImageWaitInfo waitInfo{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
@@ -2437,14 +2518,32 @@ namespace openxr_api_layer {
                     CHECK_XRCMD(
                         OpenXrApi::xrWaitSwapchainImage(swapchainForStereoView.fullFovSwapchain[viewIndex], &waitInfo));
 
+                    XrSwapchainCreateInfo outputInfo = swapchainForStereoView.createInfo;
+                    outputInfo.arraySize = 1;
+                    outputInfo.sampleCount = 1;
+                    outputInfo.width = m_fullFovResolution.width;
+                    outputInfo.height = m_fullFovResolution.height;
                     populateSwapchainImagesCache(swapchainForStereoView.fullFovSwapchainImages[viewIndex],
                                                  swapchainForStereoView.wrappedFullFovSwapchainImages[viewIndex],
                                                  swapchainForStereoView.fullFovSwapchain[viewIndex],
-                                                 true);
+                                                 true,
+                                                 outputInfo);
                     destinationImage = swapchainForStereoView.fullFovSwapchainImages[viewIndex][acquiredImageIndex];
                 }
 
                 TraceLoggingWriteStop(local, "xrEndFrame_GatherInputOutput");
+            }
+
+            // With Vulkan, the game's images go into their shared textures now (on the game's queue).
+            if (m_vulkan.active()) {
+                std::vector<std::pair<XrSwapchain, uint32_t>> inputs{
+                    {focusView.subImage.swapchain, swapchainForFocusView.lastReleasedIndex}};
+                if (m_useQuadViews) {
+                    inputs.emplace_back(stereoView.subImage.swapchain, swapchainForStereoView.lastReleasedIndex);
+                }
+                if (!m_vulkan.copyIn(inputs, m_framesElapsed)) {
+                    ErrorLog("Vulkan: the game's images could not be copied for this frame\n");
+                }
             }
 
             // With D3D12, D3D11on12 must be told when we begin and end using the wrapped images.
@@ -2489,7 +2588,7 @@ namespace openxr_api_layer {
                         desc.ArraySize = 1;
                         desc.Width = view.subImage.imageRect.extent.width;
                         desc.Height = view.subImage.imageRect.extent.height;
-                        desc.Format = (DXGI_FORMAT)swapchain.createInfo.format;
+                        desc.Format = dxgiFormatOf(swapchain.createInfo.format);
                         desc.MipLevels = 1;
                         desc.SampleDesc.Count = 1;
                         desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -2531,7 +2630,7 @@ namespace openxr_api_layer {
                 if (m_useQuadViews) {
                     D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
                     desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-                    desc.Format = (DXGI_FORMAT)swapchainForStereoView.createInfo.format;
+                    desc.Format = dxgiFormatOf(swapchainForStereoView.createInfo.format);
                     desc.Texture2D.MipLevels = 1;
                     CHECK_HRCMD(
                         m_applicationDevice->CreateShaderResourceView(swapchainForStereoView.flatImage[viewIndex].Get(),
@@ -2544,7 +2643,7 @@ namespace openxr_api_layer {
                 {
                     D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
                     desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-                    desc.Format = (DXGI_FORMAT)swapchainForFocusView.createInfo.format;
+                    desc.Format = dxgiFormatOf(swapchainForFocusView.createInfo.format);
                     desc.Texture2D.MipLevels = 1;
                     CHECK_HRCMD(m_applicationDevice->CreateShaderResourceView(
                         swapchainForFocusView.flatImage[xr::StereoView::Count + viewIndex].Get(),
@@ -2555,7 +2654,7 @@ namespace openxr_api_layer {
                 {
                     D3D11_RENDER_TARGET_VIEW_DESC desc{};
                     desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-                    desc.Format = (DXGI_FORMAT)swapchainForStereoView.createInfo.format;
+                    desc.Format = dxgiFormatOf(swapchainForStereoView.createInfo.format);
                     CHECK_HRCMD(m_applicationDevice->CreateRenderTargetView(
                         destinationImage, &desc, rtv.ReleaseAndGetAddressOf()));
                 }
@@ -2639,6 +2738,13 @@ namespace openxr_api_layer {
                 m_on12Device->ReleaseWrappedResources(wrappedResources, wrappedResourcesCount);
                 m_renderContext->Flush();
             }
+            // With Vulkan, our picture goes into the runtime's image, on the game's queue, before it is handed back.
+            if (m_vulkan.active()) {
+                m_renderContext->ClearState();
+                if (!m_vulkan.copyOut(swapchainForStereoView.fullFovSwapchain[viewIndex], destinationIndex)) {
+                    ErrorLog("Vulkan: the composed picture could not be copied for this frame\n");
+                }
+            }
 
             {
                 TraceLocalActivity(local);
@@ -2647,6 +2753,11 @@ namespace openxr_api_layer {
                     OpenXrApi::xrReleaseSwapchainImage(swapchainForStereoView.fullFovSwapchain[viewIndex], nullptr));
                 TraceLoggingWriteStop(local, "xrEndFrame_CommitOutput");
             }
+        }
+
+        // A swapchain's format as Direct3D 11 names it.
+        DXGI_FORMAT dxgiFormatOf(int64_t format) const {
+            return m_vulkan.active() ? VulkanInterop::DxgiFormat(format) : (DXGI_FORMAT)format;
         }
 
         void initializeDeviceContext(ID3D11Device* device) {
@@ -3278,6 +3389,7 @@ namespace openxr_api_layer {
         bool m_requestedDepthSubmission{false};
         bool m_requestedD3D11{false};
         bool m_requestedD3D12{false};
+        bool m_requestedVulkan{false};
         bool m_useFovTangent{false};
         std::string m_runtimeName;
         XrSystemId m_systemId{XR_NULL_SYSTEM_ID};
@@ -3344,6 +3456,16 @@ namespace openxr_api_layer {
         bool m_needSyncActions{true};
         uint64_t m_framesElapsed{0};
 
+        // Vulkan only: the sharing with our own Direct3D 11 device (which is m_applicationDevice).
+        VulkanInterop m_vulkan;
+
+      public:
+        PFN_xrGetVulkanInstanceExtensionsKHR m_nextGetVulkanInstanceExtensions{nullptr};
+        PFN_xrGetVulkanDeviceExtensionsKHR m_nextGetVulkanDeviceExtensions{nullptr};
+        PFN_xrCreateVulkanInstanceKHR m_nextCreateVulkanInstance{nullptr};
+        PFN_xrCreateVulkanDeviceKHR m_nextCreateVulkanDevice{nullptr};
+
+      private:
         // D3D12 only: the D3D11on12 device (it is m_applicationDevice as well, and m_renderContext is its context).
         ComPtr<ID3D11On12Device> m_on12Device;
         ComPtr<ID3D11Device5> m_applicationDevice;
@@ -3404,6 +3526,119 @@ namespace openxr_api_layer {
 
     std::string standAsideReason;
 
+    namespace {
+        void AddMissing(std::vector<const char*>& names, const std::vector<const char*>& wanted) {
+            for (const char* name : wanted) {
+                if (std::none_of(names.cbegin(), names.cend(), [&](const char* have) { return have && strcmp(have, name) == 0; })) {
+                    names.push_back(name);
+                }
+            }
+        }
+
+        // XR_KHR_vulkan_enable answers with a space-separated list, in the two-call idiom.
+        template <typename Next>
+        XrResult ExtendedList(Next next,
+                              XrInstance instance,
+                              XrSystemId system,
+                              uint32_t capacity,
+                              uint32_t* count,
+                              char* buffer,
+                              const std::vector<const char*>& wanted) {
+            if (!next || !count) {
+                return XR_ERROR_VALIDATION_FAILURE;
+            }
+            uint32_t needed = 0;
+            XrResult result = next(instance, system, 0, &needed, nullptr);
+            if (XR_FAILED(result)) {
+                return result;
+            }
+            std::string list(needed, '\0');
+            if (needed && XR_FAILED(result = next(instance, system, needed, &needed, list.data()))) {
+                return result;
+            }
+            list.resize(strnlen(list.c_str(), list.size()));
+            std::vector<std::string> names;
+            for (size_t at = 0; at < list.size();) {
+                const size_t end = std::min(list.find(' ', at), list.size());
+                if (end > at) {
+                    names.push_back(list.substr(at, end - at));
+                }
+                at = end + 1;
+            }
+            for (const char* name : wanted) {
+                if (std::find(names.begin(), names.end(), name) == names.end()) {
+                    list += (list.empty() ? "" : " ") + std::string(name);
+                }
+            }
+            *count = static_cast<uint32_t>(list.size() + 1);
+            if (capacity == 0) {
+                return XR_SUCCESS;
+            }
+            if (capacity < *count || !buffer) {
+                return XR_ERROR_SIZE_INSUFFICIENT;
+            }
+            memcpy(buffer, list.c_str(), list.size() + 1);
+            return XR_SUCCESS;
+        }
+
+        OpenXrLayer* Layer() {
+            return static_cast<OpenXrLayer*>(GetInstance());
+        }
+    } // namespace
+
+    XrResult XRAPI_CALL VulkanInstanceExtensions(XrInstance instance, XrSystemId system, uint32_t capacity, uint32_t* count, char* buffer) {
+        return ExtendedList(Layer()->m_nextGetVulkanInstanceExtensions, instance, system, capacity, count, buffer,
+                            VulkanInterop::instanceExtensions());
+    }
+
+    XrResult XRAPI_CALL VulkanDeviceExtensions(XrInstance instance, XrSystemId system, uint32_t capacity, uint32_t* count, char* buffer) {
+        return ExtendedList(Layer()->m_nextGetVulkanDeviceExtensions, instance, system, capacity, count, buffer,
+                            VulkanInterop::deviceExtensions());
+    }
+
+    // XR_KHR_vulkan_enable2 has the runtime create the game's Vulkan instance and device: ours go into their lists.
+    XrResult XRAPI_CALL CreateVulkanInstance(XrInstance instance,
+                                             const XrVulkanInstanceCreateInfoKHR* createInfo,
+                                             VkInstance* vulkanInstance,
+                                             VkResult* vulkanResult) {
+        const auto next = Layer()->m_nextCreateVulkanInstance;
+        if (!createInfo || !createInfo->vulkanCreateInfo) {
+            return next(instance, createInfo, vulkanInstance, vulkanResult);
+        }
+        VkInstanceCreateInfo vulkanInfo = *createInfo->vulkanCreateInfo;
+        std::vector<const char*> names;
+        if (vulkanInfo.ppEnabledExtensionNames) {
+            names.assign(vulkanInfo.ppEnabledExtensionNames, vulkanInfo.ppEnabledExtensionNames + vulkanInfo.enabledExtensionCount);
+        }
+        AddMissing(names, VulkanInterop::instanceExtensions());
+        vulkanInfo.enabledExtensionCount = static_cast<uint32_t>(names.size());
+        vulkanInfo.ppEnabledExtensionNames = names.data();
+        XrVulkanInstanceCreateInfoKHR info = *createInfo;
+        info.vulkanCreateInfo = &vulkanInfo;
+        return next(instance, &info, vulkanInstance, vulkanResult);
+    }
+
+    XrResult XRAPI_CALL CreateVulkanDevice(XrInstance instance,
+                                           const XrVulkanDeviceCreateInfoKHR* createInfo,
+                                           VkDevice* vulkanDevice,
+                                           VkResult* vulkanResult) {
+        const auto next = Layer()->m_nextCreateVulkanDevice;
+        if (!createInfo || !createInfo->vulkanCreateInfo) {
+            return next(instance, createInfo, vulkanDevice, vulkanResult);
+        }
+        VkDeviceCreateInfo vulkanInfo = *createInfo->vulkanCreateInfo;
+        std::vector<const char*> names;
+        if (vulkanInfo.ppEnabledExtensionNames) {
+            names.assign(vulkanInfo.ppEnabledExtensionNames, vulkanInfo.ppEnabledExtensionNames + vulkanInfo.enabledExtensionCount);
+        }
+        AddMissing(names, VulkanInterop::deviceExtensions(createInfo->vulkanPhysicalDevice));
+        vulkanInfo.enabledExtensionCount = static_cast<uint32_t>(names.size());
+        vulkanInfo.ppEnabledExtensionNames = names.data();
+        XrVulkanDeviceCreateInfoKHR info = *createInfo;
+        info.vulkanCreateInfo = &vulkanInfo;
+        return next(instance, &info, vulkanDevice, vulkanResult);
+    }
+
     // Whether Direct3D 12 games can be composed on this PC: a D3D11on12 device on a Direct3D 12 device of our own,
     // made and let go of before the game makes its own.
     bool CanUseD3D11On12() {
@@ -3433,17 +3668,16 @@ namespace openxr_api_layer {
                 return fmt::format("{} is below this layer and does quad views", layer->layerName);
             }
         }
-        static const std::string_view otherGraphics[] = {"XR_KHR_vulkan_enable",
-                                                          "XR_KHR_vulkan_enable2",
-                                                          "XR_KHR_opengl_enable",
+        static const std::string_view otherGraphics[] = {"XR_KHR_opengl_enable",
                                                           "XR_KHR_opengl_es_enable",
                                                           "XR_MNDX_egl_enable"};
-        bool d3d11 = false, d3d12 = false;
+        bool d3d11 = false, d3d12 = false, vulkan = false;
         std::string others;
         for (uint32_t i = 0; i < createInfo.enabledExtensionCount; i++) {
             const std::string_view ext(createInfo.enabledExtensionNames[i]);
             d3d11 = d3d11 || ext == XR_KHR_D3D11_ENABLE_EXTENSION_NAME;
             d3d12 = d3d12 || ext == XR_KHR_D3D12_ENABLE_EXTENSION_NAME;
+            vulkan = vulkan || ext == XR_KHR_VULKAN_ENABLE_EXTENSION_NAME || ext == XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME;
             if (std::find(std::cbegin(otherGraphics), std::cend(otherGraphics), ext) != std::cend(otherGraphics)) {
                 others += (others.empty() ? "" : ", ") + std::string(ext);
             }
@@ -3451,8 +3685,11 @@ namespace openxr_api_layer {
         if (!others.empty()) {
             return fmt::format("the game may render with {}, which this layer cannot compose", others);
         }
-        if (!d3d11 && !d3d12) {
-            return "the game renders with neither Direct3D 11 nor 12";
+        if (!d3d11 && !d3d12 && !vulkan) {
+            return "the game renders with neither Direct3D 11, 12 nor Vulkan";
+        }
+        if (vulkan && !VulkanInterop::Available()) {
+            return "the game may render with Vulkan, and Vulkan cannot share images with Direct3D on this PC";
         }
         if (d3d12 && !CanUseD3D11On12()) {
             return "the game may render with Direct3D 12, and D3D11on12 does not work on this PC";

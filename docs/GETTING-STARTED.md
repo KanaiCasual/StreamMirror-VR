@@ -169,7 +169,7 @@ and **Fix order** puts it right.
 
 | You see | Look at |
 |---|---|
-| Black source in OBS | Is the game in VR? The Status top line names the game the mirror shows. An OpenXR game on Vulkan or OpenGL cannot be mirrored yet. |
+| Black source in OBS | Is the game in VR? The Status top line names the game the mirror shows. An OpenXR game on OpenGL cannot be mirrored yet. |
 | The crop does nothing in OBS | Press Ctrl+F once on the source. |
 | No ring | Status top line: does gaze arrive? Is the ring on (Ring page)? |
 | Ring beside what you look at | Gaze page > Where the ring lands, with the marker. |
