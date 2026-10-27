@@ -35,5 +35,7 @@ __pycache__/
 !/v2/external/openvr/LICENSE
 /v2/external/qvf-deps/**/*.*
 !/v2/external/qvf-deps/**/LICENSE*
+/v2/external/vulkan-headers/*
+!/v2/external/vulkan-headers/LICENSE.md
 /v2/bin/
 /v2/obj/

@@ -15,6 +15,11 @@
 // of the game's D3D12 device and queue, every swapchain image (the game's and the overlay's) is wrapped as a D3D11
 // texture, and the core, the marker and the readers see nothing different. The wrapped images are acquired around the copy at their hand-back and
 // released after it, which is where 11-on-12 puts the resource transitions and orders our work behind the game's.
+//
+// Vulkan games go through shared memory (VulkanBridge): each colour swapchain gets one Direct3D 11 texture on a device of
+// our own on the game's GPU. At its hand-back the image is copied into that texture on the game's queue, and the copy at
+// hand-back reads it from there like any other image. The in-headset aids (marker, countdown, view edges) are drawn
+// with Direct3D 11 into a layer of our own, which a Vulkan game's runtime cannot take: not drawn in Vulkan games yet.
 
 #include "pch.h"
 
@@ -24,6 +29,7 @@
 #include "marker.h"
 #include "panels.h"
 #include "next.h"
+#include "vulkan_bridge.h"
 
 namespace gaze_mirror::layer {
 
@@ -52,6 +58,8 @@ namespace gaze_mirror::layer {
             uint32_t panelsDrawnSlices = 0; // The copy's slices panels were drawn into (a frame the game repeats has them).
             uint64_t lastReleaseFrame = 0;  // The frame count at its last hand-back (0 = none yet).
             bool loggedCopy = false;
+            VulkanSwapchainInfo vulkan; // Vulkan games: what the shared texture is made from.
+            bool vulkanColor = false;   // A Vulkan colour swapchain (depth ones are not mirrored).
         };
 
         // The aids shown in the headset - the calibration marker, the capture countdown, the edge finder - while one is up:
@@ -86,6 +94,12 @@ namespace gaze_mirror::layer {
             Microsoft::WRL::ComPtr<ID3D11On12Device> on12;
             Microsoft::WRL::ComPtr<ID3D11Device> device11;
             Microsoft::WRL::ComPtr<ID3D11DeviceContext> immediate11;
+            // Vulkan games: the shared textures and the device of our own the core works on.
+            VulkanBridge vulkan;
+            PFN_xrGetVulkanInstanceExtensionsKHR nextGetVulkanInstanceExtensions = nullptr;
+            PFN_xrGetVulkanDeviceExtensionsKHR nextGetVulkanDeviceExtensions = nullptr;
+            PFN_xrCreateVulkanInstanceKHR nextCreateVulkanInstance = nullptr;
+            PFN_xrCreateVulkanDeviceKHR nextCreateVulkanDevice = nullptr;
             XrViewConfigurationType viewConfiguration = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
             bool pipelineReady = false;
             // The game runs on SteamVR's OpenXR runtime: the SteamVR helper gives the picture (with SteamVR's overlays)
@@ -118,6 +132,7 @@ namespace gaze_mirror::layer {
             uint32_t maxLayerCount = 0;
             Overlay overlay;
             int logOverlay = 0;
+            int logAids = 0;
             int32_t nominalWidth = 0, nominalHeight = 0; // Quad views: the eye image's size at the inner image's sharpness.
         };
         State* g = nullptr;
@@ -166,6 +181,7 @@ namespace gaze_mirror::layer {
             g->on12.Reset();
             g->device11.Reset();
             g->immediate11.Reset();
+            g->vulkan.stop();
             for (auto entry = static_cast<const XrBaseInStructure*>(createInfo ? createInfo->next : nullptr); entry; entry = entry->next) {
                 if (entry->type == XR_TYPE_GRAPHICS_BINDING_D3D11_KHR) {
                     device = reinterpret_cast<const XrGraphicsBindingD3D11KHR*>(entry)->device;
@@ -184,17 +200,24 @@ namespace gaze_mirror::layer {
                     } else {
                         Log("session: Direct3D 12 game, but no 11-on-12 device could be made (0x%08lx) - no mirror", static_cast<unsigned long>(made));
                     }
-                } else if (entry->type == XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR || entry->type == XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR) {
-                    Log("session: this game does not use Direct3D (binding type %d) - not supported yet, no mirror", int(entry->type));
+                } else if (entry->type == XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR) { // (XR_KHR_vulkan_enable2's binding is the same)
+                    if (g->vulkan.start(*reinterpret_cast<const XrGraphicsBindingVulkanKHR*>(entry))) {
+                        device = g->vulkan.device();
+                        api = "Vulkan, through shared memory";
+                    }
+                } else if (entry->type == XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR) {
+                    Log("session: this game uses OpenGL - not supported yet, no mirror");
                 }
             }
             const XrResult result = g->next.xrCreateSession(instance, createInfo, session);
+            if (XR_FAILED(result) && g->vulkan.active()) g->vulkan.stop();
             if (XR_FAILED(result) || !device) return result;
 
             if (g->session != XR_NULL_HANDLE) Log("session: a second session while one is mirrored - the new one takes over");
             g->session = *session;
             g->logFrame = 0;
             g->logQuad = 0;
+            g->logAids = 0;
             g->logCopy = 0;
             g->logLayout = 0;
             g->imagesNeeded = false;
@@ -253,6 +276,7 @@ namespace gaze_mirror::layer {
                 g->on12.Reset();
                 g->immediate11.Reset();
                 g->device11.Reset();
+                g->vulkan.stop();
                 g->gaze.onSessionDestroyed();
                 g->session = XR_NULL_HANDLE;
             }
@@ -260,10 +284,34 @@ namespace gaze_mirror::layer {
         }
 
         XrResult XRAPI_CALL OnCreateSwapchain(XrSession session, const XrSwapchainCreateInfo* createInfo, XrSwapchain* swapchain) {
-            const XrResult result = g->next.xrCreateSwapchain(session, createInfo, swapchain);
+            const bool vulkan = session == g->session && createInfo && g->vulkan.active();
+            const bool vulkanColor = vulkan && !(createInfo->usageFlags & XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+            XrResult result;
+            if (vulkanColor && !(createInfo->usageFlags & XR_SWAPCHAIN_USAGE_TRANSFER_SRC_BIT)) {
+                // The copy reads the game's images, which Vulkan only allows when they were made for it.
+                XrSwapchainCreateInfo readable = *createInfo;
+                readable.usageFlags |= XR_SWAPCHAIN_USAGE_TRANSFER_SRC_BIT;
+                result = g->next.xrCreateSwapchain(session, &readable, swapchain);
+                if (XR_FAILED(result)) {
+                    Log("swapchain: the runtime refused a readable Vulkan swapchain (%d) - made as the game asked, not mirrored", result);
+                    return g->next.xrCreateSwapchain(session, createInfo, swapchain);
+                }
+            } else {
+                result = g->next.xrCreateSwapchain(session, createInfo, swapchain);
+            }
             if (XR_SUCCEEDED(result) && session == g->session && createInfo) {
                 SwapchainState state;
-                state.format = static_cast<DXGI_FORMAT>(createInfo->format);
+                if (vulkan) {
+                    state.format = VulkanBridge::DxgiFormat(static_cast<VkFormat>(createInfo->format));
+                    state.vulkanColor = vulkanColor;
+                    state.vulkan.format = static_cast<VkFormat>(createInfo->format);
+                    state.vulkan.width = createInfo->width;
+                    state.vulkan.height = createInfo->height;
+                    state.vulkan.arraySize = createInfo->arraySize;
+                    state.vulkan.sampleCount = createInfo->sampleCount;
+                } else {
+                    state.format = static_cast<DXGI_FORMAT>(createInfo->format);
+                }
                 state.info = *createInfo;
                 state.info.next = nullptr;
                 Log("swapchain %p: %u x %u, %u slice(s), %u sample(s), %u mip(s), format %lld, usage 0x%llx, flags 0x%llx", static_cast<void*>(*swapchain),
@@ -285,6 +333,7 @@ namespace gaze_mirror::layer {
                     g->marker.forget(found->second.images);
                     ReleaseCopy(found->second);
                     g->swapchains.erase(found);
+                    g->vulkan.removeSwapchain(swapchain);
                     // Direct3D 12: the wrapped images are only really let go - and with them the game's own - once the
                     // 11-on-12 context has dropped what it still has bound and flushed (it is ours alone, never the game's).
                     if (g->on12 && g->immediate11) {
@@ -366,6 +415,17 @@ namespace gaze_mirror::layer {
                         found->second.wrapped.push_back(wrapped);
                     }
                     if (failed) Log("swapchain: %d of %u Direct3D 12 images could not be wrapped for 11-on-12 - those frames are skipped", failed, *count);
+                }
+            } else if (images->type == XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR && g->vulkan.active()) {
+                // Every image of a Vulkan swapchain is read through the one shared texture it was given.
+                std::lock_guard<std::mutex> guard(g->lock);
+                const auto found = g->swapchains.find(swapchain);
+                if (found != g->swapchains.end() && found->second.vulkanColor) {
+                    const auto* vkImages = reinterpret_cast<const XrSwapchainImageVulkanKHR*>(images);
+                    std::vector<VkImage> list;
+                    for (uint32_t i = 0; i < *count && i < capacity; i++) list.push_back(vkImages[i].image);
+                    ID3D11Texture2D* shared = g->vulkan.addSwapchain(swapchain, found->second.vulkan, list);
+                    found->second.images.assign(list.size(), shared);
                 }
             }
             return result;
@@ -474,7 +534,16 @@ namespace gaze_mirror::layer {
                     const bool seldom = state.lastReleaseFrame == 0 || g->frameCount - state.lastReleaseFrame > 2;
                     const bool wanted = state.isPanel ? (seldom || g->imagesNeeded || g->pipeline.readerLive()) : WantCopy();
                     state.lastReleaseFrame = g->frameCount;
-                    if (wanted) CopyAtHandBack(state, state.acquired.front());
+                    if (wanted && state.vulkanColor) {
+                        // A Vulkan image reaches Direct3D through its shared texture: filled here on the game's queue,
+                        // which our device waits for before the copy below reads it.
+                        if (g->vulkan.copy({{swapchain, state.acquired.front()}})) {
+                            CopyAtHandBack(state, state.acquired.front());
+                            g->vulkan.readDone();
+                        }
+                    } else if (wanted) {
+                        CopyAtHandBack(state, state.acquired.front());
+                    }
                 }
             }
             const XrResult result = g->next.xrReleaseSwapchainImage(swapchain, info);
@@ -1036,7 +1105,13 @@ namespace gaze_mirror::layer {
             input.snapshotLater = snapshotDue && !input.images[1 - mirrored];
             const FrameOutput output = g->pipeline.frame(input);
             if (g->on12) g->immediate11->Flush(); // Our work on the copies goes down the game's queue now.
-            if (output.edgeBar > 0 || output.marker || output.countdownSeconds > 0) DrawOverlay(frame, projection, output, windows, haveWindow);
+            if (output.edgeBar > 0 || output.marker || output.countdownSeconds > 0) {
+                if (g->vulkan.active()) {
+                    LogFewTimes(g->logAids, 1, "frame: the in-headset aids (marker, countdown, view edges) are not drawn in Vulkan games yet");
+                } else {
+                    DrawOverlay(frame, projection, output, windows, haveWindow);
+                }
+            }
         }
 
         XrResult XRAPI_CALL OnEndFrame(XrSession session, const XrFrameEndInfo* frame) {
@@ -1108,6 +1183,76 @@ namespace gaze_mirror::layer {
             return g->gaze.syncActions(session, info);
         }
 
+        // ---- Vulkan games: the extensions the bridge needs go into what the game enables ------------------------
+        void AddMissing(std::vector<const char*>& names, const std::vector<const char*>& wanted) {
+            for (const char* name : wanted) {
+                bool present = false;
+                for (const char* have : names) present = present || (have && strcmp(have, name) == 0);
+                if (!present) names.push_back(name);
+            }
+        }
+
+        // XR_KHR_vulkan_enable answers with a space-separated list, in the two-call idiom.
+        template <typename Next>
+        XrResult ExtendedList(Next next, XrInstance instance, XrSystemId system, uint32_t capacity, uint32_t* count, char* buffer,
+                              const std::vector<const char*>& wanted) {
+            if (!count) return XR_ERROR_VALIDATION_FAILURE;
+            uint32_t needed = 0;
+            XrResult result = next(instance, system, 0, &needed, nullptr);
+            if (XR_FAILED(result)) return result;
+            std::string list(needed, '\0');
+            if (needed && XR_FAILED(result = next(instance, system, needed, &needed, list.data()))) return result;
+            list.resize(strnlen(list.c_str(), list.size()));
+            std::vector<std::string> names;
+            for (size_t at = 0; at < list.size();) {
+                const size_t end = std::min(list.find(' ', at), list.size());
+                if (end > at) names.push_back(list.substr(at, end - at));
+                at = end + 1;
+            }
+            for (const char* name : wanted) {
+                if (std::find(names.begin(), names.end(), name) == names.end()) list += (list.empty() ? "" : " ") + std::string(name);
+            }
+            *count = static_cast<uint32_t>(list.size() + 1);
+            if (capacity == 0) return XR_SUCCESS;
+            if (capacity < *count || !buffer) return XR_ERROR_SIZE_INSUFFICIENT;
+            memcpy(buffer, list.c_str(), list.size() + 1);
+            return XR_SUCCESS;
+        }
+
+        XrResult XRAPI_CALL OnGetVulkanInstanceExtensions(XrInstance instance, XrSystemId system, uint32_t capacity, uint32_t* count, char* buffer) {
+            return ExtendedList(g->nextGetVulkanInstanceExtensions, instance, system, capacity, count, buffer, VulkanBridge::instanceExtensions());
+        }
+        XrResult XRAPI_CALL OnGetVulkanDeviceExtensions(XrInstance instance, XrSystemId system, uint32_t capacity, uint32_t* count, char* buffer) {
+            return ExtendedList(g->nextGetVulkanDeviceExtensions, instance, system, capacity, count, buffer, VulkanBridge::deviceExtensions());
+        }
+
+        // XR_KHR_vulkan_enable2 has the runtime create the game's Vulkan instance and device: ours go into their lists.
+        XrResult XRAPI_CALL OnCreateVulkanInstance(XrInstance instance, const XrVulkanInstanceCreateInfoKHR* createInfo, VkInstance* vulkanInstance,
+                                                   VkResult* vulkanResult) {
+            if (!createInfo || !createInfo->vulkanCreateInfo) return g->nextCreateVulkanInstance(instance, createInfo, vulkanInstance, vulkanResult);
+            VkInstanceCreateInfo vulkanInfo = *createInfo->vulkanCreateInfo;
+            std::vector<const char*> names;
+            if (vulkanInfo.ppEnabledExtensionNames) names.assign(vulkanInfo.ppEnabledExtensionNames, vulkanInfo.ppEnabledExtensionNames + vulkanInfo.enabledExtensionCount);
+            AddMissing(names, VulkanBridge::instanceExtensions());
+            vulkanInfo.enabledExtensionCount = static_cast<uint32_t>(names.size());
+            vulkanInfo.ppEnabledExtensionNames = names.data();
+            XrVulkanInstanceCreateInfoKHR info = *createInfo;
+            info.vulkanCreateInfo = &vulkanInfo;
+            return g->nextCreateVulkanInstance(instance, &info, vulkanInstance, vulkanResult);
+        }
+        XrResult XRAPI_CALL OnCreateVulkanDevice(XrInstance instance, const XrVulkanDeviceCreateInfoKHR* createInfo, VkDevice* vulkanDevice, VkResult* vulkanResult) {
+            if (!createInfo || !createInfo->vulkanCreateInfo) return g->nextCreateVulkanDevice(instance, createInfo, vulkanDevice, vulkanResult);
+            VkDeviceCreateInfo vulkanInfo = *createInfo->vulkanCreateInfo;
+            std::vector<const char*> names;
+            if (vulkanInfo.ppEnabledExtensionNames) names.assign(vulkanInfo.ppEnabledExtensionNames, vulkanInfo.ppEnabledExtensionNames + vulkanInfo.enabledExtensionCount);
+            AddMissing(names, VulkanBridge::deviceExtensions(createInfo->vulkanPhysicalDevice));
+            vulkanInfo.enabledExtensionCount = static_cast<uint32_t>(names.size());
+            vulkanInfo.ppEnabledExtensionNames = names.data();
+            XrVulkanDeviceCreateInfoKHR info = *createInfo;
+            info.vulkanCreateInfo = &vulkanInfo;
+            return g->nextCreateVulkanDevice(instance, &info, vulkanDevice, vulkanResult);
+        }
+
         XrResult XRAPI_CALL OnGetInstanceProcAddr(XrInstance instance, const char* name, PFN_xrVoidFunction* function);
 
         struct Override {
@@ -1139,6 +1284,17 @@ namespace gaze_mirror::layer {
                     return XR_SUCCESS;
                 }
             }
+            // The Vulkan functions exist only when the game enabled XR_KHR_vulkan_enable(2): ours stand in front of
+            // them when the runtime has them.
+            const auto chain = [&](auto& next, auto ours) {
+                const XrResult result = g->next.getInstanceProcAddr(instance, name, reinterpret_cast<PFN_xrVoidFunction*>(&next));
+                if (XR_SUCCEEDED(result) && next) *function = reinterpret_cast<PFN_xrVoidFunction>(ours);
+                return result;
+            };
+            if (strcmp(name, "xrGetVulkanInstanceExtensionsKHR") == 0) return chain(g->nextGetVulkanInstanceExtensions, OnGetVulkanInstanceExtensions);
+            if (strcmp(name, "xrGetVulkanDeviceExtensionsKHR") == 0) return chain(g->nextGetVulkanDeviceExtensions, OnGetVulkanDeviceExtensions);
+            if (strcmp(name, "xrCreateVulkanInstanceKHR") == 0) return chain(g->nextCreateVulkanInstance, OnCreateVulkanInstance);
+            if (strcmp(name, "xrCreateVulkanDeviceKHR") == 0) return chain(g->nextCreateVulkanDevice, OnCreateVulkanDevice);
             return g->next.getInstanceProcAddr(instance, name, function);
         }
 

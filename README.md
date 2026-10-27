@@ -30,7 +30,7 @@ follows your eyes, with a tail that shows where they came from. You see none of 
 One installer sets up all of it:
 
 - **The mirror layer**: an OpenXR API layer that copies the picture your headset shows in OpenXR games (DCS World,
-  Assetto Corsa EVO, VAIL and the like; Direct3D 11 and 12, quad views included), then crops, frames and steadies it
+  Assetto Corsa EVO, VAIL and the like; Direct3D 11 and 12 and Vulkan, quad views included), then crops, frames and steadies it
   in a single pass.
 - **The SteamVR helper**: the same for games that use SteamVR directly (VRChat, Half-Life: Alyx, Pavlov and the like).
   It starts and stops with SteamVR by itself.
@@ -80,7 +80,7 @@ picture in OBS, step by step. The rest of this page is the full reference.
   ring, the headset's software has to feed its eye tracking to the standard interface the game uses: OpenXR's eye-gaze
   extension for OpenXR games, SteamVR's eye tracking for SteamVR games (Pimax Crystal, Varjo, Quest Pro over Virtual
   Desktop, Vive Pro Eye). Software that feeds VRChat alone works too, through the ring's fallback.
-- **OpenXR games** that render with **Direct3D 11 or Direct3D 12** (DCS World, Assetto Corsa EVO, VAIL), or
+- **OpenXR games** that render with **Direct3D 11, Direct3D 12 or Vulkan** (DCS World, Assetto Corsa EVO, VAIL), or
   **SteamVR games** (VRChat, Half-Life: Alyx) with any renderer.
 - For recording through the plugin: **OBS Studio**. The mirror window needs nothing else.
 
@@ -544,7 +544,7 @@ File locations:
 ## Troubleshooting
 
 - **Black Gaze Mirror source in OBS**: no VR session is running yet, or the layer cannot mirror the game (an OpenXR
-  game on Vulkan or OpenGL). The Status page's top line names the game the mirror shows.
+  game on OpenGL). The Status page's top line names the game the mirror shows.
 - **No ring**: eye tracking is off in the headset software, the software does not feed the standard interface (see
   Gaze source above), or the ring is off on the Ring page. The Status page says whether gaze arrives.
 - **No ring in games that run through SteamVR** (SteamVR games, and OpenXR games with SteamVR as the runtime): their
@@ -605,7 +605,8 @@ the checksum.
 - Setup is a plain MSI on purpose: antivirus heuristics quarantined an earlier self-installing `.exe` half-way through
   an install.
 - Silent install without the desktop shortcut: `msiexec /i VR-Gaze-Mirror-x.y.z.msi /qn DESKTOPSHORTCUT=0`.
-- The mirror shows OpenXR games that render with Direct3D 11 or Direct3D 12. Vulkan and OpenGL games have no mirror
+- The mirror shows OpenXR games that render with Direct3D 11, Direct3D 12 or Vulkan. In Vulkan games the in-headset
+  aids (the capture countdown, the View edges blocks, the calibration marker) are not drawn yet. OpenGL games have no mirror
   yet.
 - The mirror shows quad views, the four-view foveated mode (Varjo headsets; Pimax Play's own setting), as the headset
   shows them: the sharp inner image over the wide one. VR Gaze Mirror's quad views layer handles Direct3D 11 and 12

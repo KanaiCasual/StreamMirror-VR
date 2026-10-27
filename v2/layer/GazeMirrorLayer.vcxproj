@@ -33,7 +33,7 @@
       <Optimization>MaxSpeed</Optimization>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\external\openxr-sdk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)..\external\openxr-sdk;$(ProjectDir)..\external\vulkan-headers\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -54,6 +54,7 @@
     <ClCompile Include="gaze_input.cpp" />
     <ClCompile Include="marker.cpp" />
     <ClCompile Include="panels.cpp" />
+    <ClCompile Include="vulkan_bridge.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -61,6 +62,7 @@
     <ClInclude Include="gaze_input.h" />
     <ClInclude Include="marker.h" />
     <ClInclude Include="panels.h" />
+    <ClInclude Include="vulkan_bridge.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\core\GazeMirrorCore.vcxproj">

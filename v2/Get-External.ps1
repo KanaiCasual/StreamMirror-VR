@@ -4,6 +4,7 @@
 #   external\openxr-sdk\  the OpenXR headers, release 1.1.43 (Apache-2.0) - for the layer and its test
 #   external\openvr\      Valve's OpenVR SDK v2.15.6: header, import library, redistributable DLL (BSD-3) - for the OpenVR helper
 #   external\qvf-deps\    what the quad views layer is built against: fmt, OpenXR SDK headers, XrUtility, WIL
+#   external\vulkan-headers\  the Vulkan headers, v1.3.296 (Apache-2.0 / MIT) - for the layer's Vulkan games
 # Needs the GitHub CLI (gh) and Visual Studio 2022. Nothing is executed or installed.
 $ErrorActionPreference = 'Stop'
 $root = Join-Path $PSScriptRoot 'external'
@@ -28,6 +29,21 @@ if (-not (Test-Path "$root\openvr\openvr.h")) {
         Fetch 'ValveSoftware/openvr' 'v2.15.6' $file (Join-Path "$root\openvr" (Split-Path $file -Leaf))
     }
     'OpenVR SDK fetched.'
+}
+
+if (-not (Test-Path "$root\vulkan-headers\include\vulkan\vulkan.h")) {
+    # The Vulkan headers (Apache-2.0 / MIT), v1.3.296: the layer reads Vulkan games' images through them. Headers only;
+    # the Vulkan loader itself is part of every graphics driver.
+    $listing = gh api 'repos/KhronosGroup/Vulkan-Headers/git/trees/v1.3.296?recursive=1' | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0) { throw 'could not list the Vulkan headers' }
+    $headers = $listing.tree | Where-Object { $_.type -eq 'blob' -and ($_.path -like 'include/vulkan/*.h' -or $_.path -like 'include/vk_video/*.h') } | ForEach-Object { $_.path }
+    # Straight into the files (PowerShell's > would turn them into UTF-16).
+    foreach ($path in $headers + 'LICENSE.md') {
+        $target = Join-Path "$root\vulkan-headers" ($path -replace '/', '\')
+        New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+        Invoke-WebRequest "https://raw.githubusercontent.com/KhronosGroup/Vulkan-Headers/v1.3.296/$path" -OutFile $target -UseBasicParsing
+    }
+    "Vulkan headers fetched ($($headers.Count) files)."
 }
 
 if (-not (Test-Path "$root\libobs\obs-module.h")) {
