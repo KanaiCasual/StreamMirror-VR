@@ -1888,6 +1888,7 @@ int wmain(int argc, wchar_t** argv) {
             // A frame with the flat screen alone, no world (a game's menu or loading screen): the screen on a black eye
             // image, where the headset shows it; then the world again.
             const int worldOutside[3] = {outside[0], outside[1], outside[2]};
+            const LONG worldPictureWidth = frames->width, worldPictureHeight = frames->height;
             const XrCompositionLayerBaseHeader* flatOnly[] = {reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
             XrFrameEndInfo flatFrame = frameEnd;
             flatFrame.layerCount = 1;
@@ -1900,6 +1901,8 @@ int wmain(int argc, wchar_t** argv) {
             printf("       flat screen alone: at 42 %%, 58 %%: %d, %d, %d; at 30 %%, 58 %%: %d, %d, %d\n", inside[0], inside[1], inside[2], outside[0], outside[1], outside[2]);
             Check(readFlat && isMagenta(inside) && outside[0] < 10 && outside[1] < 10 && outside[2] < 10,
                   "a frame with flat screens alone (a menu): the screen on a black picture, where the headset shows it");
+            printf("       picture: world %ld x %ld, menu %ld x %ld\n", worldPictureWidth, worldPictureHeight, LONG(frames->width), LONG(frames->height));
+            Check(LONG(frames->width) == worldPictureWidth && LONG(frames->height) == worldPictureHeight, "the menu's picture keeps the world's size");
             frameWithPanel();
             frameWithPanel();
             const bool readBack = pixelAt(0.30f, 0.58f, outside);
