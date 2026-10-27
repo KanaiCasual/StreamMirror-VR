@@ -256,7 +256,7 @@ public partial class MainWindow
 
         // Stabilisation: the same kind of fold-away section, with the level horizon's warning under its Tilt row.
         _levelWarning.Foreground = Brushes.Orange;
-        _levelWarning.Text = "Level: the box turns only as far as the eye image reaches, and eases off before it gets there. Beyond that the horizon tilts with you instead of showing black. A smaller box, or less follow, leaves more room; Show > Turn limit draws how far it can turn.";
+        _levelWarning.Text = "Level: the box turns only as far as the eye image reaches, and eases off before it gets there. Beyond that the horizon tilts with you instead of showing black.\n\nA smaller box, or less follow, leaves more room; Show > Turn limit draws how far it can turn.";
         foreach (var def in Settings.All.Where(d => d.Key.StartsWith("stabilize", StringComparison.Ordinal)))
         {
             var row = SideRow(BuildRow(def));

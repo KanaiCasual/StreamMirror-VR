@@ -43,7 +43,7 @@ public partial class MainWindow
         {
             var outward = _edgeBar switch { 0 => "Left", 1 => "Right", 2 => "Up", _ => "Down" };
             EdgeBannerTitle.Text = $"MEASURING YOUR VIEW EDGES: {_edgeBar + 1} of 4, {EdgeNames[_edgeBar]}";
-            EdgeBannerDetail.Text = $"The headset is black, and the flashing white block is the part your eye should not see. Push it outwards with {outward} (hold the key to keep moving; Shift = bigger steps) until it is gone from your view, then press Enter. Backspace goes back a side, Esc cancels. Keep this window focused: the game gets none of the keys.";
+            EdgeBannerDetail.Text = $"The headset is black, and the flashing white block is the part your eye should not see.\n\nPush it outwards with {outward} (hold the key to keep moving; Shift = bigger steps) until it is gone from your view, then press Enter. Backspace goes back a side, Esc cancels.\n\nKeep this window focused: the game gets none of the keys.";
             EdgeBannerValues.Text = $"left {_edges[0]:P1}, right {_edges[1]:P1}, top {_edges[2]:P1}, bottom {_edges[3]:P1} of the eye image";
         }
         var measured = _appSettings.VisibleEdges is { Length: 4 } saved ? saved : null;

@@ -647,12 +647,12 @@ public partial class MainWindow
         var where = "Fixed centre: the ring stays where straight ahead lands in the eye image (the centre mark on the Mirror page's picture).";
         if (focus is { } f)
         {
-            return where + $" Without eye tracking, Quad-Views-Foveated puts its sharp area at that spot, so the mirror draws the ring that size: " +
+            return where + $"\n\nWithout eye tracking, the quad views layer puts its sharp area at that spot, so the mirror draws the ring that size: " +
                    $"{100 * f.Width:0} % of the view across, {100 * f.Height:0} % down, from its settings (last game start: {f.Game}).";
         }
         return where + (_navQuadViews
-            ? " Quad-Views-Foveated used no quad views at the last game start it logged, which leaves no sharp area to match: the ring keeps its size from the Ring page."
-            : " Without Quad-Views-Foveated there is no sharp area to match: the ring keeps its size from the Ring page.");
+            ? "\n\nThe quad views layer used no quad views at the last game start it logged, which leaves no sharp area to match: the ring keeps its size from the Ring page."
+            : "\n\nWithout quad views there is no sharp area to match: the ring keeps its size from the Ring page.");
     }
 
     /// <summary>The SteamVR helper's state in one line (the Mirror page's Picture card and the Status page share it).</summary>
