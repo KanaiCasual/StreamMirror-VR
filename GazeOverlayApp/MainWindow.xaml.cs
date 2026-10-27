@@ -993,7 +993,7 @@ public partial class MainWindow : Window
         }
 
         StatusRows.Children.Clear();
-        ShowQuadViewsPage(status.QuadViewsInstalled || status.OwnQuadViewsInstalled);
+        ShowQuadViewsPage(true);
         ShowQuadViewsLayer(status);
         _obsPluginMissing = status.ObsPath != null && !status.ObsPluginPresent;
         UpdateStartSteps();
@@ -1016,17 +1016,13 @@ public partial class MainWindow : Window
             : $"Not in OBS yet ({status.ObsPath}). Run the installer again now that OBS is there, or use its Repair option.",
             obsReady ? Colors.SeaGreen : status.ObsPath == null ? Colors.Gray : Colors.Firebrick);
         AddStatusRow("SteamVR helper", helper.Text + " It mirrors games that use SteamVR directly; the layer mirrors OpenXR games.", helper.Color);
-        if (status.OwnQuadViewsOn)
-        {
-            AddStatusRow("Quad views (optional)", "VR Gaze Mirror's quad views layer is on: Direct3D 11 and 12 games get quad views. The Quad Views page sets it up.",
-                HealthColor(status.OwnQuadViews.Health), tip: status.OwnQuadViews.Detail);
-        }
-        else
-        {
-            AddStatusRow("Quad-Views-Foveated (optional)", status.QuadViews.Detail,
-                status.QuadViews.Health == LayerHealth.NotActive && !status.QuadViewsInstalled ? Colors.Gray : HealthColor(status.QuadViews.Health),
-                !status.QuadViewsInstalled && !status.OwnQuadViewsInstalled && MirrorLive.FindQuadViewsInstaller() != null ? ("Install", OnQuadViewsInstall) : null);
-        }
+        AddStatusRow("Quad views (optional)",
+            status.OwnQuadViewsOn ? "On: Direct3D 11 and 12 games get quad views. The Quad Views page sets it up."
+            : !status.OwnQuadViewsInstalled ? status.OwnQuadViews.Detail
+            : status.QuadViews.Health != LayerHealth.NotActive ? "Off here. The official Quad-Views-Foveated is on and does quad views; switching it on on the Quad Views page turns that one off."
+            : "Off. The Quad Views page switches it on; the mirror and the ring work without it.",
+            status.OwnQuadViewsOn ? HealthColor(status.OwnQuadViews.Health) : !status.OwnQuadViewsInstalled ? Colors.Firebrick : Colors.Gray,
+            tip: status.OwnQuadViews.Detail);
         if (marker)
         {
             AddStatusRow("Calibration is ON",
@@ -1430,12 +1426,6 @@ public partial class MainWindow : Window
     }
 
     private void OnOpenLogs(object sender, RoutedEventArgs e) => OpenFolder(AppSettings.Folder);
-
-    /// <summary>Starts the official Quad-Views-Foveated installer shipped with this app (Windows Installer asks for permission itself).</summary>
-    private void OnQuadViewsInstall(object sender, RoutedEventArgs e)
-    {
-        if (!MirrorLive.RunQuadViewsInstaller()) LiveText.Text = "The Quad-Views-Foveated installer did not start.";
-    }
 
     private void UpdateLive()
     {

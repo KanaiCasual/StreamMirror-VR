@@ -125,9 +125,9 @@ public static class LayerStatus
     public static SystemStatus Get()
     {
         var layers = ReadLayers();
-        // Quad-Views-Foveated is optional and Matthieu Bucchianeri's own (unmodified) product: any copy is fine.
-        var quadViews = Describe(layers, QuadViewsLayer, "Quad-Views-Foveated",
-            "Not installed, and optional: foveated rendering and the Quad Views page need it; the mirror and the ring work without it. Press Install to set up the official version that ships with this app.");
+        // The official Quad-Views-Foveated is Matthieu Bucchianeri's own product: VR Gaze Mirror no longer ships it, but
+        // knows it, so its own layer can take over from it.
+        var quadViews = Describe(layers, QuadViewsLayer, "Quad-Views-Foveated", "Not installed.");
         var gazeMirror = Describe(layers, GazeMirrorLayer, "the mirror layer", "Not installed. Run the VR Gaze Mirror installer (.msi), or its Repair option.");
         var ownQuadViews = Describe(layers, OwnQuadViewsLayer, "VR Gaze Mirror's quad views layer",
             "Not installed. Run the VR Gaze Mirror installer (.msi), or its Repair option.");

@@ -27,10 +27,10 @@ Plan about 15 minutes, with your game installed and the headset at hand.
 1. **Close your VR game and OBS.** The installer replaces files they keep open.
 2. Download `VR-Gaze-Mirror-<version>.msi` from the [Releases page](https://github.com/KanaiCasual/VR-Gaze-Mirror/releases/latest) and run it. Windows
    SmartScreen may warn, because the files carry no code signature yet: **More info > Run anyway**.
-3. At the end, setup offers **Quad-Views-Foveated**. That is foveated rendering for OpenXR games (sharp where you look,
-   cheaper elsewhere). The mirror works without it, so say no if you are unsure; you can add it later from the Status
-   page.
-4. Start **VR Gaze Mirror** from the Start menu.
+3. Start **VR Gaze Mirror** from the Start menu.
+
+Quad views (foveated rendering: sharp where you look, cheaper elsewhere) come with it, switched off. The **Quad Views**
+page switches them on; the mirror works without them.
 
 The app opens with a short tour of its pages. Take it once; you can start it again from the About page.
 

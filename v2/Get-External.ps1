@@ -3,12 +3,11 @@
 #   external\libobs-lib\  an import library made from the INSTALLED obs.dll  - no download
 #   external\openxr-sdk\  the OpenXR headers, release 1.1.43 (Apache-2.0) - for the layer and its test
 #   external\openvr\      Valve's OpenVR SDK v2.15.6: header, import library, redistributable DLL (BSD-3) - for the OpenVR helper
-#   external\qvf\         mbucchia's official Quad-Views-Foveated 1.1.3 installer (MIT) - bundled, offered by our installer
 #   external\qvf-deps\    what the quad views layer is built against: fmt, OpenXR SDK headers, XrUtility, WIL
 # Needs the GitHub CLI (gh) and Visual Studio 2022. Nothing is executed or installed.
 $ErrorActionPreference = 'Stop'
 $root = Join-Path $PSScriptRoot 'external'
-New-Item -ItemType Directory -Force "$root\libobs", "$root\libobs-lib", "$root\openvr", "$root\qvf", "$root\openxr-sdk\openxr" | Out-Null
+New-Item -ItemType Directory -Force "$root\libobs", "$root\libobs-lib", "$root\openvr", "$root\openxr-sdk\openxr" | Out-Null
 
 function Fetch($repo, $ref, $path, $target) {
     New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
@@ -49,11 +48,6 @@ if (-not (Test-Path "$root\libobs-lib\obs.lib")) {
     "obs.lib made from the installed OBS ($($names.Count) exports)."
 }
 
-if (-not (Test-Path "$root\qvf\Quad-Views-Foveated-1.1.3.msi")) {
-    gh release download 1.1.3 --repo mbucchia/Quad-Views-Foveated --pattern 'Quad-Views-Foveated-1.1.3.msi' --dir "$root\qvf" --clobber
-    Fetch 'mbucchia/Quad-Views-Foveated' '1.1.3' 'LICENSE' "$root\qvf\LICENSE"
-    'Quad-Views-Foveated 1.1.3 installer fetched.'
-}
 if (-not (Test-Path "$root\qvf-deps\wil\include\wil\resource.h")) {
     # What the quad views layer (v2\quad-views, built on Quad-Views-Foveated) is built against, at the versions upstream
     # pins: fmt (MIT), the OpenXR SDK headers and loader_interfaces.h (Apache-2.0), Microsoft's XrUtility headers (MIT),

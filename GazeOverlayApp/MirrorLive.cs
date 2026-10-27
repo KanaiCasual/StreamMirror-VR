@@ -210,29 +210,6 @@ public static class MirrorLive
         return Encoding.UTF8.GetString(bytes, 0, end < 0 ? length : end);
     }
 
-    /// <summary>The unmodified Quad-Views-Foveated installer shipped with this app, or null.</summary>
-    public static string? FindQuadViewsInstaller()
-    {
-        var folder = FindBeside("Quad-Views-Foveated-1.1.3.msi", Path.Combine("v2", "external", "qvf"), subfolder: "Quad-Views-Foveated");
-        return folder;
-    }
-
-    /// <summary>Starts Windows Installer on it; it asks for permission itself (this app never runs elevated).</summary>
-    public static bool RunQuadViewsInstaller()
-    {
-        var msi = FindQuadViewsInstaller();
-        if (msi == null) return false;
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo("msiexec.exe", $"/i \"{msi}\"") { UseShellExecute = true });
-            return process != null;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private static string? FindBeside(string fileName, string repositoryFolder, string? subfolder = null)
     {
         var beside = Path.Combine(AppContext.BaseDirectory, subfolder ?? "", fileName);

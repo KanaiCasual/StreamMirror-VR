@@ -28,7 +28,7 @@ public sealed class QuadViewsSession
 
     /// <summary>True while VR Gaze Mirror's own quad views layer is the one the Quad Views page edits (its own folder, log
     /// and settings file); false for the official Quad-Views-Foveated.</summary>
-    public static bool OwnLayer { get; set; }
+    public static bool OwnLayer { get; set; } = true;
 
     public static string OfficialFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Quad-Views-Foveated");
     public static string OwnFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GazeMirror", "QuadViews");

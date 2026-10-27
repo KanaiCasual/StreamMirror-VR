@@ -43,8 +43,8 @@ One installer sets up all of it:
   as a fallback. The mirror shows it and the headset does not. It is optional: the mirror works without it.
 - **Quad views, optional**: eye-tracked foveated rendering in OpenXR games that support quad views (DCS, VAIL and the
   like). VR Gaze Mirror installs its own quad views layer, built on Matthieu Bucchianeri's Quad-Views-Foveated: off until
-  you pick it on the Quad Views page, for Direct3D 11 and 12 games, with changes that reach a running game at once. The
-  installer still offers mbucchia's official installer at the end of setup. The mirror and the ring work without either.
+  you switch it on on the Quad Views page, for Direct3D 11 and 12 games, with changes that reach a running game at once.
+  The mirror and the ring work without it.
 
 *Up to version 1.2.2 the project was "QuadViews Gaze Mirror", and the ring sat on modified Quad-Views-Foveated and
 OpenXR-Layer-OBSMirror layers. Since 2.0 this project's own code makes the whole picture, and Quad-Views-Foveated is an
@@ -91,9 +91,7 @@ World, VRChat, Assetto Corsa EVO, VAIL and Half-Life: Alyx.
 
 1. Close your game and OBS, then run the `.msi`. Windows SmartScreen warns, because the files carry no code signature:
    "More info" > "Run anyway". A first install offers a desktop shortcut.
-2. The last page offers to install **Quad-Views-Foveated 1.1.3** if the PC lacks it. Say yes if you want foveated
-   rendering in OpenXR games; the mirror works either way.
-3. Start **VR Gaze Mirror** from the Start menu. The **Status** page should say that all parts work: the layer, the
+2. Start **VR Gaze Mirror** from the Start menu. The **Status** page should say that all parts work: the layer, the
    OBS plugin and the SteamVR helper.
 
 **Coming from 1.x:** run the installer over it. It removes the two modified layers and the old "OpenXR Mirror Capture"
@@ -148,8 +146,8 @@ there); a mark at the foot of the page list says when the app last saved. The ap
 OBS while you tune, and the keyboard reaches all of it.
 
 The page list follows the program's purpose: **Status** and **Mirror** first, and most people need no more than those.
-Then come the two pages of the **gaze ring** (Gaze and Ring), the **extras** (Desktop cover, Quad Views while
-Quad-Views-Foveated is installed, and Layers), and About. Each page has an icon, and a narrow window shows the icons alone. A
+Then come the two pages of the **gaze ring** (Gaze and Ring), the **extras** (Desktop cover, Quad Views and Layers),
+and About. Each page has an icon, and a narrow window shows the icons alone. A
 green dot on Status means the mirror shows a game right now.
 
 ### Status
@@ -158,7 +156,7 @@ green dot on Status means the mirror shows a game right now.
 
 - **Three steps to your mirror:** add the source in OBS, start your VR game, frame the picture. Each step ticks
   itself off once the app has seen it happen, and the card goes away after the third (or at **Hide**).
-- **Parts:** the mirror layer, the OBS plugin, the SteamVR helper and (optional) Quad-Views-Foveated, each with a
+- **Parts:** the mirror layer, the OBS plugin, the SteamVR helper and (optional) quad views, each with a
   coloured dot and, with a fault, what to do about it. While all is well, "All parts working" stands on top. The
   SteamVR helper is grey on a PC without SteamVR: it has nothing to do there. The line at the top of the page names the
   game the mirror shows and says whether gaze arrives.
@@ -463,30 +461,29 @@ you tick it**, and the page states this reason at its top.
 
 ![Quad Views page](docs/page-quadviews.png)
 
-**Quad views by** at the top picks the layer that gives games quad views, one at a time (the app switches the other one
-off and puts the order right, with one Windows permission prompt):
+VR Gaze Mirror's quad views layer, built on Matthieu Bucchianeri's Quad-Views-Foveated, for Direct3D 11 and 12 games
+that offer quad views (DCS, VAIL and the like). The installer puts it in place switched off. **Quad views** at the top
+switches it on or off (Windows asks for permission once; a game picks it up at its next start). Switched on, it also
+switches off the official Quad-Views-Foveated, if that is installed, and puts the layers in order.
 
-- **VR Gaze Mirror's quad views layer**: built on Quad-Views-Foveated, for Direct3D 11 and 12 games. **Changes are saved
-  as you make them and reach a running game at once**; the resolution and Turbo wait for the game's next start. It adds
-  **Gaze smoothing** and **Gaze deadzone** (the sharp region ignores tracker jitter and eases back after a blink), a
-  focus edge that fades out to nothing, sharpening without halos, and **Show diagnostics in the headset**: the surround
-  tinted blue, the blend amber, the sharp region green, a ring where the tracker says you look (red while it has lost
-  your eyes) and a cross where the sharp region is aimed. It stays out of games it cannot help: a game that may render
-  with Vulkan or OpenGL, or one where the official layer sits below it. Its log says why. The first time, it starts
-  from your Quad-Views-Foveated settings.
-- **Quad-Views-Foveated (official)**, when installed: Direct3D 11 games. **A game reads its settings at its start:
-  press Apply, then restart the game.**
+**Changes are saved as you make them and reach a running game at once**; the resolution and Turbo wait for the game's
+next start. The sliders and their value logic are TallyMouse's *QuadViews Companion*'s: focus size, vertical offset,
+foveate and peripheral resolution, sharpening, transition, Turbo mode. On top of those:
 
-The sliders and their value logic are TallyMouse's *QuadViews Companion*'s: focus size, vertical offset, foveate and
-peripheral resolution, sharpening, transition, Turbo mode.
-
-- **Render load:** the pixels per frame your settings make the game render, for the last game start, the saved file,
-  and the result of Apply.
+- **Gaze smoothing** and **Gaze deadzone**: the sharp region ignores tracker jitter, and eases back after a blink
+  instead of jumping. Its edge fades out to nothing, and its sharpening leaves no halos.
+- **Show diagnostics in the headset**: the surround tinted blue, the blend amber, the sharp region green, a ring where
+  the tracker says you look (red while it has lost your eyes) and a cross where the sharp region is aimed. The mirror
+  shows it too: switch it off before you stream.
+- It stays out of games it cannot help: a game that may render with Vulkan or OpenGL, or one where the official layer
+  sits below it. Its log says why. The first time, it starts from your Quad-Views-Foveated settings.
+- **Render load:** the pixels per frame your settings make the game render, for the last game start and the saved
+  file.
 - **Under the sliders:** what they make. The sharp area's and the surround's size in pixels per eye, how sharp each
   is against the headset (100 % = as sharp as the headset; the resolution sliders are shares of the pixel count, so
   200 % is 1.41x on each side), how much of the view the sharp area covers, and what both images cost together.
 - **Presets:** *Give me FPS*, *TM's Favorite*, *QV defaults*, and three slots of your own.
-- One deliberate difference from the Companion: Apply writes the **whole file fresh**, in the app's own layout. Every
+- One deliberate difference from the Companion: the page writes the **whole file fresh**, in the app's own layout. Every
   setting stands once at the top, which every runtime and game reads, grouped as with eye tracking, without eye
   tracking, and the rest. Headset sections such as `[Pimax]` apply only when the OpenXR runtime's name contains that
   word, so a Pimax
@@ -560,8 +557,8 @@ File locations:
 - **Ring stops short in VRChat**: you are on the VRChat fallback and the eye-tracking software caps the gaze it sends;
   see the known limit under Gaze source.
 - **The crop does nothing**: press Ctrl+F once on the OBS source.
-- **Quad Views changes do nothing**: with the official layer, press Apply and restart the game. With VR Gaze Mirror's
-  layer, resolution changes need a restart. Its log (Quad Views page > Log) says when it stood aside, and why.
+- **Quad Views changes do nothing**: is **Quad views** switched on, and did the game start after that? Resolution
+  changes need a restart. The layer's log (Quad Views page > Log) says when it stood aside, and why.
 - **A layer is red or the order is wrong**: Layers page > Fix order, or run the installer again > Repair.
 - **The mirror window takes ten seconds to appear the first time**: antivirus software is looking at a new, unsigned
   program.
@@ -575,7 +572,7 @@ first time).
 
 ```powershell
 git clone <this repo>
-.\v2\Get-External.ps1              # once: OpenVR SDK, OBS headers, the Quad-Views-Foveated installer, the quad views layer's dependencies (git keeps their licences alone)
+.\v2\Get-External.ps1              # once: OpenVR SDK, OBS headers, the quad views layer's dependencies (git keeps their licences alone)
 .\Build-Installer.ps1 -Version 2.3.0   # all parts, the offline layer test, and dist\VR-Gaze-Mirror-2.3.0.msi with its .sha256
 ```
 
@@ -611,18 +608,18 @@ the checksum.
 - The mirror shows OpenXR games that render with Direct3D 11 or Direct3D 12. Vulkan and OpenGL games have no mirror
   yet.
 - The mirror shows quad views, the four-view foveated mode (Varjo headsets; Pimax Play's own setting), as the headset
-  shows them: the sharp inner image over the wide one. The official Quad-Views-Foveated handles Direct3D 11 games alone:
-  for a Direct3D 12 game pick VR Gaze Mirror's quad views layer instead, or the headset may stay black. The helper mirrors SteamVR
+  shows them: the sharp inner image over the wide one. VR Gaze Mirror's quad views layer handles Direct3D 11 and 12
+  games; the official Quad-Views-Foveated handles Direct3D 11 alone. The helper mirrors SteamVR
   games through SteamVR's own mirror, with any renderer.
 - The SteamVR helper needs SteamVR and OBS on the same graphics card.
-- TallyMouse's QuadViews Companion keeps working on the same settings file. Its "QV Defaults" button fails, because it
-  looks for the original product's install folder (use the *QV defaults* preset here).
+- TallyMouse's QuadViews Companion edits the official Quad-Views-Foveated's settings file, not this layer's
+  (`%LocalAppData%\GazeMirror\QuadViews\settings.cfg`).
 
 ## Credits and licence
 
 - [Quad-Views-Foveated](https://github.com/mbucchia/Quad-Views-Foveated) by Matthieu Bucchianeri (MIT): VR Gaze
-  Mirror's quad views layer (`v2\quad-views`) is built on its code, and the installer bundles its official, unmodified
-  1.1.3 installer as an optional extra. He does not make or support VR Gaze Mirror's layer: report its problems here.
+  Mirror's quad views layer (`v2\quad-views`) is built on its code. He does not make or support VR Gaze Mirror's
+  layer: report its problems here.
 - [OpenXR-Layer-OBSMirror](https://github.com/Jabbah/OpenXR-Layer-OBSMirror) by Jabbah (MIT): the 1.x versions of this
   project built on it, and the 2.0 layer keeps its settings file name so upgrades carry over.
 - [OBS Studio](https://github.com/obsproject/obs-studio) (GPL-2): the OBS plugin builds against its headers and is

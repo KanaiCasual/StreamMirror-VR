@@ -11,9 +11,7 @@ $files = @(
     @("$v2\bin\obs-plugin\data\obs-plugins\gaze-mirror-capture\locale\en-US.ini", 'OBSPlugin\data\obs-plugins\gaze-mirror-capture\locale'),
     @("$v2\bin\quad-views\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.dll", 'QuadViews'),
     @("$v2\bin\quad-views\XR_APILAYER_NOVENDOR_gaze_mirror_quad_views.json", 'QuadViews'),
-    @("$v2\bin\quad-views\settings.cfg", 'QuadViews'),
-    @("$v2\external\qvf\Quad-Views-Foveated-1.1.3.msi", 'Quad-Views-Foveated'),
-    @("$v2\external\qvf\LICENSE", 'Quad-Views-Foveated')
+    @("$v2\bin\quad-views\settings.cfg", 'QuadViews')
 )
 
 if (Test-Path $payload) { Get-ChildItem $payload -Recurse -File | Remove-Item -Force }

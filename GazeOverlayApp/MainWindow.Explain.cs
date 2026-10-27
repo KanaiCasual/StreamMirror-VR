@@ -29,7 +29,7 @@ public partial class MainWindow
         AddExplanation(StatusTab, ExplainStatus, "status", HowThisPageWorks,
             new("The line at the top", "names the game the mirror shows right now and says whether eye gaze arrives. A grey dot means no VR game is running; the mirror starts with the game."),
             new("Three steps", "take a new install to a picture in OBS. Each step ticks itself off once the app has seen it happen, and the card goes away after the third."),
-            new("Parts.", "The mirror has three. The mirror layer makes the picture inside OpenXR games. The SteamVR helper does the same for games that use SteamVR directly; it starts and stops with SteamVR. The OBS plugin is the \"Gaze Mirror\" source that shows the picture in OBS. Quad-Views-Foveated is optional and has no part in the mirror. While all is well the card says so on its top line. A part with a fault says what to do about it."),
+            new("Parts.", "The mirror has three. The mirror layer makes the picture inside OpenXR games. The SteamVR helper does the same for games that use SteamVR directly; it starts and stops with SteamVR. The OBS plugin is the \"Gaze Mirror\" source that shows the picture in OBS. Quad views are optional and have no part in the mirror. While all is well the card says so on its top line. A part with a fault says what to do about it."),
             new("OpenXR API layers.", "A game loads its layers in a fixed order, and the mirror layer has to sit below any layer that draws into the picture, so that it sees the finished picture. The line under the card sums up that order and turns orange on a problem. Click it for the Layers page, where you switch a layer on or off, move one, or press Fix order."));
 
         AddExplanation(CropTab, ExplainMirror, "mirror", HowThisPageWorks,
@@ -65,11 +65,11 @@ public partial class MainWindow
             new("", "A headset tracked by base stations (Lighthouse) does not look at the room and has no use for the cover."));
 
         AddExplanation(QuadViewsTab, ExplainQuadViews, "quadviews", HowThisPageWorks,
-            new("", "Quad views make a game render a small sharp region where you look and the rest of the view at a low resolution, which saves graphics card time. Two layers can do it, one at a time: VR Gaze Mirror's own (built on mbucchia's Quad-Views-Foveated, for Direct3D 11 and 12 games) and the official Quad-Views-Foveated (Direct3D 11). Pick one at the top; the app switches the other off."),
-            new("Saving.", "With VR Gaze Mirror's layer every change is saved at once and a running game takes it at once; only the resolution and Turbo wait for the game's next start. With the official layer, press Apply and restart the game. The lines at the top give the pixels per frame."),
-            new("Checking.", "With VR Gaze Mirror's layer, Show diagnostics in the headset tints the zones and marks your gaze while you play. It stays out of games it cannot help (Vulkan, OpenGL) and out of the way of the official layer; its log says why."),
+            new("", "Quad views make a game render a small sharp region where you look and the rest of the view at a low resolution, which saves graphics card time. VR Gaze Mirror's quad views layer (built on mbucchia's Quad-Views-Foveated) does it for Direct3D 11 and 12 games. The switch at the top turns it on or off; on, it also turns the official Quad-Views-Foveated off, if that is installed."),
+            new("Saving.", "Every change is saved at once and a running game takes it at once; only the resolution and Turbo wait for the game's next start. The lines at the top give the pixels per frame."),
+            new("Checking.", "Show diagnostics in the headset tints the zones and marks your gaze while you play. The layer stays out of games it cannot help (Vulkan, OpenGL); its log says why."),
             new("Focus", "sets the size of the sharp region as a share of the field of view, moves it up or down, and sets the width of the blend into the surround. Without eye tracking the region stays in the middle of the view."),
-            new("Resolution", "sets the pixel count of the sharp region and of the surround; most of the saving comes from the surround. Presets and your own three slots set the sliders, and Apply saves them."),
+            new("Resolution", "sets the pixel count of the sharp region and of the surround; most of the saving comes from the surround. Presets and your own three slots set the sliders."),
             AboutSliders);
 
         // A page that has been looked at folds its explanation as the user moves on (or closes the app).
