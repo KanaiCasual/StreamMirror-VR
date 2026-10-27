@@ -987,7 +987,7 @@ public partial class MainWindow : Window
             status = status with
             {
                 GazeMirror = new LayerReport(LayerHealth.NotActive, "Not installed. Run the VR Gaze Mirror installer (.msi), or its Repair option."),
-                ObsPath = status.ObsPath ?? @"C:\Program Files\obs-studio", ObsPluginPresent = false, OrderCorrect = false, Layers = [.. status.Layers.Reverse()],
+                ObsPath = status.ObsPath ?? @"C:\Program Files\obs-studio", ObsPluginPresent = false, OrderCorrect = false, Layers = [.. status.Layers.Reverse()], GameLayersFirst = false,
             };
             SetSaveMark("Not saved", "Could not save: the settings file is in use by another program.", problem: true);
         }
@@ -999,17 +999,31 @@ public partial class MainWindow : Window
         UpdateStartSteps();
         AppLog.Write($"Status: gaze mirror layer {status.GazeMirror.Health} ({status.GazeMirror.Detail}); OBS {(status.ObsPath == null ? "not found" : status.ObsPluginPresent ? "plugin present" : "plugin missing")}; " +
                      $"Quad-Views-Foveated {(status.QuadViewsInstalled ? status.QuadViews.Health.ToString() : "not installed")}; own quad views layer {(status.OwnQuadViewsInstalled ? status.OwnQuadViews.Health.ToString() : "not installed")}; " +
-                     $"layer order {(status.OrderCorrect switch { true => "ok", false => "WRONG", null => "n/a" })}; {status.Layers.Count} layers.");
+                     $"layer order {(status.OrderCorrect switch { true => "ok", false => "WRONG", null => "n/a" })}; " +
+                     $"game layers {status.GameLayers.Health}{(status.GameLayersFirst ? ", first" : ", NOT first")}; {status.Layers.Count} layers.");
         var helper = HelperState();
         var layerActive = status.GazeMirror.Health == LayerHealth.Active;
         var obsReady = status.ObsPath != null && status.ObsPluginPresent;
         var marker = _values.GetValueOrDefault("headset_marker") == "1";
         // While all is well, one line on top says so; the parts follow, always listed.
-        var allWell = layerActive && obsReady && (helper.Color == Colors.SeaGreen || helper.Color == Colors.Gray) && status.QuadViews.Health != LayerHealth.Duplicate && !marker && status.OrderCorrect != false;
+        var gameLayersWell = status.GameLayers.Health == LayerHealth.Active && status.GameLayersFirst;
+        var allWell = layerActive && obsReady && (helper.Color == Colors.SeaGreen || helper.Color == Colors.Gray) && status.QuadViews.Health != LayerHealth.Duplicate && !marker && status.OrderCorrect != false
+                      && gameLayersWell;
         _statusRowsInto = StatusRows;
         if (allWell) AddStatusSummary();
         // An active layer needs no more than the word; where it is installed is its tooltip.
         AddStatusRow("Mirror layer", layerActive ? "Active." : status.GazeMirror.Detail, layerActive ? Colors.SeaGreen : Colors.Firebrick, tip: layerActive ? status.GazeMirror.Detail : null);
+        // The game-layers layer: with it first in the list, Show other tools' panels can leave the game's own panels in.
+        AddStatusRow("Game's own panels",
+            gameLayersWell ? "Always in the picture. Show other tools' panels decides about the rest."
+            : status.GameLayers.Health == LayerHealth.Active
+                ? "Another layer sits above the game-layers layer, so the mirror cannot tell the game's panels from other tools'.\n\n" +
+                  "With Show other tools' panels off, the game's own panels go too. Fix order puts it first again (one Windows prompt); a game takes the new order at its next start."
+            : status.GameLayers.Health == LayerHealth.Duplicate ? status.GameLayers.Detail
+            : status.GameLayers.Detail + "\n\nWithout it, Show other tools' panels off hides the game's own panels too.",
+            gameLayersWell ? Colors.SeaGreen : status.GameLayers.Health == LayerHealth.Active ? Colors.DarkOrange : Colors.Firebrick,
+            button: status.GameLayers.Health == LayerHealth.Active && !status.GameLayersFirst ? ("Fix order", OnStatusFixOrder) : null,
+            tip: status.GameLayers.Detail);
         AddStatusRow("OBS plugin",
             status.ObsPath == null ? "The app found no OBS Studio on this PC."
             : status.ObsPluginPresent ? "In OBS: add a \"Gaze Mirror\" source, then press Ctrl+F once to fit it."
@@ -1208,6 +1222,14 @@ public partial class MainWindow : Window
         _pendingMachineOrder = _pendingUserOrder = null;
         LayerNote.Text = "";
         RefreshStatus();
+    }
+
+    // The Status page's Fix order: the suggested order, applied at once (the Layers page's waits for Apply).
+    private void OnStatusFixOrder(object sender, RoutedEventArgs e)
+    {
+        if (LayerOrder.Suggest(LayerStatus.ReadLayers()) is not { } suggestion) return;
+        _pendingMachineOrder = suggestion;
+        OnLayerApplyOrder(sender, e);
     }
 
     private void OnLayerFixOrder(object sender, RoutedEventArgs e)

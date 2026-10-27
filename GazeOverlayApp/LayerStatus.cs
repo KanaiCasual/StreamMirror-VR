@@ -22,6 +22,12 @@ public sealed record SystemStatus(
     IReadOnlyList<LayerEntry> Layers, bool? OrderCorrect, bool QuadViewsInstalled, LayerReport OwnQuadViews, bool OwnQuadViewsInstalled)
 {
     public bool OwnQuadViewsOn => OwnQuadViews.Health == LayerHealth.Active;
+
+    /// <summary>The game-layers watcher (the mirror DLL's second layer).</summary>
+    public LayerReport GameLayers { get; init; } = new(LayerHealth.NotActive, "");
+
+    /// <summary>The watcher is the first switched-on layer in the PC-wide list, where it has to be to see the game's own layers.</summary>
+    public bool GameLayersFirst { get; init; }
 }
 
 /// <summary>
@@ -144,7 +150,11 @@ public static class LayerStatus
         bool? orderCorrect = quadIndex >= 0 && mirrorIndex >= 0 ? quadIndex < mirrorIndex : null;
 
         return new SystemStatus(quadViews, gazeMirror, obsPath, pluginPresent, layers, orderCorrect, layers.Any(l => l.LayerName == QuadViewsLayer),
-            ownQuadViews, layers.Any(l => l.LayerName == OwnQuadViewsLayer));
+            ownQuadViews, layers.Any(l => l.LayerName == OwnQuadViewsLayer))
+        {
+            GameLayers = Describe(layers, GameLayersLayer, "the game-layers layer", "Not installed. Run the VR Gaze Mirror installer (.msi), or its Repair option."),
+            GameLayersFirst = enabled.FirstOrDefault()?.LayerName == GameLayersLayer,
+        };
     }
 
     private static LayerReport Describe(List<LayerEntry> layers, string layerName, string friendlyName, string notInstalled)

@@ -80,7 +80,9 @@ Copy-Item (Join-Path $root 'v2\openvr-helper\GazeMirrorHelper.vrmanifest') $appO
 $signWith = if ($SignThumbprint) { @('/sha1', $SignThumbprint) } elseif ($SignCertificate) { @('/f', $SignCertificate, '/p', $SignPassword) } else { @() }
 $timestamp = if ($TimestampUrl) { $TimestampUrl } elseif ($SignThumbprint) { 'http://time.certum.pl' } else { 'http://timestamp.digicert.com' }
 function Sign([string[]]$files) {
-    & $signtool sign /q /fd SHA256 @signWith /tr $timestamp /td SHA256 $files
+    # /d and /du: the name and link Windows' permission prompt shows. Without them it shows the file's name, and for an
+    # installer that is the random name of Windows Installer's own copy (ec5b44.msi).
+    & $signtool sign /q /fd SHA256 @signWith /tr $timestamp /td SHA256 /d 'VR Gaze Mirror' /du 'https://github.com/KanaiCasual/VR-Gaze-Mirror' $files
     if ($LASTEXITCODE -ne 0) { throw "Signing failed: $files" }
     # What Windows makes of each: Valid with a certificate it trusts; signed but untrusted (a test certificate) warns.
     foreach ($file in $files) {
