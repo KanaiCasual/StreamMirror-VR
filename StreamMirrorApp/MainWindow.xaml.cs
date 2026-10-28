@@ -1046,6 +1046,8 @@ public partial class MainWindow : Window
         _dirtyKeys.Clear();
         UpdateDependentRows();
         SyncFixedFocusKeys();
+        // The Mirror page opens its profile before this file is read: the file's own line would hide it from the mirror.
+        TellMirrorOpenProfile();
         _ringPresetsChanged?.Invoke();
         AppLog.Write(existed ? $"Ring settings loaded from {_configPath} ({_values.Count} keys)." : $"No ring settings file yet ({_configPath}); defaults shown.");
         if (existed) SetSaveMark("Saves by itself", "Loaded your current settings. Changes save by themselves and reach a running game at once.");
@@ -1079,6 +1081,8 @@ public partial class MainWindow : Window
         try
         {
             MergeFromDisk();
+            // Which profile is open is the app's to say, whatever the file read last held.
+            _values["open_crop_profile"] = _selectedProfile?.Name ?? "";
             _ownWriteUntil = DateTime.UtcNow.AddMilliseconds(600);
             ConfigFile.Save(_configPath, _values);
             _dirtyKeys.Clear();

@@ -112,11 +112,19 @@ public partial class MainWindow
         CropProfile.ItemsSource = items;
         CropProfile.SelectedItem = items.FirstOrDefault(i => ReferenceEquals(i.Profile, _selectedProfile)) ?? items[0];
         _profileLoading = false;
-        // The mirror takes the settings file's framing for the profile open here, so the stream shows what this page
-        // shows, unsaved edits included. Without the name it would put the saved profile back at every change.
+        TellMirrorOpenProfile();
+        RefreshProfileUi();
+    }
+
+    /// <summary>
+    /// The mirror takes the settings file's framing for the profile open here, so the stream shows what this page shows,
+    /// unsaved edits included. Without the name it would put the saved profile back at every change. Saves when the
+    /// values say otherwise (SaveNow writes the name in any case).
+    /// </summary>
+    private void TellMirrorOpenProfile()
+    {
         var open = _selectedProfile?.Name ?? "";
         if ((_values.GetValueOrDefault("open_crop_profile") ?? "") != open) ApplyValues(new Dictionary<string, string> { ["open_crop_profile"] = open });
-        RefreshProfileUi();
     }
 
     private void RefreshProfileUi()
@@ -449,6 +457,16 @@ public partial class MainWindow
             return $"{step}: {items.Count} entries [{string.Join(" | ", items.Select(i => i.Label))}], selected \"{selected}\", game box \"{CropProfileGame.Text}\"\n";
         }
         report.Append(Describe("start"));
+        // A profile open at the app's start: the settings file must name it, or the mirror puts the saved profile over every
+        // edit (with automatic saving one change behind, as the profile file is written after the settings file).
+        if (_selectedProfile != null)
+        {
+            var atStart = _values.GetValueOrDefault("open_crop_profile") ?? "(none)";
+            report.Append($"{(atStart == _selectedProfile.Name ? "ok  " : "FAIL")} open at start: the values say {atStart}, expect {_selectedProfile.Name}\n");
+            SaveNow();
+            var named = System.IO.File.ReadLines(_configPath).FirstOrDefault(l => l.StartsWith("open_crop_profile=", StringComparison.Ordinal)) ?? "(no line)";
+            report.Append($"{(named == "open_crop_profile=" + _selectedProfile.Name ? "ok  " : "FAIL")} open at start: the settings file says {named}, expect {_selectedProfile.Name}\n");
+        }
         CropProfileGame.Text = "DCS.exe";
         CropProfileName.Text = "First";
         OnProfileSaveConfirm(this, new RoutedEventArgs());
