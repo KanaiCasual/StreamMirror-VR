@@ -9,7 +9,7 @@
         <SolidColorBrush x:Key="Accent" Color="#2E9BFF" />
         <SolidColorBrush x:Key="AccentHover" Color="#5AB1FF" />
         <SolidColorBrush x:Key="OnAccent" Color="#04112A" />
-        <SolidColorBrush x:Key="OnAir" Color="#FF3B4D" />
+        <SolidColorBrush x:Key="Live" Color="#1A9450" />
         <SolidColorBrush x:Key="Warn" Color="#F5B342" />
         <SolidColorBrush x:Key="Ice" Color="#C9D6FF" />
         <SolidColorBrush x:Key="Muted" Color="#9DA9C8" />

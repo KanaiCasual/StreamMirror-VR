@@ -172,7 +172,7 @@ public partial class MainWindow
             StatusPath.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var brush = (Brush)FindResource(delivery.State switch
             {
-                DeliveryState.Receiving => "OnAir",
+                DeliveryState.Receiving => "Live",
                 DeliveryState.Ready => "Accent",
                 DeliveryState.Failing => "Warn",
                 _ => "Muted",
@@ -231,7 +231,7 @@ public partial class MainWindow
     private BitmapSource? _statusShown;
 
     /// <summary>
-    /// A picture's light: "Reaching OBS" (red) while the picture reaches OBS or the mirror window, amber while one of them should get
+    /// A picture's light: "Reaching OBS" (green) while the picture reaches OBS or the mirror window, amber while one of them should get
     /// it and does not, cyan while a game is mirrored and nothing takes it, an outlined "Waiting for a game" otherwise.
     /// </summary>
     private void SetTally(Border tally, Ellipse dot, TextBlock text, bool producing, List<Delivery> deliveries, string mirroringText)
@@ -239,7 +239,7 @@ public partial class MainWindow
         var failing = deliveries.FirstOrDefault(d => d.State == DeliveryState.Failing);
         if (producing && deliveries.Any(d => d.State == DeliveryState.Receiving) && failing == null)
         {
-            tally.Background = (Brush)FindResource("OnAir");
+            tally.Background = (Brush)FindResource("Live");
             dot.Fill = Brushes.White;
             dot.Stroke = null;
             text.Foreground = Brushes.White;

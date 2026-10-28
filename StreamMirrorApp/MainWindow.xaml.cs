@@ -1740,7 +1740,7 @@ public partial class MainWindow : Window
             _ => Colors.Gray,
         });
         // The rail's dot: a game is being mirrored, whatever page is open.
-        _liveDot = state == GazeLiveState.NoGame ? null : (Brush)FindResource("OnAir");
+        _liveDot = state == GazeLiveState.NoGame ? null : (Brush)FindResource("Live");
         if (_statusNav != null) _statusNav.Dot = _liveDot;
         UpdateStartSteps();
         if (ReferenceEquals(Tabs.SelectedItem, StatusTab)) UpdateStatusHero();
