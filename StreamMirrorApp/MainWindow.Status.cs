@@ -8,8 +8,8 @@ using System.Windows.Shapes;
 
 namespace StreamMirror;
 
-// The Status page's top half: the picture that goes out (the last one the app saw, framed by the crop box), the mirror line
-// and its reflection, and beside it what the mirror sends. Read on demand: when the page is refreshed and while the live
+// The Status page's top half: the picture that goes out (the last one the app saw, framed by the crop box), and beside it
+// what the mirror sends. Read on demand: when the page is refreshed and while the live
 // line ticks (see UpdateLive); the picture itself is only cut again when it or the box changed.
 public partial class MainWindow
 {
@@ -36,7 +36,6 @@ public partial class MainWindow
         StatusCaption.Text = producing ? "Last saved picture, not live: framed as OBS gets it" : "";
         StatusCaptionRight.Text = producing ? eye + (cropOn ? ", " + ChoiceLabel("crop_aspect") : ", whole image") : "";
         StatusAmbient.Opacity = producing ? 0.32 : 0.14;
-        StatusReflection.Opacity = producing ? 1 : 0.5;
 
         // What goes out, and how.
         StatusGame.Text = producing ? (live!.Application.Length > 0 ? live.Application : live.Program) : "No game yet";
@@ -219,9 +218,6 @@ public partial class MainWindow
         return _framed;
     }
 
-    /// <summary>The reflection under the mirror line: the picture's lower edge against the line, upside down.</summary>
-    private static Brush? Reflection(BitmapSource? picture) => picture == null ? null
-        : new ImageBrush(picture) { Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Bottom, RelativeTransform = new ScaleTransform(1, -1, 0.5, 0.5) };
 
     private void UpdateStatusPicture()
     {
@@ -229,7 +225,6 @@ public partial class MainWindow
         if (ReferenceEquals(shown, _statusShown) && shown != null) return;
         _statusShown = shown;
         StatusPicture.Source = StatusAmbient.Source = shown;
-        StatusReflection.Fill = Reflection(shown);
         SizeStatusMonitor();
     }
 
@@ -291,7 +286,6 @@ public partial class MainWindow
         if (!ReferenceEquals(shown, MirrorObsPicture.Source))
         {
             MirrorObsPicture.Source = shown;
-            MirrorObsReflection.Fill = Reflection(shown);
             SizeMirrorObsFrame();
         }
         MirrorObsEmpty.Visibility = shown == null ? Visibility.Visible : Visibility.Collapsed;

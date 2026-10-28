@@ -100,8 +100,7 @@
 
                         <StackPanel x:Name="ExplainStatus" Margin="0,0,0,14" />
 
-                        <!-- The picture that goes out, as the app last saw it, with the mirror line and its reflection under it (the
-                             icon's drawing); beside it, what the mirror sends and the way the picture takes. In a narrow window the
+                        <!-- The picture that goes out, as the app last saw it, beside it, what the mirror sends and the way the picture takes. In a narrow window the
                              column goes under the picture (see LayOutStatusHero). -->
                         <Grid x:Name="StatusHero" Margin="0,0,0,18" SizeChanged="OnStatusHeroSize">
                             <Grid.ColumnDefinitions>
@@ -138,27 +137,6 @@
                                             </TextBlock>
                                         </DockPanel>
                                     </Grid>
-                                </Border>
-                                <!-- The mirror line (no dot on it: a line with a dot reads as a video's seek bar). -->
-                                <Border Height="4" CornerRadius="2" Background="{StaticResource Ice}" Margin="0,12,0,6" />
-                                <!-- The reflection: the same picture upside down, fading out in scan lines. -->
-                                <Border Height="84" Margin="0,4,0,0" ClipToBounds="True">
-                                    <Border.OpacityMask>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                            <GradientStop Offset="0" Color="#C0000000" />
-                                            <GradientStop Offset="1" Color="#00000000" />
-                                        </LinearGradientBrush>
-                                    </Border.OpacityMask>
-                                    <Border>
-                                        <Border.OpacityMask>
-                                            <DrawingBrush TileMode="Tile" Viewport="0,0,8,8" ViewportUnits="Absolute" Viewbox="0,0,8,8" ViewboxUnits="Absolute">
-                                                <DrawingBrush.Drawing>
-                                                    <GeometryDrawing Brush="Black" Geometry="M0,0 H8 V5 H0 Z" />
-                                                </DrawingBrush.Drawing>
-                                            </DrawingBrush>
-                                        </Border.OpacityMask>
-                                        <Rectangle x:Name="StatusReflection" />
-                                    </Border>
                                 </Border>
                             </StackPanel>
 
@@ -388,7 +366,7 @@
                         <!-- The settings beside the picture: the crop box, the picture every reader gets, and three sections that fold away. -->
                         <ScrollViewer x:Name="MirrorSideScroll" Grid.Column="1" VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="MirrorSide">
-                                <!-- What OBS gets: the picture cut to the box as it is drawn now, with the mirror line and its reflection. -->
+                                <!-- What OBS gets: the picture cut to the box as it is drawn now. -->
                                 <Border Style="{StaticResource Card}" Margin="0,0,0,10">
                                     <StackPanel>
                                         <DockPanel>
@@ -407,25 +385,6 @@
                                                     </StackPanel>
                                                 </Border>
                                             </Grid>
-                                        </Border>
-                                        <Border Height="3" CornerRadius="1.5" Background="{StaticResource Ice}" Margin="0,10,0,5" />
-                                        <Border Height="26" Margin="0,3,0,0" ClipToBounds="True">
-                                            <Border.OpacityMask>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Offset="0" Color="#B0000000" />
-                                                    <GradientStop Offset="1" Color="#00000000" />
-                                                </LinearGradientBrush>
-                                            </Border.OpacityMask>
-                                            <Border>
-                                                <Border.OpacityMask>
-                                                    <DrawingBrush TileMode="Tile" Viewport="0,0,7,7" ViewportUnits="Absolute" Viewbox="0,0,7,7" ViewboxUnits="Absolute">
-                                                        <DrawingBrush.Drawing>
-                                                            <GeometryDrawing Brush="Black" Geometry="M0,0 H7 V4 H0 Z" />
-                                                        </DrawingBrush.Drawing>
-                                                    </DrawingBrush>
-                                                </Border.OpacityMask>
-                                                <Rectangle x:Name="MirrorObsReflection" />
-                                            </Border>
                                         </Border>
                                     </StackPanel>
                                 </Border>
