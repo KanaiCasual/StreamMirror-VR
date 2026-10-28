@@ -194,8 +194,8 @@ makes the picture, so they cost no extra pass.
 VRChat.exe) and the mirror applies it at each start of that game. **New** starts a profile from the default framing,
 **Save as...** copies the current one into a new profile, and the "⋯" button holds **Rename** and **Delete**. Changes
 reach the stream at once but go into the open profile only when you press **Save**; until then the bar says so in orange,
-and **Revert** goes back to the saved profile. Switching to another profile with unsaved changes asks first. Switch on **Save
-edits automatically** to have every change go into the profile as you make it; **Revert** then goes back to the profile
+and **Reload** goes back to the saved profile. Switching to another profile with unsaved changes asks first. Switch on **Save
+edits automatically** to have every change go into the profile as you make it; **Reload** then goes back to the profile
 as it was when you opened it. On every page, **Ctrl+Z** undoes the last change made there (a whole drag counts as one)
 and **Ctrl+Y** redoes it.
 

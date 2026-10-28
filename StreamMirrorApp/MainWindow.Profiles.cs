@@ -147,10 +147,12 @@ public partial class MainWindow
         CropProfileSave.Visibility = _appSettings.ProfileAutoSave ? Visibility.Collapsed : Visibility.Visible;
         // Accent while something waits to be saved; otherwise the theme's own button look (a null Style would drop the theme).
         CropProfileSave.Style = (Style)FindResource(unsaved ? "AccentButtonStyle" : typeof(Button));
-        CropProfileRevert.Visibility = unsaved || changedSinceOpened ? Visibility.Visible : Visibility.Collapsed;
+        // Always there while a profile is open, as on the Ring and Quad Views pages; it lights up when there is something to go back to.
+        CropProfileRevert.Visibility = _selectedProfile != null ? Visibility.Visible : Visibility.Collapsed;
+        CropProfileRevert.IsEnabled = unsaved || changedSinceOpened;
         CropProfileRevert.ToolTip = WrappedToolTip(_appSettings.ProfileAutoSave
-            ? "Back to this profile as it was when you opened it.\n\nCtrl+Z undoes one change at a time, Ctrl+Y redoes it; Revert itself can be undone too."
-            : "Drops the unsaved changes: back to this profile as saved.\n\nCtrl+Z undoes one change at a time, Ctrl+Y redoes it; Revert itself can be undone too.");
+            ? "Back to this profile as it was when you opened it. Lights up once you change something.\n\nCtrl+Z undoes one change at a time, Ctrl+Y redoes it; Reload itself can be undone too."
+            : "Drops the unsaved changes: back to this profile as saved. Lights up while something is unsaved.\n\nCtrl+Z undoes one change at a time, Ctrl+Y redoes it; Reload itself can be undone too.");
         var game = _selectedProfile?.Game ?? "";
         var start = game.Length > 0 ? $"when {game} starts" : "at the start of the game you name under For game";
         CropProfileStatus.Foreground = (Brush)FindResource(unsaved ? "Warn" : "Muted");
@@ -158,8 +160,8 @@ public partial class MainWindow
             ? (MirrorLive.Read() is { Producing: true } live
                 ? $"Running now: {live.Program}. Save as... or New makes a profile, and the mirror applies it at each start of that game."
                 : "No profile open: edits change the settings as they are. Save as... or New makes a profile, and the mirror applies it at a game's start.")
-            : unsaved ? $"Unsaved changes to \"{_selectedProfile.Name}\". The stream shows them now; Save keeps them in the profile, Revert goes back, Ctrl+Z undoes one change."
-            : _appSettings.ProfileAutoSave ? $"Edits save into \"{_selectedProfile.Name}\" as you make them" + (changedSinceOpened ? "; Revert goes back to how it was when you opened it" : "") + $", and Ctrl+Z undoes one change. The mirror applies it {start}."
+            : unsaved ? $"Unsaved changes to \"{_selectedProfile.Name}\". The stream shows them now; Save keeps them in the profile, Reload goes back, Ctrl+Z undoes one change."
+            : _appSettings.ProfileAutoSave ? $"Edits save into \"{_selectedProfile.Name}\" as you make them" + (changedSinceOpened ? "; Reload goes back to how it was when you opened it" : "") + $", and Ctrl+Z undoes one change. The mirror applies it {start}."
             : $"\"{_selectedProfile.Name}\" is saved. Edits show on the stream at once, Save keeps them and Ctrl+Z undoes one. The mirror applies it {start}.";
     }
 
