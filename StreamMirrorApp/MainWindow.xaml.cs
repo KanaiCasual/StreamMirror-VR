@@ -628,6 +628,7 @@ public partial class MainWindow : Window
     {
         var picker = new ComboBox { MinWidth = 150, Margin = new Thickness(0, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, DisplayMemberPath = nameof(SavedPreset.Name) };
         var save = new Button { Content = "Save", Margin = new Thickness(0, 2, 6, 2), ToolTip = WrappedToolTip($"Keeps the current {what} in this preset.\n\nChanges apply at once, but the preset keeps them only when you press Save. Save lights up when there is something to keep.") };
+        var reload = new Button { Content = "Reload", Margin = new Thickness(0, 2, 6, 2), ToolTip = WrappedToolTip($"Back to this preset as saved: drops the changes made since.\n\nLights up when the {what} differ from the preset.") };
         var saveAs = new Button { Content = "Save as...", Margin = new Thickness(0, 2, 6, 2), ToolTip = $"Keeps the current {what} as a new preset" };
         var nameBox = new TextBox { Width = 140, MinWidth = 0, Margin = new Thickness(0, 2, 4, 2), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Name of the preset. Enter saves, Esc cancels." };
         var ok = new Button { Content = "OK", Margin = new Thickness(0, 2, 0, 2) };
@@ -644,9 +645,10 @@ public partial class MainWindow : Window
         var note = new TextBlock { Foreground = (Brush)FindResource("Warn"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0), Visibility = Visibility.Collapsed };
         var bar = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
         bar.Children.Add(new TextBlock { Text = "My presets", Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
-        foreach (var element in new UIElement[] { picker, save, saveAs, namePanel, more, note }) bar.Children.Add(element);
+        foreach (var element in new UIElement[] { picker, save, reload, saveAs, namePanel, more, note }) bar.Children.Add(element);
         ToolTipService.SetShowOnDisabled(picker, true);
         ToolTipService.SetShowOnDisabled(save, true);
+        ToolTipService.SetShowOnDisabled(reload, true);
         ShowToolTipsPatiently(picker);
 
         var listing = false;
@@ -680,12 +682,12 @@ public partial class MainWindow : Window
             var edited = chosen != null && Edited(chosen);
             picker.IsEnabled = presets.Count > 0;
             more.IsEnabled = chosen != null;
-            save.IsEnabled = edited;
+            save.IsEnabled = reload.IsEnabled = edited;
             // Accent while something waits to be saved; otherwise the theme's own button look (a null Style would drop the theme).
             save.Style = (Style)FindResource(edited ? "AccentButtonStyle" : typeof(Button));
             // Short, so it fits a line of its own in the bar (a text in a wrapping row cannot wrap); the tooltip says the rest.
-            Tell(edited ? $"Edited: Save to keep it in \"{chosen!.Name}\", or Save as..." : "");
-            note.ToolTip = edited ? WrappedToolTip($"You changed the {what} since you saved \"{chosen!.Name}\". The changes apply already, and the app keeps them through a restart.\n\nThe preset itself keeps its saved values until you press Save. Save as... keeps the changes in a new preset instead.") : null;
+            Tell(edited ? $"Edited: Save to keep it in \"{chosen!.Name}\", Save as..., or Reload to go back" : "");
+            note.ToolTip = edited ? WrappedToolTip($"You changed the {what} since you saved \"{chosen!.Name}\". The changes apply already, and the app keeps them through a restart.\n\nThe preset itself keeps its saved values until you press Save. Save as... keeps the changes in a new preset instead, and Reload goes back to the preset as saved.") : null;
             picker.ToolTip = WrappedToolTip(chosen != null
                 ? $"{chosen.Name}, saved {chosen.SavedAt:g}\n\n{describe(chosen.Values)}\n\nPicking a preset sets the {what}. Changes after that apply at once, and the preset keeps them only when you press Save."
                 : presets.Count == 0 ? $"No presets of your own yet. Set the {what}, then Save as... keeps them under a name."
@@ -762,6 +764,12 @@ public partial class MainWindow : Window
             chosen.SavedAt = DateTime.Now;
             chosen.Values = capture();
             Store(chosen);
+        };
+        reload.Click += (_, _) =>
+        {
+            if (Chosen() is not { } chosen) return;
+            apply(new Dictionary<string, string>(chosen.Values));
+            ShowState();
         };
         saveAs.Click += (_, _) => AskName(false, "");
         rename.Click += (_, _) => { if (Chosen() is { } chosen) AskName(true, chosen.Name); };
@@ -852,6 +860,9 @@ public partial class MainWindow : Window
         var again = buildAgain();
         var pickerAgain = again.Children.OfType<ComboBox>().Single();
         Check((pickerAgain.SelectedItem as SavedPreset)?.Name == "First" && ShowsEdited(again), "built again, as at a restart: First is picked and shows as edited");
+        Click(Named(bar, "Reload"));
+        Check(first.SequenceEqual(capture()) && !ShowsEdited(bar) && !Named(bar, "Reload").IsEnabled, "Reload brings the preset back as saved, and the edited line goes");
+        builtIn(1);
         Menu("Rename...");
         nameBox.Text = "second";
         Click(Named(namePanel, "OK"));

@@ -498,7 +498,7 @@ foveate and peripheral resolution, sharpening, transition, Turbo mode. On top of
 - **Presets:** *Give me FPS*, *TM's Favorite*, *QV defaults*, and **My presets**: your own, by name. **Save as...** keeps
   the sliders under a name, **Save** updates the one picked, the menu beside it renames or deletes. Changes apply at once;
   a preset keeps them only when you press **Save**, which lights up (with a line saying so) while the sliders differ from
-  the preset. The app remembers the picked preset across restarts.
+  the preset; **Reload** goes back to the preset as saved. The app remembers the picked preset across restarts.
 - One deliberate difference from the Companion: the page writes the **whole file fresh**, in the app's own layout. Every
   setting stands once at the top, which every runtime and game reads, grouped as with eye tracking, without eye
   tracking, and the rest. Headset sections such as `[Pimax]` apply only when the OpenXR runtime's name contains that
