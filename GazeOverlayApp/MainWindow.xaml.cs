@@ -74,7 +74,7 @@ public partial class MainWindow : Window
         KeepOldGazePort(hadSettingsFile, twoThreeRanBefore);
         RefreshStatus();
         StartWatchingConfigFile();
-        Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs)) { UpdateLiveTimer(); UpdatePanels(); } };
+        Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs)) { UpdateLiveTimer(); UpdatePanels(); if (ReferenceEquals(Tabs.SelectedItem, CoverTab)) UpdateCoverDrawing(); } };
         SizeChanged += (_, _) => Dispatcher.BeginInvoke(UpdatePanels); // after the layout pass that raised it
         Loaded += (_, _) => UpdatePanels();
         Closing += (_, _) => { SaveWindowPlacement(); AppLog.Write("Closing."); };
@@ -1134,6 +1134,12 @@ public partial class MainWindow : Window
         LayerApply.Visibility = LayerCancel.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
 
         // The summary on this page and, as a link to it, on the Status page.
+        // The order card's word: right, a problem, or a new order waiting for Apply.
+        var (pillText, pillFore, pillBack) = pending ? ("Not applied", "#F5B342", "#26F5B342") : problems.Count > 0 ? ("Problem", "#F5B342", "#26F5B342") : ("Right", "#7CC0FF", "#242E9BFF");
+        var colours = new BrushConverter();
+        LayerOrderPillText.Text = pillText;
+        LayerOrderPillText.Foreground = (Brush)colours.ConvertFrom(pillFore)!;
+        LayerOrderPill.Background = (Brush)colours.ConvertFrom(pillBack)!;
         LayerSummary.Text = shown.Count == 0 ? "none"
             : shown.Count + (shown.Count == 1 ? " layer" : " layers") + (pending ? ", new order not applied yet" : problems.Count > 0 ? ", order problem" : shown.Count > 1 ? ", order fine" : "");
         LayerSummaryLinkText.Text = "OpenXR API layers: " + LayerSummary.Text;
@@ -1152,18 +1158,31 @@ public partial class MainWindow : Window
         var ours = layer.LayerName is LayerStatus.QuadViewsLayer or LayerStatus.GazeMirrorLayer or LayerStatus.OwnQuadViewsLayer or LayerStatus.GameLayersLayer;
         var box = new CheckBox
         {
-            IsChecked = layer.Enabled, VerticalAlignment = VerticalAlignment.Top, MinWidth = 0, Margin = new Thickness(0, 0, 4, 0),
+            IsChecked = layer.Enabled, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0),
             IsEnabled = !pending, ToolTip = pending ? "Apply or cancel the new order first" : "Switch this layer on or off",
         };
         ToolTipService.SetShowOnDisabled(box, true);
+        System.Windows.Automation.AutomationProperties.SetName(box, $"{LayerFriendlyName(layer)} on or off");
 
-        var title = new TextBlock { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.SemiBold, Opacity = layer.Enabled ? 1 : 0.55 };
-        title.Inlines.Add($"{position}. {layer.LayerName ?? "(manifest missing or unreadable)"}");
-        if (layer.PerUser) title.Inlines.Add(new System.Windows.Documents.Run("   this user only") { FontWeight = FontWeights.Normal, Foreground = (Brush)FindResource("Muted") });
-        if (!layer.Enabled) title.Inlines.Add(new System.Windows.Documents.Run("   off") { FontWeight = FontWeights.Normal, Foreground = new SolidColorBrush(Colors.Orange) });
-        var text = new StackPanel { Margin = new Thickness(0, 5, 0, 0) };
+        // A friendly name and who it belongs to; the layer's own name under it, the manifest's path in the tooltip.
+        Border Pill(string words, string fore, string back) => new()
+        {
+            CornerRadius = new CornerRadius(10), Padding = new Thickness(8, 1, 8, 2), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+            Background = (Brush)new BrushConverter().ConvertFrom(back)!,
+            Child = new TextBlock { Text = words, FontSize = 11.5, Foreground = (Brush)new BrushConverter().ConvertFrom(fore)! },
+        };
+        var title = new StackPanel { Orientation = Orientation.Horizontal };
+        title.Children.Add(new TextBlock { Text = LayerFriendlyName(layer), FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        title.Children.Add(ours ? Pill("VR Gaze Mirror", "#C9D6FF", "#1AC9D6FF") : Pill("Other tool", "#9DA9C8", "#149DA9C8"));
+        if (layer.PerUser) title.Children.Add(Pill("This user only", "#9DA9C8", "#149DA9C8"));
+        if (!layer.Enabled) title.Children.Add(Pill("Off", "#F5B342", "#26F5B342"));
+        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
         text.Children.Add(title);
-        text.Children.Add(new TextBlock { Text = layer.JsonPath, Style = (Style)FindResource("Hint"), FontSize = 12 });
+        text.Children.Add(new TextBlock
+        {
+            Text = layer.LayerName ?? "(manifest missing or unreadable)", FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 11.5,
+            Foreground = (Brush)FindResource("Muted"), Margin = new Thickness(0, 3, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis,
+        });
 
         Button Arrow(string glyph, string tip, int offset)
         {
@@ -1189,12 +1208,25 @@ public partial class MainWindow : Window
         arrows.Children.Add(Arrow("\uE70E", "Move up: closer to the game", -1));
         arrows.Children.Add(Arrow("\uE70D", "Move down: closer to the headset runtime", +1));
 
-        var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
-        DockPanel.SetDock(box, Dock.Left);
+        var number = new Border
+        {
+            Width = 28, Height = 28, CornerRadius = new CornerRadius(14), Background = (Brush)new BrushConverter().ConvertFrom("#1A2550")!, VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock { Text = position.ToString(System.Globalization.CultureInfo.InvariantCulture), FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("Ice"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+        };
+        var line = new DockPanel();
+        DockPanel.SetDock(number, Dock.Left);
+        DockPanel.SetDock(box, Dock.Right);
         DockPanel.SetDock(arrows, Dock.Right);
-        row.Children.Add(box);
-        row.Children.Add(arrows);
-        row.Children.Add(text);
+        line.Children.Add(number);
+        line.Children.Add(box);
+        line.Children.Add(arrows);
+        line.Children.Add(text);
+        var row = new Border
+        {
+            Background = (Brush)new BrushConverter().ConvertFrom("#C8131B36")!, BorderBrush = (Brush)FindResource("Line"), BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 10, 14, 10), Margin = new Thickness(0, 0, 0, 8), Child = line,
+            Opacity = layer.Enabled ? 1 : 0.62, ToolTip = layer.JsonPath,
+        };
 
         box.Click += async (_, _) =>
         {
@@ -1216,6 +1248,40 @@ public partial class MainWindow : Window
             RefreshStatus(); // Rebuilds the rows from what the registry really says now.
         };
         return row;
+    }
+
+    /// <summary>The About page's switches beside the rest while there is room; under it in a narrow window.</summary>
+    private void OnAboutPageSize(object sender, SizeChangedEventArgs e)
+    {
+        if (!e.WidthChanged) return;
+        var beside = AboutBody.ActualWidth >= 780;
+        AboutSideColumn.Width = beside ? new GridLength(340) : new GridLength(0);
+        Grid.SetColumn(AboutSide, beside ? 1 : 0);
+        Grid.SetRow(AboutSide, beside ? 0 : 1);
+        AboutSide.Margin = beside ? new Thickness(18, 0, 0, 0) : new Thickness(0, 4, 0, 0);
+    }
+
+    /// <summary>A layer's name in words: ours by what they do, others from their name (XR_APILAYER_VENDOR_Name -> Name).</summary>
+    private static string LayerFriendlyName(LayerEntry layer) => layer.LayerName switch
+    {
+        LayerStatus.GameLayersLayer => "Game's own panels",
+        LayerStatus.OwnQuadViewsLayer => "Quad views",
+        LayerStatus.GazeMirrorLayer => "Mirror layer",
+        LayerStatus.QuadViewsLayer => "Quad-Views-Foveated (official)",
+        null => "Unreadable layer",
+        var name => name.Split('_') is { Length: >= 4 } parts && parts[0] == "XR" && parts[1] == "APILAYER"
+            ? string.Join(" ", parts.Skip(3)) : name,
+    };
+
+    /// <summary>The order card beside the stack while there is room; under it in a narrow window.</summary>
+    private void OnLayersPageSize(object sender, SizeChangedEventArgs e)
+    {
+        if (!e.WidthChanged) return;
+        var beside = LayersBody.ActualWidth >= 820;
+        LayersSideColumn.Width = beside ? new GridLength(320) : new GridLength(0);
+        Grid.SetColumn(LayersSide, beside ? 1 : 0);
+        Grid.SetRow(LayersSide, beside ? 0 : 1);
+        LayersSide.Margin = beside ? new Thickness(18, 0, 0, 0) : new Thickness(0, 14, 0, 0);
     }
 
     private async void OnLayerApplyOrder(object sender, RoutedEventArgs e)
@@ -1314,8 +1380,6 @@ public partial class MainWindow : Window
             row.Children.Add(text);
             AboutRows.Children.Add(row);
         }
-        LayOutCards(AboutCards, sideBySide: true);
-        AboutCards.SizeChanged += (_, _) => LayOutCards(AboutCards, AboutCards.ActualWidth >= 640);
         BuildChangelog();
     }
 

@@ -594,6 +594,47 @@
                         <TextBlock Style="{StaticResource PageTitle}" Text="Desktop cover" Margin="0,0,0,10" />
                         <!-- The reason for the cover, in full: whoever has such a headset should find themselves in it. -->
                         <StackPanel x:Name="ExplainCover" Margin="0,0,0,10" />
+                        <!-- What the cover does, drawn: your monitor with the game's window (black and its marks while covered), and
+                             in the corner what screen capture gets. Follows the switches (see UpdateCoverDrawing). -->
+                        <Border Height="250" CornerRadius="12" ClipToBounds="True" BorderBrush="{StaticResource Line}" BorderThickness="1" Margin="0,0,0,12">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0.7,1">
+                                    <GradientStop Offset="0" Color="#1B2A55" />
+                                    <GradientStop Offset="1" Color="#0B1230" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Grid>
+                                <TextBlock x:Name="CoverSceneLabel" Foreground="{StaticResource Muted}" FontSize="12" Margin="40,12,0,0" />
+                                <Border Margin="40,34,40,44" CornerRadius="6" ClipToBounds="True" Background="Black">
+                                    <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.5" /></Border.Effect>
+                                    <Grid>
+                                        <Image x:Name="CoverSceneGame" Stretch="UniformToFill" />
+                                        <Image x:Name="CoverSceneMarks" Stretch="Uniform" MaxHeight="64" Margin="24" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                                    </Grid>
+                                </Border>
+                                <Border VerticalAlignment="Bottom" Height="30" Background="#D8090E20">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Border Width="16" Height="16" CornerRadius="4" Background="#2B3A6E" Margin="5,0" />
+                                        <Border Width="16" Height="16" CornerRadius="4" Background="#2B3A6E" Margin="5,0" />
+                                        <Border Width="16" Height="16" CornerRadius="4" Background="#2B3A6E" Margin="5,0" />
+                                        <Border Width="16" Height="16" CornerRadius="4" Background="#2B3A6E" Margin="5,0" />
+                                        <Border Width="16" Height="16" CornerRadius="4" Background="#2B3A6E" Margin="5,0" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Width="190" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,14,0" CornerRadius="8" ClipToBounds="True"
+                                        BorderBrush="#40C9D6FF" BorderThickness="1" Background="Black">
+                                    <Border.Effect><DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.55" /></Border.Effect>
+                                    <StackPanel>
+                                        <Grid Height="104">
+                                            <Image x:Name="CoverInsetGame" Stretch="UniformToFill" />
+                                            <Border x:Name="CoverInsetBlack" Background="Black" />
+                                        </Grid>
+                                        <TextBlock x:Name="CoverInsetText" Background="{StaticResource Field}" Foreground="{StaticResource Ice}" FontSize="12"
+                                                   Padding="9,5" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
                         <Grid x:Name="CoverCards" Margin="0,0,-10,0">
                             <Border Style="{StaticResource Card}" Margin="0,0,10,10">
                                 <StackPanel>
@@ -644,7 +685,7 @@
 
             <TabItem x:Name="QuadViewsTab" Header="Quad Views">
                 <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="20,16,20,10">
+                    <DockPanel DockPanel.Dock="Top" Margin="28,20,28,12">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Content="File" ToolTip="Opens the quad views layer's settings file in the program Windows uses for .cfg files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="6,0,0,0" Click="OnQuadViewsOpenFile" />
                             <Button Content="Log" ToolTip="Opens the quad views layer's log in the program Windows uses for .log files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="6,0,0,0" Click="OnQuadViewsOpenLog" />
@@ -652,16 +693,38 @@
                         <TextBlock x:Name="QuadViewsTitle" Style="{StaticResource PageTitle}" Text="Quad Views"
                                    ToolTip="The quad views layer's settings: a game renders sharp where you look and cheaper elsewhere.&#10;&#10;The sliders work like TallyMouse's QuadViews Companion.&#10;&#10;**One difference:** this app also writes the values where every OpenXR runtime reads them, beyond the list of known headsets." />
                     </DockPanel>
-                    <StackPanel x:Name="ExplainQuadViews" DockPanel.Dock="Top" Margin="20,0,20,10" />
+                    <StackPanel x:Name="ExplainQuadViews" DockPanel.Dock="Top" Margin="28,0,28,10" />
                     <!-- Stays in view while the sliders scroll: which layer does quad views, what the settings cost, Apply, and the presets. -->
-                    <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="20,0,20,0">
+                    <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="28,0,28,0">
+                        <DockPanel>
+                        <!-- What quad views does, drawn on your picture: the sharp area at its size in the view, the rest at the
+                             surround's lower resolution, and the share of pixels the game draws (see UpdateQuadViewsScene). -->
+                        <Border x:Name="QuadViewsSceneFrame" DockPanel.Dock="Left" Width="300" Height="272" CornerRadius="8" ClipToBounds="True"
+                                Background="{StaticResource Picture}" Margin="0,0,18,0" VerticalAlignment="Top">
+                            <Grid x:Name="QuadViewsScene">
+                                <Image x:Name="QuadViewsLow" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                                <Image x:Name="QuadViewsSharp" Stretch="Fill" />
+                                <Canvas>
+                                    <Rectangle x:Name="QuadViewsBox" Stroke="{StaticResource Accent}" StrokeThickness="2" RadiusX="2" RadiusY="2" />
+                                    <Border x:Name="QuadViewsBoxLabel" Background="{StaticResource Accent}" CornerRadius="4" Padding="7,1,7,2">
+                                        <TextBlock x:Name="QuadViewsBoxText" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource OnAccent}" />
+                                    </Border>
+                                </Canvas>
+                                <Border VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="8" Background="#D0080C1C" CornerRadius="4" Padding="7,2,7,3">
+                                    <TextBlock x:Name="QuadViewsSurroundText" FontSize="11.5" Foreground="{StaticResource Ice}" />
+                                </Border>
+                                <Border VerticalAlignment="Top" HorizontalAlignment="Right" Margin="8" Background="#D0080C1C" CornerRadius="4" Padding="7,2,7,3">
+                                    <TextBlock x:Name="QuadViewsShareText" FontSize="11.5" FontWeight="SemiBold" />
+                                </Border>
+                            </Grid>
+                        </Border>
                         <StackPanel>
                             <DockPanel Margin="0,0,0,8">
                                 <CheckBox x:Name="QuadViewsLayerOn" Content="Quad views" FontWeight="SemiBold" VerticalAlignment="Center" Click="OnQuadViewsLayerToggle"
                                           ToolTip="Switches VR Gaze Mirror's quad views layer on or off for every OpenXR game.&#10;&#10;On, it also switches the official Quad-Views-Foveated off, if that is installed, and puts the layers in order. Windows asks for permission once.&#10;&#10;A game picks the change up at its next start." />
                                 <TextBlock x:Name="QuadViewsLayerNote" Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0" />
                             </DockPanel>
-                            <TextBlock x:Name="QuadViewsLoadLast" Foreground="Orange" TextWrapping="Wrap" FontSize="12" />
+                            <TextBlock x:Name="QuadViewsLoadLast" Foreground="{StaticResource Warn}" TextWrapping="Wrap" FontSize="12" />
                             <TextBlock x:Name="QuadViewsLoadSaved" TextWrapping="Wrap" Margin="0,1,0,0" />
                             <TextBlock x:Name="QuadViewsOverrides" Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"
                                        ToolTip="The sliders show the settings for every runtime.&#10;&#10;These sections of the file set a value apart, for one runtime or one game, and win there." />
@@ -672,13 +735,14 @@
                             </WrapPanel>
                             <TextBlock x:Name="QuadViewsStatus" Style="{StaticResource Hint}" FontSize="12" Margin="0,4,0,0" />
                         </StackPanel>
+                        </DockPanel>
                     </Border>
-                    <Border x:Name="QuadViewsNotice" DockPanel.Dock="Top" Margin="20,10,20,0" Padding="12,6"
-                            Background="#2A2112" BorderBrush="#6B4F14" BorderThickness="1" CornerRadius="8">
-                        <TextBlock x:Name="QuadViewsNoticeText" TextWrapping="Wrap" FontSize="12" Foreground="#E8D4A8" />
+                    <Border x:Name="QuadViewsNotice" DockPanel.Dock="Top" Margin="28,10,28,0" Padding="12,8"
+                            Background="#26F5B342" BorderBrush="#80F5B342" BorderThickness="1" CornerRadius="8">
+                        <TextBlock x:Name="QuadViewsNoticeText" TextWrapping="Wrap" FontSize="12" Foreground="#FFE2A8" />
                     </Border>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="PanelQuadViews" Margin="20,10,20,14" />
+                        <StackPanel x:Name="PanelQuadViews" Margin="28,12,28,16" />
                     </ScrollViewer>
                 </DockPanel>
             </TabItem>
@@ -692,22 +756,57 @@
                             <TextBlock Style="{StaticResource PageTitle}" Text="OpenXR API layers" />
                             <TextBlock x:Name="LayerSummary" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" Margin="12,0,10,0" TextWrapping="Wrap" />
                         </DockPanel>
-                        <Border Style="{StaticResource Card}">
-                        <StackPanel Margin="0,2,0,0">
-                            <TextBlock x:Name="LayerHint" Style="{StaticResource Hint}" FontSize="12" Margin="0,0,0,6"
-                                       Text="The order games load them in: the top one loads closest to the game. A switch turns a layer on or off; the arrows reorder. Windows asks for permission." />
-                            <StackPanel x:Name="LayerRows" />
-                            <TextBlock x:Name="LayerProblems" Foreground="Orange" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0" Visibility="Collapsed" />
-                            <DockPanel Margin="0,6,0,0">
-                                <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
-                                    <Button x:Name="LayerFix" Content="Fix order" Style="{DynamicResource AccentButtonStyle}" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerFixOrder" />
-                                    <Button x:Name="LayerApply" Content="Apply order" Style="{DynamicResource AccentButtonStyle}" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerApplyOrder" />
-                                    <Button x:Name="LayerCancel" Content="Cancel" Margin="6,0,0,0" Visibility="Collapsed" Click="OnLayerCancelOrder" />
-                                </WrapPanel>
-                                <TextBlock x:Name="LayerNote" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" />
-                            </DockPanel>
-                        </StackPanel>
-                        </Border>
+                        <!-- The stack: from the game at the top down to the headset's runtime; beside it, the order's state. In a
+                             narrow window the order card goes under the stack (see OnLayersPageSize). -->
+                        <Grid x:Name="LayersBody" SizeChanged="OnLayersPageSize">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="LayersSideColumn" Width="320" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="6,0,0,8">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE7FC;" FontSize="15" Foreground="{StaticResource Ice}" Margin="0,0,10,0" />
+                                    <TextBlock Text="The game" Foreground="{StaticResource Muted}" />
+                                </StackPanel>
+                                <StackPanel x:Name="LayerRows" />
+                                <StackPanel Orientation="Horizontal" Margin="6,0,0,0">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE7F8;" FontSize="15" Foreground="{StaticResource Ice}" Margin="0,0,10,0" />
+                                    <TextBlock Text="The headset's runtime (SteamVR, Pimax, Varjo...)" Foreground="{StaticResource Muted}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel x:Name="LayersSide" Grid.Column="1" Margin="18,0,0,0">
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <DockPanel Margin="0,0,0,8">
+                                            <Border x:Name="LayerOrderPill" DockPanel.Dock="Right" CornerRadius="10" Padding="9,2,9,3" VerticalAlignment="Center">
+                                                <TextBlock x:Name="LayerOrderPillText" FontSize="12" />
+                                            </Border>
+                                            <TextBlock Text="Order" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                        <TextBlock x:Name="LayerHint" Style="{StaticResource Hint}" FontSize="13"
+                                                   Text="A game loads these from the top. The game's-panels layer has to see the game first, and the mirror layer has to sit below anything that draws into the picture." />
+                                        <TextBlock x:Name="LayerProblems" Foreground="{StaticResource Warn}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" Visibility="Collapsed" />
+                                        <WrapPanel Margin="0,10,0,0">
+                                            <Button x:Name="LayerFix" Content="Fix order" Style="{DynamicResource AccentButtonStyle}" Margin="0,0,6,6" Visibility="Collapsed" Click="OnLayerFixOrder" />
+                                            <Button x:Name="LayerApply" Content="Apply order" Style="{DynamicResource AccentButtonStyle}" Margin="0,0,6,6" Visibility="Collapsed" Click="OnLayerApplyOrder" />
+                                            <Button x:Name="LayerCancel" Content="Cancel" Margin="0,0,6,6" Visibility="Collapsed" Click="OnLayerCancelOrder" />
+                                        </WrapPanel>
+                                        <TextBlock x:Name="LayerNote" Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Changes" />
+                                        <TextBlock Style="{StaticResource Hint}" FontSize="13"
+                                                   Text="A switch turns a layer on or off; the arrows move it. The list is PC-wide, so Windows asks for permission. A game takes the new order at its next start." />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -715,68 +814,89 @@
             <TabItem x:Name="AboutTab" Header="About">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="{StaticResource PageMargin}">
-                        <TextBlock Style="{StaticResource PageTitle}" Text="About" Margin="0,0,0,10" />
-                        <Grid x:Name="AboutCards" Margin="0,0,-10,0">
-                            <Border Style="{StaticResource Card}" Margin="0,0,10,10">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource CardTitle}" Text="VR Gaze Mirror" />
-                                    <TextBlock x:Name="VersionText" FontSize="22" FontWeight="SemiBold" />
-                                    <WrapPanel Margin="0,8,0,0">
-                                        <Button x:Name="RepoButton" Content="GitHub" Margin="0,2,6,2" Click="OnOpenRepo" />
-                                        <Button x:Name="ReleasesButton" Content="Releases" Margin="0,2,6,2" Click="OnOpenReleases" />
-                                        <Button Content="Licences" ToolTip="Opens the folder with the licence texts" Margin="0,2,6,2" Click="OnOpenLicences" />
-                                        <Button Content="Logs" ToolTip="Opens the folder with the logs of this app, the layer and the helper" Margin="0,2,6,2" Click="OnOpenLogs" />
-                            <Button x:Name="TourButton" Content="Take the tour" ToolTip="A short guided tour of the pages and their main controls" Margin="0,2,6,2" Click="OnTakeTour" />
-                            <Button x:Name="GuideButton" Content="Getting started" ToolTip="Opens the step-by-step guide to a first setup, on GitHub" Margin="0,2,6,2" Click="OnOpenGuide" />
-                                    </WrapPanel>
-                                    <!-- The settings file of the ring and the mirror: for a look at it, or after an edit by hand. -->
-                                    <WrapPanel Margin="0,2,0,0">
-                                        <Button Content="Settings file" ToolTip="Opens the settings file of the ring and the mirror in the program Windows uses for .cfg files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="0,2,6,2" Click="OnOpenConfig" />
-                                        <Button Content="Reload settings" ToolTip="Reads the settings file again" Margin="0,2,0,2" Click="OnReloadConfig" />
-                                    </WrapPanel>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource Card}" Margin="0,0,10,10">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource CardTitle}" Text="Updates"
-                                               ToolTip="The app can look at the project's GitHub releases as it opens and tell you about a newer version.&#10;&#10;It reads that public list and nothing else; a download starts at your click on Download and install." />
-                                    <CheckBox x:Name="CheckUpdatesBox" Content="Check for updates when the app opens" MinWidth="0" Checked="OnUpdatePreferenceChanged" Unchecked="OnUpdatePreferenceChanged" />
-                                    <CheckBox x:Name="IncludeBetasBox" Content="Also tell me about beta versions" MinWidth="0" Margin="0,4,0,0" Checked="OnUpdatePreferenceChanged" Unchecked="OnUpdatePreferenceChanged" />
-                                    <DockPanel Margin="0,8,0,0">
-                                        <Button x:Name="CheckNowButton" DockPanel.Dock="Left" Content="Check now" Margin="0,0,10,0" VerticalAlignment="Center" Click="OnCheckNow" />
-                                        <TextBlock x:Name="UpdateStatus" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" />
-                                    </DockPanel>
-                                </StackPanel>
-                            </Border>
-                            <!-- How the app starts: at sign-in, and in the tray. Both off unless chosen. -->
-                            <Border Style="{StaticResource Card}" Margin="0,0,10,10">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource CardTitle}" Text="Start-up"
-                                               ToolTip="The desktop cover's hotkey and the mirror window need the app running.&#10;&#10;These two keep it at hand without a window in the way." />
-                                    <CheckBox x:Name="StartWithWindowsBox" Content="Start with Windows" MinWidth="0" Checked="OnStartupPreferenceChanged" Unchecked="OnStartupPreferenceChanged"
-                                              ToolTip="Opens the app when you sign in: an entry under your own account's start-up list, no administrator rights.&#10;&#10;Unticking removes it." />
-                                    <CheckBox x:Name="StartInTrayBox" Content="Start in the tray" MinWidth="0" Margin="0,4,0,0" Checked="OnStartupPreferenceChanged" Unchecked="OnStartupPreferenceChanged"
-                                              ToolTip="The app lives in the notification area: it opens hidden, the close button hides the window, and the tray icon's menu opens it again or quits.&#10;&#10;The desktop cover's hotkey works from the tray." />
-                                    <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap"
-                                               Text="With Start in the tray, the window's close button hides it. Quit is in the tray icon's menu." />
-                                </StackPanel>
-                            </Border>
+                        <TextBlock Style="{StaticResource PageTitle}" Text="About" Margin="0,0,0,16" />
+                        <!-- Who and what on the left, with the changes to read; the switches on the right. In a narrow window the
+                             right column goes under the left one (see OnAboutPageSize). -->
+                        <Grid x:Name="AboutBody" SizeChanged="OnAboutPageSize">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition x:Name="AboutSideColumn" Width="340" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel>
+                                <Border Style="{StaticResource Card}" Padding="20,18,20,16" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Image Source="Assets/logo-256.png" Width="96" Height="96" Margin="0,0,20,0" RenderOptions.BitmapScalingMode="HighQuality" />
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="VR Gaze Mirror" FontFamily="{StaticResource DisplayFont}" FontSize="26" FontWeight="SemiBold" />
+                                                <TextBlock Text="Your VR gameplay, straight into OBS." Foreground="{StaticResource Muted}" Margin="0,2,0,10" />
+                                                <Border HorizontalAlignment="Left" CornerRadius="10" Padding="10,2,10,3" Background="#242E9BFF">
+                                                    <TextBlock x:Name="VersionText" FontSize="12" FontWeight="SemiBold" Foreground="#7CC0FF" />
+                                                </Border>
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <WrapPanel Margin="0,16,0,0">
+                                            <Button x:Name="GuideButton" Content="Getting started" ToolTip="Opens the step-by-step guide to a first setup, on GitHub" Margin="0,2,6,2" Click="OnOpenGuide" />
+                                            <Button x:Name="TourButton" Content="Take the tour" ToolTip="A short guided tour of the pages and their main controls" Margin="0,2,6,2" Click="OnTakeTour" />
+                                            <Button x:Name="RepoButton" Content="GitHub" Margin="0,2,6,2" Click="OnOpenRepo" />
+                                            <Button x:Name="ReleasesButton" Content="Releases" Margin="0,2,6,2" Click="OnOpenReleases" />
+                                            <Button Content="Licences" ToolTip="Opens the folder with the licence texts" Margin="0,2,6,2" Click="OnOpenLicences" />
+                                            <Button Content="Logs" ToolTip="Opens the folder with the logs of this app, the layer and the helper" Margin="0,2,6,2" Click="OnOpenLogs" />
+                                            <!-- The settings file of the ring and the mirror: for a look at it, or after an edit by hand. -->
+                                            <Button Content="Settings file" ToolTip="Opens the settings file of the ring and the mirror in the program Windows uses for .cfg files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="0,2,6,2" Click="OnOpenConfig" />
+                                            <Button Content="Reload settings" ToolTip="Reads the settings file again" Margin="0,2,6,2" Click="OnReloadConfig" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="What changed" />
+                                        <StackPanel x:Name="ChangelogRows" />
+                                    </StackPanel>
+                                </Border>
+                                <Expander Header="Licences and credits" Margin="0,0,0,10">
+                                    <TextBlock x:Name="AboutText" TextWrapping="Wrap" Style="{StaticResource Hint}" Margin="0,6,0,0" />
+                                </Expander>
+                            </StackPanel>
+
+                            <StackPanel x:Name="AboutSide" Grid.Column="1" Margin="18,0,0,0">
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Updates"
+                                                   ToolTip="The app can look at the project's GitHub releases as it opens and tell you about a newer version.&#10;&#10;It reads that public list and nothing else; a download starts at your click on Download and install." />
+                                        <CheckBox x:Name="CheckUpdatesBox" Content="Check for updates when the app opens" HorizontalAlignment="Stretch" Checked="OnUpdatePreferenceChanged" Unchecked="OnUpdatePreferenceChanged" />
+                                        <CheckBox x:Name="IncludeBetasBox" Content="Also tell me about beta versions" HorizontalAlignment="Stretch" Margin="0,6,0,0" Checked="OnUpdatePreferenceChanged" Unchecked="OnUpdatePreferenceChanged" />
+                                        <DockPanel Margin="0,10,0,0">
+                                            <Button x:Name="CheckNowButton" DockPanel.Dock="Right" Content="Check now" Margin="10,0,0,0" VerticalAlignment="Center" Click="OnCheckNow" />
+                                            <TextBlock x:Name="UpdateStatus" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </StackPanel>
+                                </Border>
+                                <!-- How the app starts: at sign-in, and in the tray. Both off unless chosen. -->
+                                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Start-up"
+                                                   ToolTip="The desktop cover's hotkey and the mirror window need the app running.&#10;&#10;These two keep it at hand without a window in the way." />
+                                        <CheckBox x:Name="StartWithWindowsBox" Content="Start with Windows" HorizontalAlignment="Stretch" Checked="OnStartupPreferenceChanged" Unchecked="OnStartupPreferenceChanged"
+                                                  ToolTip="Opens the app when you sign in: an entry under your own account's start-up list, no administrator rights.&#10;&#10;Switching it off removes it." />
+                                        <CheckBox x:Name="StartInTrayBox" Content="Start in the tray" HorizontalAlignment="Stretch" Margin="0,6,0,0" Checked="OnStartupPreferenceChanged" Unchecked="OnStartupPreferenceChanged"
+                                                  ToolTip="The app lives in the notification area: it opens hidden, the close button hides the window, and the tray icon's menu opens it again or quits.&#10;&#10;The desktop cover's hotkey works from the tray." />
+                                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap"
+                                                   Text="With Start in the tray, the window's close button hides it. Quit is in the tray icon's menu." />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="What runs where" />
+                                        <StackPanel x:Name="AboutRows" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </Grid>
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource CardTitle}" Text="What runs where" />
-                                <StackPanel x:Name="AboutRows" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource Card}" Margin="0,10,0,0">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource CardTitle}" Text="What changed" />
-                                <StackPanel x:Name="ChangelogRows" />
-                            </StackPanel>
-                        </Border>
-                        <Expander Header="Licences and credits" Margin="0,10,0,0">
-                            <TextBlock x:Name="AboutText" TextWrapping="Wrap" Style="{StaticResource Hint}" Margin="0,6,0,0" />
-                        </Expander>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

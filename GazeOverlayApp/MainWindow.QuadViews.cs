@@ -44,6 +44,11 @@ public partial class MainWindow
         // One under the other in a narrower window, and then no wider than a row of settings reads well.
         PanelQuadViews.SizeChanged += (_, _) =>
         {
+            // The drawing beside the switch while the card has room for both, above it otherwise.
+            var wide = PanelQuadViews.ActualWidth >= 760;
+            DockPanel.SetDock(QuadViewsSceneFrame, wide ? Dock.Left : Dock.Top);
+            QuadViewsSceneFrame.Margin = wide ? new Thickness(0, 0, 18, 0) : new Thickness(0, 0, 0, 14);
+            QuadViewsSceneFrame.HorizontalAlignment = HorizontalAlignment.Left;
             var sideBySide = PanelQuadViews.ActualWidth >= 900;
             LayOutCards(cards, sideBySide);
             cards.HorizontalAlignment = sideBySide ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
@@ -302,6 +307,52 @@ public partial class MainWindow
         return QuadViewsFile.Evaluate(files, commonOnly ? null : _quadViewsSession);
     }
 
+    private (System.Windows.Media.Imaging.BitmapSource Source, double Scale, System.Windows.Media.Imaging.BitmapSource Low)? _quadViewsLow;
+
+    /// <summary>
+    /// The drawing beside the switch: the Mirror page's picture with the sharp area at its share of the view (the focus
+    /// sections), sharp inside and blocky outside, where the surround draws at its lower resolution. Without a picture, the
+    /// box and the numbers alone.
+    /// </summary>
+    private void UpdateQuadViewsScene(double horizontal, double vertical, double focus, double peripheral, double share)
+    {
+        var width = QuadViewsSceneFrame.Width;
+        var height = QuadViewsSceneFrame.Height;
+        var source = _cropImage.Source as System.Windows.Media.Imaging.BitmapSource ?? _pictureFirst;
+        if (source != null)
+        {
+            // Blockier the lower the surround's resolution; not to scale, enough to see the difference.
+            var scale = Math.Clamp(peripheral * 0.18, 0.02, 1.0) * Math.Min(1, 640.0 / source.PixelWidth);
+            if (_quadViewsLow is not { } cached || !ReferenceEquals(cached.Source, source) || Math.Abs(cached.Scale - scale) > 1e-6)
+            {
+                var low = new System.Windows.Media.Imaging.TransformedBitmap(source, new ScaleTransform(scale, scale));
+                low.Freeze();
+                _quadViewsLow = (source, scale, low);
+            }
+            QuadViewsLow.Source = _quadViewsLow!.Value.Low;
+            QuadViewsSharp.Source = source;
+        }
+        else
+        {
+            QuadViewsLow.Source = QuadViewsSharp.Source = null;
+        }
+        var box = new Rect((1 - horizontal) / 2 * width, (1 - vertical) / 2 * height, horizontal * width, vertical * height);
+        QuadViewsSharp.Clip = new RectangleGeometry(box);
+        QuadViewsBox.Width = box.Width;
+        QuadViewsBox.Height = box.Height;
+        Canvas.SetLeft(QuadViewsBox, box.X);
+        Canvas.SetTop(QuadViewsBox, box.Y);
+        QuadViewsBoxText.Text = $"Sharp, {100 * focus * focus:0} % of native"; // the sliders give resolution as pixel count: the multiplier squared
+        QuadViewsBoxLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(QuadViewsBoxLabel, Math.Clamp(box.X, 4, width - QuadViewsBoxLabel.DesiredSize.Width - 4));
+        Canvas.SetTop(QuadViewsBoxLabel, Math.Max(4, box.Y - QuadViewsBoxLabel.DesiredSize.Height - 4));
+        QuadViewsSurroundText.Text = $"Surround, {100 * peripheral * peripheral:0} % of native";
+        QuadViewsShareText.Text = $"{100 * share:0} % of the pixels";
+        QuadViewsSceneFrame.ToolTip = WrappedToolTip("The sharp area at its share of your view, on your last picture from the Mirror page.\n\n" +
+            "Outside it the game draws at the surround's resolution. The blockiness shows the difference, not to scale.\n\n" +
+            "The pixels: what the game draws with these settings, against the headset's full resolution without quad views.");
+    }
+
     private QuadViewsPixels.Result? QuadViewsPixelsFor(QuadViewsEffective effective)
     {
         if (_quadViewsSession is not { HasResolution: true } session) return null;
@@ -357,6 +408,8 @@ public partial class MainWindow
             _quadViewsReadouts["focus_res"].Text = QuadViewsReadout.Focus(next["focus_multiplier"], pixels);
             _quadViewsReadouts["peripheral_res"].Text = QuadViewsReadout.Peripheral(next["peripheral_multiplier"], pixels, session?.StereoWidth ?? 0, session?.StereoHeight ?? 0);
             _quadViewsReadouts["total"].Text = QuadViewsReadout.Total(next["peripheral_multiplier"], next["focus_multiplier"], horizontal, vertical, pixels, session?.StereoPixels ?? 0);
+            UpdateQuadViewsScene(horizontal, vertical, next["focus_multiplier"], next["peripheral_multiplier"],
+                pixels is { } counted && session is { StereoPixels: > 0 } ? (double)counted.Total / session.StereoPixels : QuadViewsPixels.Fraction(next["peripheral_multiplier"], next["focus_multiplier"], horizontal, vertical));
         }
 
         // ---- what the file sets apart from the sliders

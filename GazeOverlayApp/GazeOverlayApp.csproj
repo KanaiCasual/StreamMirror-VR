@@ -38,6 +38,7 @@
     <None Remove="Payload\**" />
     <Resource Include="Assets\icon.ico" />
     <Resource Include="Assets\logo-64.png" />
+    <Resource Include="Assets\logo-256.png" />
     <!-- The changelog, shown on the About page. -->
     <EmbeddedResource Include="..\CHANGELOG.md" Link="CHANGELOG.md" LogicalName="CHANGELOG.md" />
     <!-- owner/name of the GitHub repository whose releases the app looks at. Empty = no update checks. Set by

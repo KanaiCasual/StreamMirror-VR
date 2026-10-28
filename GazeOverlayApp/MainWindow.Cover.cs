@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace GazeOverlay;
 
@@ -98,7 +99,44 @@ public partial class MainWindow
             for (var x = 0; x < width; x++) pixels[y * width + x] = GazeOverlay.CoverPattern.Lit(x, y, _appSettings.CoverPatternScale) ? grey : (byte)0;
         }
         CoverPreview.Source = System.Windows.Media.Imaging.BitmapSource.Create(width, height, 96, 96, System.Windows.Media.PixelFormats.Gray8, null, pixels, width);
-        CoverKey.Content = _coverKeyListening ? "Press the keys..." : CoverHotKeys.Text(_appSettings.CoverHotKey, _appSettings.CoverHotKeyModifiers, KeyName);
+        CoverKey.Content = _coverKeyListening ? "Press the keys..." : KeyCaps(CoverHotKeys.Text(_appSettings.CoverHotKey, _appSettings.CoverHotKeyModifiers, KeyName));
+        UpdateCoverDrawing();
+    }
+
+    /// <summary>"LCtrl + LAlt + B" as keyboard keys with plus signs between them; anything else as it is.</summary>
+    private object KeyCaps(string combination)
+    {
+        var keys = combination.Split(" + ");
+        if (keys.Length == 0 || keys.Any(k => k.Length == 0 || k.Length > 12)) return combination;
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        for (var i = 0; i < keys.Length; i++)
+        {
+            if (i > 0) row.Children.Add(new TextBlock { Text = "+", Foreground = (Brush)FindResource("Muted"), Margin = new Thickness(5, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(new Border
+            {
+                MinWidth = 26, Padding = new Thickness(7, 2, 7, 2), CornerRadius = new CornerRadius(5), Background = new SolidColorBrush(Color.FromRgb(0x1C, 0x26, 0x50)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0x33, 0x40, 0x7A)), BorderThickness = new Thickness(1, 1, 1, 3),
+                Child = new TextBlock { Text = keys[i], FontSize = 12, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center },
+            });
+        }
+        return row;
+    }
+
+    /// <summary>The drawing at the top of the page: the game's window as your monitor shows it, and what screen capture gets.</summary>
+    private void UpdateCoverDrawing()
+    {
+        var picture = FramedPicture();
+        var covered = _appSettings.CoverEnabled;
+        CoverSceneGame.Source = picture;
+        CoverSceneGame.Visibility = covered ? Visibility.Collapsed : Visibility.Visible;
+        CoverSceneMarks.Source = CoverPreview.Source;
+        CoverSceneMarks.Visibility = covered && _appSettings.CoverPattern ? Visibility.Visible : Visibility.Collapsed;
+        CoverSceneLabel.Text = covered ? "Your monitor: the game's window, covered while you play" : "Your monitor: the game's window, not covered";
+        CoverInsetGame.Source = picture;
+        CoverInsetBlack.Visibility = covered && _appSettings.CoverInCapture ? Visibility.Visible : Visibility.Collapsed;
+        CoverInsetText.Text = !covered ? "Screen capture gets the game"
+            : _appSettings.CoverInCapture ? "Screen capture gets the black too"
+            : "OBS and Discord still get the game";
     }
 
     private void OnCoverKeyClick(object sender, RoutedEventArgs e) => ListenForCoverKey(!_coverKeyListening);
