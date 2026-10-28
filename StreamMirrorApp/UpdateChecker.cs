@@ -2,6 +2,7 @@ using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace StreamMirror;
@@ -17,9 +18,11 @@ public sealed record ReleaseInfo(Version Version, string Tag, string Title, bool
 }
 
 /// <summary>What the app itself remembers (not the ring settings - those live in the layer's own file).</summary>
-/// <summary>One of the user's own preset slots: the values as they were when it was saved.</summary>
+/// <summary>One of the user's own presets: the values as they were when it was saved.</summary>
 public sealed class SavedPreset
 {
+    /// <summary>The name of a Quad Views preset (ring slots go by their number).</summary>
+    public string Name { get; set; } = "";
     public DateTime SavedAt { get; set; }
     public Dictionary<string, string> Values { get; set; } = [];
 }
@@ -27,9 +30,13 @@ public sealed class SavedPreset
 public sealed class AppSettings
 {
     public const int SlotCount = 3;
-    /// <summary>The user's own presets: ring look (Look + Tail tabs) and Quad Views sliders. null = empty slot.</summary>
+    /// <summary>The user's own ring looks (Look + Tail tabs). null = empty slot.</summary>
     public SavedPreset?[] RingSlots { get; set; } = new SavedPreset?[SlotCount];
-    public SavedPreset?[] QuadViewsSlots { get; set; } = new SavedPreset?[SlotCount];
+    /// <summary>The user's own Quad Views presets, by name.</summary>
+    public List<SavedPreset> QuadViewsPresets { get; set; } = [];
+    /// <summary>The three Quad Views slots of 2.x and 3.0 dev builds up to rev12: read once, carried into QuadViewsPresets.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SavedPreset?[]? QuadViewsSlots { get; set; }
 
     public bool CheckForUpdates { get; set; } = true;
     public bool IncludeBetas { get; set; }
@@ -132,7 +139,8 @@ public sealed class AppSettings
     /// <summary>This app's own folder: preferences, crop profiles, crop pictures, the saved layer orders and the logs.</summary>
     public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StreamMirror");
 
-    private static string FilePath => Path.Combine(Folder, "app.json");
+    /// <summary>STREAMMIRROR_APP_FILE points a screenshot run at a scratch file.</summary>
+    private static string FilePath => Environment.GetEnvironmentVariable("STREAMMIRROR_APP_FILE") is { Length: > 0 } file ? file : Path.Combine(Folder, "app.json");
 
     /// <summary>
     /// Earlier names left their files elsewhere: "QuadViewsGazeMirror" up to the 1.9.x builds (everything), "OpenXRGazeOverlay"
@@ -230,7 +238,7 @@ public sealed class AppSettings
                 var loaded = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings();
                 // A hand-edited or older file may hold another number of slots.
                 loaded.RingSlots = [.. (loaded.RingSlots ?? []).Concat(new SavedPreset?[SlotCount]).Take(SlotCount)];
-                loaded.QuadViewsSlots = [.. (loaded.QuadViewsSlots ?? []).Concat(new SavedPreset?[SlotCount]).Take(SlotCount)];
+                loaded.CarryQuadViewsSlots();
                 return loaded;
             }
         }
@@ -239,6 +247,19 @@ public sealed class AppSettings
             // A damaged file just means defaults.
         }
         return new AppSettings();
+    }
+
+    /// <summary>The old numbered Quad Views slots become presets called "Slot 1" to "Slot 3".</summary>
+    public void CarryQuadViewsSlots()
+    {
+        QuadViewsPresets ??= [];
+        for (var i = 0; i < (QuadViewsSlots?.Length ?? 0); i++)
+        {
+            if (QuadViewsSlots![i] is not { } slot) continue;
+            slot.Name = $"Slot {i + 1}";
+            if (!QuadViewsPresets.Any(p => p.Name == slot.Name)) QuadViewsPresets.Add(slot);
+        }
+        QuadViewsSlots = null;
     }
 
     public void Save()

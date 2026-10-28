@@ -76,7 +76,7 @@ public partial class MainWindow
             new("Live and Next start.", "Every change is saved as you make it. Settings under Live show in a running game at once. Settings under Next start (resolution, Turbo) wait for the game to start again.\n\nThe lines at the top give the pixels per frame."),
             new("Checking.", "Show diagnostics in the headset tints the zones and marks your gaze while you play.\n\nThe layer stays out of games it cannot help (OpenGL); its log says why."),
             new("Focus", "sets the size of the sharp region as a share of the field of view, moves it up or down, and sets the width of the blend into the surround. Without eye tracking the region stays in the middle of the view."),
-            new("Resolution", "sets the pixel count of the sharp region and of the surround; most of the saving comes from the surround. Presets and your own three slots set the sliders."),
+            new("Resolution", "sets the pixel count of the sharp region and of the surround; most of the saving comes from the surround. The presets set the sliders, and so does My presets: Save as... keeps the sliders under a name of yours, and the list brings them back."),
             AboutSliders);
 
         // A page that has been looked at folds its explanation as the user moves on (or closes the app).

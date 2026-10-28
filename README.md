@@ -494,7 +494,8 @@ foveate and peripheral resolution, sharpening, transition, Turbo mode. On top of
 - **Under the sliders:** what they make. The sharp area's and the surround's size in pixels per eye, how sharp each
   is against the headset (100 % = as sharp as the headset; the resolution sliders are shares of the pixel count, so
   200 % is 1.41x on each side), how much of the view the sharp area covers, and what both images cost together.
-- **Presets:** *Give me FPS*, *TM's Favorite*, *QV defaults*, and three slots of your own.
+- **Presets:** *Give me FPS*, *TM's Favorite*, *QV defaults*, and **My presets**: your own, by name. **Save as...** keeps
+  the sliders under a name, **Save** updates the one picked, the menu beside it renames or deletes.
 - One deliberate difference from the Companion: the page writes the **whole file fresh**, in the app's own layout. Every
   setting stands once at the top, which every runtime and game reads, grouped as with eye tracking, without eye
   tracking, and the rest. Headset sections such as `[Pimax]` apply only when the OpenXR runtime's name contains that
