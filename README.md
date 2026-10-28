@@ -404,7 +404,7 @@ preview stands beside the settings of the two ring pages; in a narrow window it 
 For most people a preset and the first card are all the ring needs. The rest folds away in three sections, and the app
 remembers the ones you leave open.
 
-- **Presets** (Subtle, Crisp, Soft band, Neon), **Reset all**, and three slots of your own under **My presets** to save and
+- **Presets** (Subtle, Crisp, Soft band, Neon), **Reset all**, and looks of your own by name under **My presets** to save and
   compare looks.
 - **Ring** (the first card): on or off, the style, the colour and the size. **Styles:** Ghost ring with teardrop tail
   (recommended), plain ring, soft glow, small dot, spotlight (darkens the rest of the picture), bubble and solid blob
@@ -495,7 +495,8 @@ foveate and peripheral resolution, sharpening, transition, Turbo mode. On top of
   is against the headset (100 % = as sharp as the headset; the resolution sliders are shares of the pixel count, so
   200 % is 1.41x on each side), how much of the view the sharp area covers, and what both images cost together.
 - **Presets:** *Give me FPS*, *TM's Favorite*, *QV defaults*, and **My presets**: your own, by name. **Save as...** keeps
-  the sliders under a name, **Save** updates the one picked, the menu beside it renames or deletes.
+  the sliders under a name, **Save** updates the one picked, the menu beside it renames or deletes. Changes apply at once;
+  a preset keeps them only when you press **Save**.
 - One deliberate difference from the Companion: the page writes the **whole file fresh**, in the app's own layout. Every
   setting stands once at the top, which every runtime and game reads, grouped as with eye tracking, without eye
   tracking, and the rest. Headset sections such as `[Pimax]` apply only when the OpenXR runtime's name contains that
@@ -551,7 +552,7 @@ File locations:
 |---|---|
 | Program, layer, helper, mirror window | `C:\Program Files\StreamMirror-VR` |
 | Ring, crop, follow, steadying, gaze settings | `%LocalAppData%\StreamMirror\settings.cfg` (before 3.0 `%LocalAppData%\XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg`; the update copies it over) |
-| App preferences, saved slots, crop profiles and pictures, layer-order backups | `%LocalAppData%\StreamMirror\` |
+| App preferences, your presets, crop profiles and pictures, layer-order backups | `%LocalAppData%\StreamMirror\` |
 | Logs: `app.log`, `streammirror-layer.log`, `streammirror-helper.log` | `%LocalAppData%\StreamMirror\` |
 | StreamMirror VR's quad views layer: `settings.cfg`, `QuadViews.log` | `%LocalAppData%\StreamMirror\QuadViews\` |
 | Quad-Views-Foveated settings and log (if installed) | `%LocalAppData%\Quad-Views-Foveated\` |

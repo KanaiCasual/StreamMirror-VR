@@ -586,6 +586,8 @@ public partial class MainWindow : Window
         return panel;
     }
 
+    private Panel? _ringPresetBar;
+
     private FrameworkElement BuildPresets()
     {
         var bar = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -596,11 +598,11 @@ public partial class MainWindow : Window
             button.Click += (_, _) => ApplyValues(preset.Values);
             bar.Children.Add(button);
         }
-        var slots = BuildSlotBar(_appSettings.RingSlots, CaptureRingSlot,
+        var mine = _ringPresetBar = (Panel)BuildPresetBar(_appSettings.RingPresets, "look", CaptureRingSlot,
             values => ApplyValues(values.Where(kv => Settings.All.Any(d => d.Key == kv.Key && IsRingSlotKey(d))).ToDictionary(kv => kv.Key, kv => kv.Value)),
             DescribeRingSlot);
-        slots.Margin = new Thickness(10, 0, 0, 0);
-        bar.Children.Add(slots);
+        mine.Margin = new Thickness(10, 0, 0, 0);
+        bar.Children.Add(mine);
 
         var reset = new Button { Content = "Reset all", ToolTip = "Resets the ring's settings to their defaults", Margin = new Thickness(10, 2, 0, 2) };
         reset.Click += OnResetAll;
@@ -608,73 +610,209 @@ public partial class MainWindow : Window
         return bar;
     }
 
-    // ---- the user's own preset slots (kept in the app's own app.json, not in any settings file a layer reads)
+    // ---- the user's own presets, by name (kept in the app's own app.json, not in any settings file a layer reads)
 
     /// <summary>
-    /// "Mine: [1] [2] [3] [Save]". A slot button applies what was saved in it; Save opens a menu to store the current values
-    /// in a slot (or clear one). The tooltip of a filled slot says what is in it.
+    /// "My presets [list] Save, Save as..., [...]", worked like the Mirror page's profiles. Picking a preset applies it. Changes
+    /// after that apply at once too, but a preset only keeps them when Save is pressed: nothing saves into a preset by itself.
+    /// Save as... names the current values (a name in use takes them); the menu renames or deletes.
     /// </summary>
-    private FrameworkElement BuildSlotBar(SavedPreset?[] slots, Func<Dictionary<string, string>> capture,
+    private FrameworkElement BuildPresetBar(List<SavedPreset> presets, string what, Func<Dictionary<string, string>> capture,
         Action<Dictionary<string, string>> apply, Func<Dictionary<string, string>, string> describe)
     {
+        var picker = new ComboBox { MinWidth = 150, Margin = new Thickness(0, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, DisplayMemberPath = nameof(SavedPreset.Name) };
+        var save = new Button { Content = "Save", Margin = new Thickness(0, 2, 6, 2), ToolTip = WrappedToolTip($"Keeps the current {what} in this preset.\n\nChanges apply at once, but the preset keeps them only when you press Save.") };
+        var saveAs = new Button { Content = "Save as...", Margin = new Thickness(0, 2, 6, 2), ToolTip = $"Keeps the current {what} as a new preset" };
+        var nameBox = new TextBox { Width = 140, MinWidth = 0, Margin = new Thickness(0, 2, 4, 2), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Name of the preset. Enter saves, Esc cancels." };
+        var ok = new Button { Content = "OK", Margin = new Thickness(0, 2, 0, 2) };
+        var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 0, 6, 0), Children = { nameBox, ok } };
+        var rename = new MenuItem { Header = "Rename..." };
+        var delete = new MenuItem { Header = "Delete..." };
+        var more = new Button
+        {
+            Margin = new Thickness(0, 2, 0, 2), Padding = new Thickness(8, 5, 8, 5), ToolTip = "Rename or delete this preset",
+            Content = new TextBlock { Style = (Style)FindResource("Icon"), Text = "\uE712", FontSize = 12 },
+            ContextMenu = new ContextMenu { Items = { rename, delete } },
+        };
+        System.Windows.Automation.AutomationProperties.SetName(more, "More preset actions: rename, delete");
+        var note = new TextBlock { Foreground = (Brush)FindResource("Warn"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0), Visibility = Visibility.Collapsed };
         var bar = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
         bar.Children.Add(new TextBlock { Text = "My presets", Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
-        var buttons = new Button[slots.Length];
-        var save = new Button { Content = "Save", Margin = new Thickness(2, 2, 0, 2), ToolTip = "Saves the current values in one of your slots" };
+        foreach (var element in new UIElement[] { picker, save, saveAs, namePanel, more, note }) bar.Children.Add(element);
+        ToolTipService.SetShowOnDisabled(picker, true);
+        ShowToolTipsPatiently(picker);
 
-        void Refresh()
+        var listing = false;
+        var renaming = false;
+        SavedPreset? Chosen() => picker.SelectedItem as SavedPreset;
+
+        void ShowState()
         {
-            for (var i = 0; i < slots.Length; i++)
+            var chosen = Chosen();
+            picker.IsEnabled = presets.Count > 0;
+            save.IsEnabled = more.IsEnabled = chosen != null;
+            picker.ToolTip = WrappedToolTip(chosen != null
+                ? $"{chosen.Name}, saved {chosen.SavedAt:g}\n\n{describe(chosen.Values)}\n\nPicking a preset sets the {what}. Changes after that apply at once, and the preset keeps them only when you press Save."
+                : presets.Count == 0 ? $"No presets of your own yet. Set the {what}, then Save as... keeps them under a name."
+                : $"Pick one of your presets to set the {what}.");
+        }
+
+        void Tell(string text)
+        {
+            note.Text = text;
+            note.Visibility = text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        void List(SavedPreset? select)
+        {
+            namePanel.Visibility = Visibility.Collapsed;
+            Tell("");
+            listing = true;
+            picker.ItemsSource = presets.ToList();
+            picker.SelectedItem = select;
+            listing = false;
+            ShowState();
+        }
+
+        void Store(SavedPreset select)
+        {
+            _appSettings.Save();
+            List(select);
+        }
+
+        void AskName(bool forRename, string suggested)
+        {
+            renaming = forRename;
+            nameBox.Text = suggested;
+            namePanel.Visibility = Visibility.Visible;
+            nameBox.Focus();
+            nameBox.SelectAll();
+        }
+
+        void Confirm()
+        {
+            var name = nameBox.Text.Trim();
+            if (name.Length == 0) return;
+            var named = presets.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (renaming)
             {
-                buttons[i].IsEnabled = slots[i] != null;
-                buttons[i].ToolTip = slots[i] is { } filled
-                    ? WrappedToolTip($"Your slot {i + 1}, saved {filled.SavedAt:g}\n\n{describe(filled.Values)}")
-                    : WrappedToolTip($"Slot {i + 1} is empty. Use Save to keep the current values here.");
-                ToolTipService.SetShowOnDisabled(buttons[i], true);
-                ShowToolTipsPatiently(buttons[i]);
+                if (Chosen() is not { } chosen) return;
+                if (named != null && !ReferenceEquals(named, chosen))
+                {
+                    Tell($"A preset called \"{named.Name}\" exists already: choose another name.");
+                    return;
+                }
+                chosen.Name = name;
+                Store(chosen);
+                return;
             }
+            if (named == null) presets.Add(named = new SavedPreset { Name = name });
+            named.SavedAt = DateTime.Now;
+            named.Values = capture();
+            Store(named);
         }
 
-        for (var i = 0; i < slots.Length; i++)
+        picker.SelectionChanged += (_, _) =>
         {
-            var index = i;
-            buttons[i] = new Button { Content = (i + 1).ToString(), MinWidth = 30, Margin = new Thickness(0, 2, 4, 2) };
-            buttons[i].Click += (_, _) => { if (slots[index] is { } filled) apply(new Dictionary<string, string>(filled.Values)); };
-            bar.Children.Add(buttons[i]);
-        }
-
+            if (listing) return;
+            if (Chosen() is { } chosen) apply(new Dictionary<string, string>(chosen.Values));
+            ShowState();
+        };
         save.Click += (_, _) =>
         {
-            var menu = new ContextMenu { PlacementTarget = save, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
-            for (var i = 0; i < slots.Length; i++)
-            {
-                var index = i;
-                var item = new MenuItem { Header = slots[i] is { } filled ? $"Save to slot {i + 1}, replacing the values from {filled.SavedAt:g}" : $"Save to slot {i + 1} (empty)" };
-                item.Click += (_, _) =>
-                {
-                    slots[index] = new SavedPreset { SavedAt = DateTime.Now, Values = capture() };
-                    _appSettings.Save();
-                    Refresh();
-                };
-                menu.Items.Add(item);
-            }
-            if (slots.Any(s => s != null)) menu.Items.Add(new Separator());
-            for (var i = 0; i < slots.Length; i++)
-            {
-                if (slots[i] == null) continue;
-                var index = i;
-                var item = new MenuItem { Header = $"Clear slot {i + 1}" };
-                item.Click += (_, _) => { slots[index] = null; _appSettings.Save(); Refresh(); };
-                menu.Items.Add(item);
-            }
-            menu.IsOpen = true;
+            if (Chosen() is not { } chosen) return;
+            chosen.SavedAt = DateTime.Now;
+            chosen.Values = capture();
+            Store(chosen);
         };
-        bar.Children.Add(save);
-        Refresh();
+        saveAs.Click += (_, _) => AskName(false, "");
+        rename.Click += (_, _) => { if (Chosen() is { } chosen) AskName(true, chosen.Name); };
+        delete.Click += (_, _) =>
+        {
+            if (Chosen() is not { } chosen) return;
+            if (!App.Headless && MessageBox.Show(this, $"Delete your preset \"{chosen.Name}\"? This cannot be undone.", "Delete preset",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+            presets.Remove(chosen);
+            _appSettings.Save();
+            List(null);
+        };
+        more.Click += (_, _) =>
+        {
+            more.ContextMenu.PlacementTarget = more;
+            more.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            more.ContextMenu.IsOpen = true;
+        };
+        ok.Click += (_, _) => Confirm();
+        nameBox.KeyDown += (_, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.Enter) Confirm();
+            if (e.Key == System.Windows.Input.Key.Escape) { namePanel.Visibility = Visibility.Collapsed; Tell(""); }
+        };
+        List(null);
         return bar;
     }
 
-    /// <summary>A ring slot holds what the built-in ring presets cover: the Look and Tail tabs, but not the on/off switch.</summary>
+    /// <summary>
+    /// Development aid for --screenshots: saves, picks, edits, renames and deletes presets through a bar's own controls.
+    /// builtIn applies a built-in preset (0 or 1), so there are two different sets of values to save.
+    /// </summary>
+    private string ExercisePresetBar(Panel bar, List<SavedPreset> presets, Action<int> builtIn, Func<Dictionary<string, string>> capture, Action<string> snapshot)
+    {
+        var report = new System.Text.StringBuilder();
+        var picker = bar.Children.OfType<ComboBox>().Single();
+        var namePanel = bar.Children.OfType<StackPanel>().Single();
+        var nameBox = namePanel.Children.OfType<TextBox>().Single();
+        var menu = bar.Children.OfType<Button>().Last().ContextMenu.Items.OfType<MenuItem>().ToList();
+        Button Named(Panel panel, string content) => panel.Children.OfType<Button>().Single(b => Equals(b.Content, content));
+        void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        void Menu(string header) => menu.Single(m => Equals(m.Header, header)).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        string Names() => string.Join(", ", picker.Items.OfType<SavedPreset>().Select(p => p.Name));
+        void Check(bool ok, string what) => report.AppendLine($"{(ok ? "ok  " : "FAIL")} {what}");
+        void SaveAs(int preset, string name)
+        {
+            builtIn(preset);
+            Click(Named(bar, "Save as..."));
+            nameBox.Text = name;
+            Click(Named(namePanel, "OK"));
+        }
+
+        bar.BringIntoView();
+        report.AppendLine($"from the file: {(picker.Items.Count == 0 ? "none" : Names())}");
+        snapshot("start");
+        presets.Clear();
+        SaveAs(0, "First");
+        var first = capture();
+        SaveAs(1, "Second");
+        snapshot("saved");
+        Check(Names() == "First, Second" && (picker.SelectedItem as SavedPreset)?.Name == "Second", $"two saved, the second picked: {Names()}");
+        Check(!first.SequenceEqual(capture()), "the two built-in presets differ");
+        picker.SelectedIndex = 0;
+        Check(first.SequenceEqual(capture()), "picking First brings its values back");
+        builtIn(1);
+        Check(presets[0].Values.SequenceEqual(first) && !first.SequenceEqual(capture()), "an edit applies, and the preset keeps its saved values until Save");
+        Menu("Rename...");
+        nameBox.Text = "second";
+        Click(Named(namePanel, "OK"));
+        Check(Names() == "First, Second" && namePanel.Visibility == Visibility.Visible, "renaming to a name in use is refused");
+        nameBox.Text = "Renamed";
+        Click(Named(namePanel, "OK"));
+        Check(Names() == "Renamed, Second" && (picker.SelectedItem as SavedPreset)?.Name == "Renamed", $"renamed: {Names()}");
+        Click(Named(bar, "Save"));
+        Check(presets[0].Values.SequenceEqual(capture()), "Save keeps the current values in the preset picked");
+        Menu("Delete...");
+        Check(Names() == "Second" && picker.SelectedItem == null, $"deleted: {Names()}");
+        snapshot("after");
+        return report.ToString();
+    }
+
+    /// <summary>Development aid for --screenshots: the presets of the Ring and Quad Views pages.</summary>
+    public string ExercisePresets(string page, Action<string> snapshot) => page == "ring"
+        ? ExercisePresetBar(_ringPresetBar!, _appSettings.RingPresets, i => ApplyValues(Settings.Presets[i].Values), CaptureRingSlot, name => snapshot("ring-presets-" + name))
+        : ExercisePresetBar((Panel)QuadViewsSlots.Children[0], _appSettings.QuadViewsPresets,
+            i => ApplyQuadViewsPreset(QuadViewsSetting.Presets[i].Values.ToDictionary(kv => kv.Key, kv => kv.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture))),
+            CaptureQuadViewsPreset, name => snapshot("qv-presets-" + name));
+
+    /// <summary>A ring preset holds what the built-in ring presets cover: the Look and Tail tabs, but not the on/off switch.</summary>
     private static bool IsRingSlotKey(SettingDef def) => (def.Group == Settings.GroupLook || def.Group == Settings.GroupTail) && def.Key != "enabled";
 
     private Dictionary<string, string> CaptureRingSlot() =>

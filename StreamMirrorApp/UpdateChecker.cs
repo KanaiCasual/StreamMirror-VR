@@ -21,7 +21,7 @@ public sealed record ReleaseInfo(Version Version, string Tag, string Title, bool
 /// <summary>One of the user's own presets: the values as they were when it was saved.</summary>
 public sealed class SavedPreset
 {
-    /// <summary>The name of a Quad Views preset (ring slots go by their number).</summary>
+    /// <summary>The name the user gave it.</summary>
     public string Name { get; set; } = "";
     public DateTime SavedAt { get; set; }
     public Dictionary<string, string> Values { get; set; } = [];
@@ -29,12 +29,12 @@ public sealed class SavedPreset
 
 public sealed class AppSettings
 {
-    public const int SlotCount = 3;
-    /// <summary>The user's own ring looks (Look + Tail tabs). null = empty slot.</summary>
-    public SavedPreset?[] RingSlots { get; set; } = new SavedPreset?[SlotCount];
-    /// <summary>The user's own Quad Views presets, by name.</summary>
+    /// <summary>The user's own presets by name: ring looks (Look + Tail tabs) and Quad Views sliders.</summary>
+    public List<SavedPreset> RingPresets { get; set; } = [];
     public List<SavedPreset> QuadViewsPresets { get; set; } = [];
-    /// <summary>The three Quad Views slots of 2.x and 3.0 dev builds up to rev12: read once, carried into QuadViewsPresets.</summary>
+    /// <summary>The three numbered slots of 2.x and 3.0 dev builds up to rev12: read once, carried into the lists above.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SavedPreset?[]? RingSlots { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SavedPreset?[]? QuadViewsSlots { get; set; }
 
@@ -237,8 +237,7 @@ public sealed class AppSettings
             {
                 var loaded = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings();
                 // A hand-edited or older file may hold another number of slots.
-                loaded.RingSlots = [.. (loaded.RingSlots ?? []).Concat(new SavedPreset?[SlotCount]).Take(SlotCount)];
-                loaded.CarryQuadViewsSlots();
+                loaded.CarrySlots();
                 return loaded;
             }
         }
@@ -249,17 +248,24 @@ public sealed class AppSettings
         return new AppSettings();
     }
 
-    /// <summary>The old numbered Quad Views slots become presets called "Slot 1" to "Slot 3".</summary>
-    public void CarryQuadViewsSlots()
+    /// <summary>The old numbered slots become presets called "Slot 1" to "Slot 3".</summary>
+    public void CarrySlots()
     {
-        QuadViewsPresets ??= [];
-        for (var i = 0; i < (QuadViewsSlots?.Length ?? 0); i++)
+        RingPresets = Carry(RingSlots, RingPresets);
+        QuadViewsPresets = Carry(QuadViewsSlots, QuadViewsPresets);
+        RingSlots = QuadViewsSlots = null;
+
+        static List<SavedPreset> Carry(SavedPreset?[]? slots, List<SavedPreset>? presets)
         {
-            if (QuadViewsSlots![i] is not { } slot) continue;
-            slot.Name = $"Slot {i + 1}";
-            if (!QuadViewsPresets.Any(p => p.Name == slot.Name)) QuadViewsPresets.Add(slot);
+            presets ??= [];
+            for (var i = 0; i < (slots?.Length ?? 0); i++)
+            {
+                if (slots![i] is not { } slot) continue;
+                slot.Name = $"Slot {i + 1}";
+                if (!presets.Any(p => p.Name == slot.Name)) presets.Add(slot);
+            }
+            return presets;
         }
-        QuadViewsSlots = null;
     }
 
     public void Save()

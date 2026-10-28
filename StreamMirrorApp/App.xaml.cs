@@ -144,12 +144,15 @@ public partial class App : Application
                     window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                     File.WriteAllText(Path.Combine(outputDir, "profiles.txt"), window.ExerciseProfiles(Snapshot));
                 }
-                // STREAMMIRROR_SCREENSHOT_QV_PRESETS=1 (with STREAMMIRROR_APP_FILE pointing at a scratch file): the Quad Views presets.
-                if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_QV_PRESETS") == "1")
+                // STREAMMIRROR_SCREENSHOT_PRESETS=1 (with STREAMMIRROR_APP_FILE pointing at a scratch file): the Ring and Quad Views presets.
+                if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_PRESETS") == "1")
                 {
-                    window.Tabs.SelectedItem = window.QuadViewsTab;
-                    window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-                    File.WriteAllText(Path.Combine(outputDir, "qv-presets.txt"), window.ExerciseQuadViewsPresets(Snapshot));
+                    foreach (var (page, tab) in new[] { ("ring", (System.Windows.Controls.TabItem)window.LookTab), ("quadviews", window.QuadViewsTab) })
+                    {
+                        window.Tabs.SelectedItem = tab;
+                        window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+                        File.WriteAllText(Path.Combine(outputDir, $"presets-{page}.txt"), window.ExercisePresets(page, Snapshot));
+                    }
                 }
                 Shutdown(0);
             }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
@@ -730,13 +733,13 @@ public partial class App : Application
 
             // The user's own presets survive a trip through app.json's format (exact numbers, empty ring slots stay empty), and
             // the Quad Views slots of older builds come over as presets named after their slot.
-            var oldFile = """{"QuadViewsSlots":[null,{"SavedAt":"2026-09-19T07:00:00","Values":{"peripheral_res":"4.84"}},null]}""";
+            var oldFile = """{"RingSlots":[{"SavedAt":"2026-09-19T07:00:00","Values":{"radius":"0.05"}},null,null],"QuadViewsSlots":[null,{"SavedAt":"2026-09-19T07:00:00","Values":{"peripheral_res":"4.84"}},null]}""";
             var carried = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(oldFile)!;
-            carried.CarryQuadViewsSlots();
+            carried.CarrySlots();
             var slotsBack = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(System.Text.Json.JsonSerializer.Serialize(carried));
-            var slotsOk = slotsBack is { QuadViewsSlots: null, QuadViewsPresets: [{ Name: "Slot 2" } only] } && only.Values["peripheral_res"] == "4.84" &&
-                          slotsBack.RingSlots.All(s => s == null);
-            report.WriteLine($"preset slots - {(slotsOk ? "ok  " : "FAIL")} saved values round-trip, old Quad Views slots become named presets");
+            var slotsOk = slotsBack is { RingSlots: null, QuadViewsSlots: null, RingPresets: [{ Name: "Slot 1" } ring], QuadViewsPresets: [{ Name: "Slot 2" } only] } &&
+                          only.Values["peripheral_res"] == "4.84" && ring.Values["radius"] == "0.05";
+            report.WriteLine($"preset slots - {(slotsOk ? "ok  " : "FAIL")} saved values round-trip, old ring and Quad Views slots become named presets");
             quadViewsOk &= slotsOk;
 
             // Update check: version parsing and picking, against a canned release list (no network).

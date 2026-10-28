@@ -2,9 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 
 namespace StreamMirror;
@@ -145,7 +143,7 @@ public partial class MainWindow
             QuadViewsPresets.Children.Add(button);
         }
 
-        QuadViewsSlots.Children.Add(BuildQuadViewsPresetBar());
+        QuadViewsSlots.Children.Add(BuildPresetBar(_appSettings.QuadViewsPresets, "sliders", CaptureQuadViewsPreset, ApplyQuadViewsPreset, DescribeQuadViewsPreset));
 
         // Pick up what another tool (the Companion, a text editor) saved - when the tab is opened, not on a timer.
         Tabs.SelectionChanged += (_, e) =>
@@ -161,7 +159,7 @@ public partial class MainWindow
         };
     }
 
-    // ---- the user's own presets: named, kept in app.json, worked like the Mirror page's profiles
+    // ---- the user's own presets (the bar is BuildPresetBar, shared with the Ring page)
 
     private Dictionary<string, string> CaptureQuadViewsPreset() =>
         QuadViewsSetting.All.Where(s => !s.IsToggle).ToDictionary(s => s.Id, s => _quadViewsValues.GetValueOrDefault(s.Id).ToString("R", CultureInfo.InvariantCulture));
@@ -183,184 +181,6 @@ public partial class MainWindow
     private static string DescribeQuadViewsPreset(Dictionary<string, string> values) =>
         string.Join("\n", QuadViewsSetting.All.Where(s => !s.IsToggle && values.ContainsKey(s.Id)).Select(s =>
             $"{s.Label}: {(double.TryParse(values[s.Id], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? s.Show(v) : values[s.Id])} {s.Suffix}"));
-
-    /// <summary>
-    /// "My presets [list] Save, Save as..., [...]". Picking a preset sets the sliders; Save keeps the sliders in the preset
-    /// picked, Save as... under a new name (a name in use takes the sliders, as on the Mirror page). The menu renames or deletes.
-    /// </summary>
-    private FrameworkElement BuildQuadViewsPresetBar()
-    {
-        var presets = _appSettings.QuadViewsPresets;
-        var picker = new ComboBox { MinWidth = 150, Margin = new Thickness(0, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, DisplayMemberPath = nameof(SavedPreset.Name) };
-        var save = new Button { Content = "Save", Margin = new Thickness(0, 2, 6, 2), ToolTip = "Keeps the current sliders in this preset" };
-        var saveAs = new Button { Content = "Save as...", Margin = new Thickness(0, 2, 6, 2), ToolTip = "Keeps the current sliders as a new preset" };
-        var nameBox = new TextBox { Width = 140, MinWidth = 0, Margin = new Thickness(0, 2, 4, 2), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Name of the preset. Enter saves, Esc cancels." };
-        var ok = new Button { Content = "OK", Margin = new Thickness(0, 2, 0, 2) };
-        var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 0, 6, 0), Children = { nameBox, ok } };
-        var rename = new MenuItem { Header = "Rename..." };
-        var delete = new MenuItem { Header = "Delete..." };
-        var more = new Button
-        {
-            Margin = new Thickness(0, 2, 0, 2), Padding = new Thickness(8, 5, 8, 5), ToolTip = "Rename or delete this preset",
-            Content = new TextBlock { Style = (Style)FindResource("Icon"), Text = "\uE712", FontSize = 12 },
-            ContextMenu = new ContextMenu { Items = { rename, delete } },
-        };
-        AutomationProperties.SetName(more, "More preset actions: rename, delete");
-        var bar = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
-        bar.Children.Add(new TextBlock { Text = "My presets", Style = (Style)FindResource("Hint"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
-        foreach (var element in new UIElement[] { picker, save, saveAs, namePanel, more }) bar.Children.Add(element);
-        ToolTipService.SetShowOnDisabled(picker, true);
-        ShowToolTipsPatiently(picker);
-
-        var listing = false;
-        var renaming = false;
-        SavedPreset? Chosen() => picker.SelectedItem as SavedPreset;
-
-        void ShowState()
-        {
-            var chosen = Chosen();
-            picker.IsEnabled = presets.Count > 0;
-            save.IsEnabled = more.IsEnabled = chosen != null;
-            picker.ToolTip = WrappedToolTip(chosen != null
-                ? $"{chosen.Name}, saved {chosen.SavedAt:g}\n\n{DescribeQuadViewsPreset(chosen.Values)}\n\nPicking a preset sets the sliders, and the layer gets them as with any change."
-                : presets.Count == 0 ? "No presets of your own yet. Set the sliders, then Save as... keeps them under a name."
-                : "Pick one of your presets to set the sliders.");
-        }
-
-        void List(SavedPreset? select)
-        {
-            namePanel.Visibility = Visibility.Collapsed;
-            listing = true;
-            picker.ItemsSource = presets.ToList();
-            picker.SelectedItem = select;
-            listing = false;
-            ShowState();
-        }
-
-        void Store(SavedPreset select)
-        {
-            _appSettings.Save();
-            List(select);
-        }
-
-        void AskName(bool forRename, string suggested)
-        {
-            renaming = forRename;
-            nameBox.Text = suggested;
-            namePanel.Visibility = Visibility.Visible;
-            nameBox.Focus();
-            nameBox.SelectAll();
-        }
-
-        void Confirm()
-        {
-            var name = nameBox.Text.Trim();
-            if (name.Length == 0) return;
-            var named = presets.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
-            if (renaming)
-            {
-                if (Chosen() is not { } chosen) return;
-                if (named != null && !ReferenceEquals(named, chosen))
-                {
-                    SetQuadViewsStatus($"A preset called \"{named.Name}\" exists already: choose another name.");
-                    return;
-                }
-                chosen.Name = name;
-                Store(chosen);
-                return;
-            }
-            if (named == null) presets.Add(named = new SavedPreset { Name = name });
-            named.SavedAt = DateTime.Now;
-            named.Values = CaptureQuadViewsPreset();
-            Store(named);
-        }
-
-        picker.SelectionChanged += (_, _) =>
-        {
-            if (listing) return;
-            if (Chosen() is { } chosen) ApplyQuadViewsPreset(new Dictionary<string, string>(chosen.Values));
-            ShowState();
-        };
-        save.Click += (_, _) =>
-        {
-            if (Chosen() is not { } chosen) return;
-            chosen.SavedAt = DateTime.Now;
-            chosen.Values = CaptureQuadViewsPreset();
-            Store(chosen);
-        };
-        saveAs.Click += (_, _) => AskName(false, "");
-        rename.Click += (_, _) => { if (Chosen() is { } chosen) AskName(true, chosen.Name); };
-        delete.Click += (_, _) =>
-        {
-            if (Chosen() is not { } chosen) return;
-            if (!App.Headless && MessageBox.Show(this, $"Delete your preset \"{chosen.Name}\"? This cannot be undone.", "Delete preset",
-                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
-            presets.Remove(chosen);
-            _appSettings.Save();
-            List(null);
-        };
-        more.Click += (_, _) =>
-        {
-            more.ContextMenu.PlacementTarget = more;
-            more.ContextMenu.Placement = PlacementMode.Bottom;
-            more.ContextMenu.IsOpen = true;
-        };
-        ok.Click += (_, _) => Confirm();
-        nameBox.KeyDown += (_, e) =>
-        {
-            if (e.Key == System.Windows.Input.Key.Enter) Confirm();
-            if (e.Key == System.Windows.Input.Key.Escape) namePanel.Visibility = Visibility.Collapsed;
-        };
-        List(null);
-        return bar;
-    }
-
-    /// <summary>Development aid for --screenshots: saves, picks, renames and deletes Quad Views presets through the bar's own controls.</summary>
-    public string ExerciseQuadViewsPresets(Action<string> snapshot)
-    {
-        var report = new System.Text.StringBuilder();
-        var bar = (Panel)QuadViewsSlots.Children[0];
-        var picker = bar.Children.OfType<ComboBox>().Single();
-        Button Named(Panel panel, string content) => panel.Children.OfType<Button>().Single(b => Equals(b.Content, content));
-        void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-        var namePanel = bar.Children.OfType<StackPanel>().Single();
-        var nameBox = namePanel.Children.OfType<TextBox>().Single();
-        var menu = bar.Children.OfType<Button>().Last().ContextMenu.Items.OfType<MenuItem>().ToList();
-        string Names() => string.Join(", ", picker.Items.OfType<SavedPreset>().Select(p => p.Name));
-        void SaveAs(string builtIn, string name)
-        {
-            Click(Named(QuadViewsPresets, builtIn));
-            Click(Named(bar, "Save as..."));
-            nameBox.Text = name;
-            Click(Named(namePanel, "OK"));
-        }
-        void Check(bool ok, string what) => report.AppendLine($"{(ok ? "ok  " : "FAIL")} {what}");
-
-        report.AppendLine($"from the file: {(picker.Items.Count == 0 ? "none" : Names())}");
-        snapshot("qv-presets-start");
-        _appSettings.QuadViewsPresets.Clear();
-        var fast = QuadViewsSetting.Presets.First(p => p.Name == "Give me FPS").Values;
-        SaveAs("Give me FPS", "Fast");
-        SaveAs("TM's Favorite", "Sharp");
-        snapshot("qv-presets-saved");
-        Check(Names() == "Fast, Sharp" && (picker.SelectedItem as SavedPreset)?.Name == "Sharp", $"two saved, the second picked: {Names()}");
-        picker.SelectedIndex = 0;
-        Check(fast.All(kv => Math.Abs(_quadViewsValues[kv.Key] - kv.Value) < 1e-9), "picking Fast sets the sliders to Give me FPS");
-        menu.Single(m => Equals(m.Header, "Rename...")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-        nameBox.Text = "sharp";
-        Click(Named(namePanel, "OK"));
-        Check(Names() == "Fast, Sharp" && namePanel.Visibility == Visibility.Visible, "renaming Fast to a name in use is refused");
-        nameBox.Text = "Racing";
-        Click(Named(namePanel, "OK"));
-        Check(Names() == "Racing, Sharp" && (picker.SelectedItem as SavedPreset)?.Name == "Racing", $"renamed: {Names()}");
-        Click(Named(QuadViewsPresets, "TM's Favorite"));
-        Click(Named(bar, "Save"));
-        Check(_appSettings.QuadViewsPresets[0].Values.SequenceEqual(CaptureQuadViewsPreset()), "Save keeps the current sliders in the preset picked");
-        menu.Single(m => Equals(m.Header, "Delete...")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-        Check(Names() == "Sharp" && picker.SelectedItem == null, $"deleted: {Names()}");
-        snapshot("qv-presets-after");
-        return report.ToString();
-    }
 
     /// <summary>Slider values for "QV defaults": the shipped settings file alone, as the layer reads it for this runtime.</summary>
     private Dictionary<string, double> QuadViewsLayerDefaults()
