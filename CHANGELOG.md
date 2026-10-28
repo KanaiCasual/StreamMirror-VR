@@ -19,6 +19,7 @@
 - **A getting-started guide** on GitHub (docs/GETTING-STARTED.md) walks from the download to a framed, steady picture in OBS. About > **Getting started** opens it.
 
 **Fixed**
+- **Clearer Status and Mirror pages** (from a tester): the picture's light says **Reaching OBS** (or the mirror window) instead of "Live", and the caption says the picture is the last saved one, not live. The dot on the mirror line is gone, as it looked like a video's seek bar. The picture size list says when the box is smaller than the choice and goes out as it is. The SteamVR helper's tile says **Waits for SteamVR** instead of "Needs a look" when SteamVR was not running at the app's start.
 - **Windows' permission prompt named a random file** (ec5b44.msi) when you installed. The installer and the programs in it are signed with the name StreamMirror VR and the project's link now, so the prompt shows that.
 - **The app noticed the mirror window closing only when you clicked in it.** Closed with its own close button (or Alt+F4), the window left the app saying "Close mirror window". The app now hears the window end and switches to "Open mirror window" at once.
 - **The Mirror page's saved picture was replaced by itself.** Opening the Mirror page or coming back to the app took a fresh picture, so with SteamVR running and no game in it, SteamVR's empty home replaced the last game's picture. Now a saved picture stays until you press Refresh picture or Capture from headset. The app takes a picture by itself only while it has none, and only from a running game.

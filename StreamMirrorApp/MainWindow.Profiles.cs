@@ -667,7 +667,10 @@ public partial class MainWindow
         // No SteamVR, nothing for the helper to do: not a fault, so grey, not orange.
         if (!MirrorLive.SteamVrInstalled()) return ("SteamVR is not installed, so the helper has nothing to do. Not needed for OpenXR games.", System.Windows.Media.Colors.Gray);
         if (_appSettings.HelperRegisteredPath.Length > 0) return ("The helper starts with SteamVR and leaves with it. Not running now.", System.Windows.Media.Colors.SeaGreen);
-        return ("SteamVR does not know the helper yet (is Steam installed?). The app tries again at its next start.", System.Windows.Media.Colors.DarkOrange);
+        // SteamVR only takes the helper on while it runs: not running at the app's start is no fault.
+        if (!MirrorLive.SteamVrRunning())
+            return ("SteamVR was not running when the app started, so the helper is not set up with it yet. The app sets it up at a start while SteamVR runs.", System.Windows.Media.Colors.Gray);
+        return ("SteamVR does not know the helper yet. The app tries again at its next start.", System.Windows.Media.Colors.DarkOrange);
     }
 
     // ------------------------------------------------------------------ the VRChat gaze calibration (run by the helper)

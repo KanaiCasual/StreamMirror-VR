@@ -118,6 +118,14 @@ public static class MirrorLive
     /// Whether SteamVR is installed: OpenVR's own record of its runtime (%LOCALAPPDATA%\openvr\openvrpaths.vrpath, what
     /// SteamVR writes on its first start and VR_IsRuntimeInstalled reads) names a folder that exists.
     /// </summary>
+    /// <summary>SteamVR's server is running (asked when a page shows the helper, never on a timer).</summary>
+    public static bool SteamVrRunning()
+    {
+        var processes = System.Diagnostics.Process.GetProcessesByName("vrserver");
+        foreach (var process in processes) process.Dispose();
+        return processes.Length > 0;
+    }
+
     public static bool SteamVrInstalled()
     {
         try

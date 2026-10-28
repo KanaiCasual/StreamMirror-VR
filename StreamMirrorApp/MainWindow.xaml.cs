@@ -1056,7 +1056,7 @@ public partial class MainWindow : Window
             obsReady ? Colors.SeaGreen : status.ObsPath == null ? Colors.Gray : Colors.Firebrick,
             obsReady ? "Installed" : status.ObsPath == null ? "No OBS" : "Missing");
         AddStatusRow("\uE7FC", "SteamVR helper", helper.Text + " It mirrors games that use SteamVR directly.", helper.Color,
-            helper.Color == Colors.SeaGreen ? (MirrorLive.IsHelperRunning() ? "Running" : "Ready") : helper.Color == Colors.Gray ? "Not needed" : helper.Color == Colors.Firebrick ? "Missing" : "Needs a look");
+            helper.Color == Colors.SeaGreen ? (MirrorLive.IsHelperRunning() ? "Running" : "Ready") : helper.Color == Colors.Gray ? (MirrorLive.SteamVrInstalled() ? "Waits for SteamVR" : "Not needed") : helper.Color == Colors.Firebrick ? "Missing" : "Needs a look");
         AddStatusRow("\uECA5", "Quad views",
             status.OwnQuadViewsOn ? "On: Direct3D 11, Direct3D 12 and Vulkan games get quad views. The Quad Views page sets it up."
             : !status.OwnQuadViewsInstalled ? status.OwnQuadViews.Detail

@@ -26,7 +26,6 @@ public partial class MainWindow
         UpdateStatusPicture();
         var hasPicture = StatusPicture.Source != null;
 
-        var onAir = (Brush)FindResource("OnAir");
         SetTally(StatusTally, StatusTallyDot, StatusTallyText, producing, delivery, "Mirroring, nothing takes it yet");
 
         StatusWaitShade.Visibility = StatusWaitNote.Visibility = producing ? Visibility.Collapsed : Visibility.Visible;
@@ -34,9 +33,8 @@ public partial class MainWindow
             (hasPicture ? $"\nThis is the last picture, from {File.GetLastWriteTime(LastPicturePath):d MMMM}." : "\nThe Mirror page takes a picture to frame on.");
         var eye = ChoiceLabel("mirror_eye");
         var cropOn = _values.GetValueOrDefault("crop_enabled") == "1";
-        StatusCaption.Text = producing ? "The last picture, framed as OBS gets it" : "";
+        StatusCaption.Text = producing ? "Last saved picture, not live: framed as OBS gets it" : "";
         StatusCaptionRight.Text = producing ? eye + (cropOn ? ", " + ChoiceLabel("crop_aspect") : ", whole image") : "";
-        StatusLineDot.Fill = producing ? onAir : (Brush)FindResource("Muted");
         StatusAmbient.Opacity = producing ? 0.32 : 0.14;
         StatusReflection.Opacity = producing ? 1 : 0.5;
 
@@ -238,7 +236,7 @@ public partial class MainWindow
     private BitmapSource? _statusShown;
 
     /// <summary>
-    /// A picture's light: Live (red) while the picture reaches OBS or the mirror window, amber while one of them should get
+    /// A picture's light: "Reaching OBS" (red) while the picture reaches OBS or the mirror window, amber while one of them should get
     /// it and does not, cyan while a game is mirrored and nothing takes it, an outlined "Waiting for a game" otherwise.
     /// </summary>
     private void SetTally(Border tally, Ellipse dot, TextBlock text, bool producing, List<Delivery> deliveries, string mirroringText)
@@ -250,7 +248,7 @@ public partial class MainWindow
             dot.Fill = Brushes.White;
             dot.Stroke = null;
             text.Foreground = Brushes.White;
-            text.Text = "Live";
+            text.Text = "Reaching " + string.Join(" + ", deliveries.Where(d => d.State == DeliveryState.Receiving).Select(d => d.Name));
         }
         else if (producing && failing != null)
         {
@@ -307,7 +305,6 @@ public partial class MainWindow
         var producing = _mirrorLiveLast is { Producing: true };
         MirrorObsTally.Visibility = producing ? Visibility.Visible : Visibility.Collapsed;
         if (producing) SetTally(MirrorObsTally, MirrorObsTallyDot, MirrorObsTallyText, producing, _mirrorDeliveries, "Mirroring");
-        MirrorObsLineDot.Fill = (Brush)FindResource(producing ? "OnAir" : "Muted");
         MirrorObsFacts.Text = ChoiceLabel("mirror_eye") + (_obsGets is { } gets ? $", {gets.Width} × {gets.Height}" : "");
     }
 

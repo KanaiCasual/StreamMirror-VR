@@ -156,7 +156,7 @@ Status means the mirror shows a game right now.
 ![Status page](docs/page-status.png)
 
 - **The picture:** your last picture, cut to the crop box: what OBS gets (the last saved one, not a live view). Its
-  light says **Live** while the picture reaches OBS or the mirror window, **Not reaching** when one of them should get
+  light says **Reaching OBS** (or the mirror window) while the picture gets there, **Not reaching** when one should get
   it and does not, **Mirroring** while a game runs and nothing takes it, and **Waiting for a game** otherwise.
 - **Beside it:** the game, the picture's size and rate, the eye, the capture, the crop and the steadying, and **Where
   the picture goes**: for OBS and the mirror window, closed, ready, receiving the picture or not receiving it.

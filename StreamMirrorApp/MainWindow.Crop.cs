@@ -674,7 +674,7 @@ public partial class MainWindow
             {
                 var (width, height) = Settings.OutputSize(boxWidth, boxHeight, cap);
                 label = cap < 64 ? $"As large as the box: {width} x {height}"
-                    : width == ((int)boxWidth & ~1) && height == ((int)boxHeight & ~1) ? $"{width} x {height} ({classes.GetValueOrDefault(value, value)}, the box as it is)"
+                    : width == ((int)boxWidth & ~1) && height == ((int)boxHeight & ~1) ? $"{width} x {height} (up to {classes.GetValueOrDefault(value, value)}: the box is smaller, so it goes out as it is)"
                     : $"{width} x {height} ({classes.GetValueOrDefault(value, value)})";
             }
             if ((string)item.Content == label) continue;
