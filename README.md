@@ -479,7 +479,8 @@ switches it on or off (Windows asks for permission once; a game picks it up at i
 switches off the official Quad-Views-Foveated, if that is installed, and puts the layers in order.
 
 **Changes are saved as you make them and reach a running game at once**; the resolution and Turbo wait for the game's
-next start. The sliders and their value logic are TallyMouse's *QuadViews Companion*'s: focus size, vertical offset,
+next start. The focus size sits with them under Next start: it moves in a running game, so you can try how small it can
+go, but the pixel count it sets only follows at the next start. The sliders and their value logic are TallyMouse's *QuadViews Companion*'s: focus size, vertical offset,
 foveate and peripheral resolution, sharpening, transition, Turbo mode. On top of those:
 
 - **Gaze smoothing** and **Gaze deadzone**: the sharp region ignores tracker jitter, and eases back after a blink

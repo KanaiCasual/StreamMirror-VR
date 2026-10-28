@@ -446,6 +446,8 @@ public sealed class QuadViewsSetting
     public QuadViewsLayers Layers { get; init; }
     /// <summary>A running game takes the change at once (the layer reads its settings again); otherwise at its next start.</summary>
     public bool Live { get; init; } = true;
+    /// <summary>What the tooltip says about when the change takes effect, where the plain Live or Next start line is not enough.</summary>
+    public string? TimingNote { get; init; }
 
     public bool AppliesTo(bool ownLayer) => Layers == QuadViewsLayers.Both || (Layers == QuadViewsLayers.OwnOnly) == ownLayer;
 
@@ -471,19 +473,23 @@ public sealed class QuadViewsSetting
 
     public double ToFileNumber(double sliderValue) => double.Parse(ToFile(sliderValue), CultureInfo.InvariantCulture);
 
+    /// <summary>The focus size reaches a running game (with eye tracking), but the pixel count it sets only comes at the next
+    /// start: it sits under Next start, and live it is only for trying sizes.</summary>
+    private const string FocusSizeTiming = "**Next start:** set it, then start the game again: that is when the sharp region gets its pixel count. While a game runs the size changes at once, so you can try how small it can go before you notice the edge. The pixels stay as they were until the next start, though: a region made bigger gets blurrier, a smaller one saves nothing yet. Without eye tracking, the whole change waits for the next start.";
+
     public static readonly QuadViewsSetting[] All =
     [
         new()
         {
-            Id = "focus_h", Label = "Horizontal focus size", Suffix = "% of FOV", Min = 10, Max = 90,
+            Id = "focus_h", Label = "Horizontal focus size", Suffix = "% of FOV", Min = 10, Max = 90, Live = false, TimingNote = FocusSizeTiming,
             Keys = ["horizontal_focus_section", "horizontal_fixed_section"],
-            Description = "Width of the sharp region that follows your eyes, as a share of the headset's field of view.\n\n**Smaller:** faster. Too small and you see the blurry surround.\n\nWith eye tracking the size changes at once, and the region's pixel count follows at the game's next start. Without eye tracking, the whole change waits for the next start.",
+            Description = "Width of the sharp region that follows your eyes, as a share of the headset's field of view.\n\n**Smaller:** faster. Too small and you see the blurry surround.",
         },
         new()
         {
-            Id = "focus_v", Label = "Vertical focus size", Suffix = "% of FOV", Min = 10, Max = 90,
+            Id = "focus_v", Label = "Vertical focus size", Suffix = "% of FOV", Min = 10, Max = 90, Live = false, TimingNote = FocusSizeTiming,
             Keys = ["vertical_focus_section", "vertical_fixed_section"],
-            Description = "Height of the sharp region.\n\nWith eye tracking the size changes at once, and the region's pixel count follows at the game's next start. Without eye tracking, the whole change waits for the next start.",
+            Description = "Height of the sharp region.",
         },
         new()
         {

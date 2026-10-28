@@ -1362,7 +1362,9 @@ public partial class MainWindow : Window
     private FrameworkElement BuildLayerRow(List<LayerEntry> group, int index, int position, bool pending)
     {
         var layer = group[index];
-        var ours = layer.LayerName is LayerStatus.QuadViewsLayer or LayerStatus.StreamMirrorLayer or LayerStatus.OwnQuadViewsLayer or LayerStatus.GameLayersLayer;
+        // The official Quad-Views-Foveated is mbucchia's, not ours (1.x and 2.x shipped a patched copy of it; 3.0 has its own layer).
+        var ringLayer = layer.LayerName is LayerStatus.StreamMirrorLayer or LayerStatus.GameLayersLayer;
+        var ours = ringLayer || layer.LayerName == LayerStatus.OwnQuadViewsLayer;
         var box = new CheckBox
         {
             IsChecked = layer.Enabled, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0),
@@ -1445,7 +1447,7 @@ public partial class MainWindow : Window
                 AppLog.Write($"Layer {LayerOrder.Short(layer)} {(enable ? "on" : "off")}: {(changed ? "done" : "declined")}.");
                 LayerNote.Text = !changed ? "Nothing changed: you declined the Windows permission prompt."
                     : $"{LayerOrder.Short(layer)} is now {(enable ? "on" : "off")}. Games pick that up at their next start." +
-                      (ours && !enable ? " The gaze ring needs both of its layers on." : "");
+                      (ringLayer && !enable ? " The gaze ring needs both of its layers on." : "");
             }
             catch (Exception error)
             {

@@ -36,7 +36,7 @@ public partial class MainWindow
         var resolution = new StackPanel();
         var cards = new Grid { Margin = new Thickness(0, 0, -10, 0) };
         var focusCard = NewCard("Live: a running game shows changes at once", focus, 0);
-        var resolutionCard = NewCard("Next start: changes wait for the game to start again", resolution, 0);
+        var resolutionCard = NewCard("Next start: set these, then start the game again", resolution, 0);
         focusCard.Margin = resolutionCard.Margin = new Thickness(0, 0, 10, 10);
         cards.Children.Add(focusCard);
         cards.Children.Add(resolutionCard);
@@ -58,9 +58,9 @@ public partial class MainWindow
 
         foreach (var setting in QuadViewsSetting.All)
         {
-            var description = setting.Description + (setting.Live
-                ? "\n\n**Live:** a running game shows the change at once."
-                : "\n\n**Next start:** a running game keeps the old value until it starts again.");
+            var description = setting.Description + "\n\n" + (setting.TimingNote ?? (setting.Live
+                ? "**Live:** a running game shows the change at once."
+                : "**Next start:** a running game keeps the old value until it starts again."));
             var row = NewRow(description);
             if (setting.IsToggle)
             {
