@@ -758,6 +758,9 @@ int wmain(int argc, wchar_t** argv) {
     const std::wstring settingsFile = folder + L"\\test-settings.cfg";
     SetEnvironmentVariableW(L"STREAMMIRROR_SETTINGS_FILE", settingsFile.c_str());
     SetEnvironmentVariableW(L"STREAMMIRROR_LOG_FILE", (folder + L"\\layer.log").c_str());
+    // Crop profiles from the test's own file, never the user's.
+    const std::wstring profilesFile = folder + L"\\test-crop-profiles.ini";
+    SetEnvironmentVariableW(L"STREAMMIRROR_PROFILES_FILE", profilesFile.c_str());
 
     // The thorough VRChat calibration's sums, on made-up eyes: a tracker that reports sines with some cross-talk and
     // trails the target by 120 ms, a little noise, VRChat sending at 50 Hz, two blinks.
@@ -890,7 +893,7 @@ int wmain(int argc, wchar_t** argv) {
         {"gaze-from-helper", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2000, 2100, false, true},
         {"quad-views", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2160, 2268, false, false, true},
         {"fixed-centre", "enabled=1\ngaze_source=fixed\nfixed_focus_width=0.5\nfixed_focus_height=0.45\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\nmirror_eye=left\n", 1, true, 0, 2000, 2100},
-        {"crop", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=1\ncrop_aspect=16:9\ncrop_height=0.5\ncrop_center_x=0.6\ncrop_center_y=0.45\nmirror_eye=left\n", 1, true, 0, 1866, 1050},
+        {"crop", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=1\ncrop_aspect=16:9\ncrop_height=0.5\ncrop_center_x=0.6\ncrop_center_y=0.45\nmirror_eye=left\nopen_crop_profile=Test\n", 1, true, 0, 1866, 1050},
         {"steady-tilt", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=1\ncrop_aspect=16:9\ncrop_height=0.5\ncrop_center_x=0.5\ncrop_center_y=0.5\nstabilize=1\nstabilize_min_cutoff=0.02\nstabilize_beta=0\nstabilize_room=0.1\nmirror_eye=left\n", 1, true, 0, 1866, 1050},
         {"level-horizon", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=1\ncrop_aspect=16:9\ncrop_height=0.5\ncrop_center_x=0.5\ncrop_center_y=0.5\nstabilize=0\nstabilize_tilt=level\nmirror_eye=left\n", 1, true, 0, 1866, 1050},
         {"copy-path", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=1\ncrop_aspect=16:9\ncrop_height=0.5\ncrop_center_x=0.6\ncrop_center_y=0.45\nmirror_eye=left\n", 1, false, 0, 1866, 1050},
@@ -905,6 +908,16 @@ int wmain(int argc, wchar_t** argv) {
         _wfopen_s(&file, settingsFile.c_str(), L"w");
         fputs(test.settings, file);
         fclose(file);
+        // The crop case has a crop profile for this program, with another framing: it is the one open in the app, so
+        // the settings file's framing (and the picture size the case expects) must win over it.
+        const bool withProfile = strcmp(test.name, "crop") == 0;
+        const size_t logBefore = FileSize(folder + L"\\layer.log");
+        DeleteFileW(profilesFile.c_str());
+        if (withProfile) {
+            _wfopen_s(&file, profilesFile.c_str(), L"w");
+            fputs("[Test]\ngame=layer_test.exe\ncrop_height=0.25\ncrop_center_x=0.2\n", file);
+            fclose(file);
+        }
 
         XrApiLayerNextInfo nextInfo{XR_LOADER_INTERFACE_STRUCT_API_LAYER_NEXT_INFO, XR_API_LAYER_NEXT_INFO_STRUCT_VERSION, sizeof(XrApiLayerNextInfo)};
         strcpy_s(nextInfo.layerName, LayerName);
@@ -2091,6 +2104,12 @@ int wmain(int argc, wchar_t** argv) {
         }
         CloseHandle(frameReady);
         // The block itself stays mapped until the end of the process so that every case sees a used, not a fresh, block.
+        if (withProfile) {
+            const std::string log = ReadFrom(folder + L"\\layer.log", logBefore);
+            Check(log.find("crop profile Test for this game (open in the app") != std::string::npos,
+                  "the crop profile open in the app leaves the settings file's framing in place");
+            DeleteFileW(profilesFile.c_str());
+        }
     }
 
     printf("\n%s (%d failure%s)\n", g_failures == 0 ? "ALL OK" : "FAILED", g_failures, g_failures == 1 ? "" : "s");

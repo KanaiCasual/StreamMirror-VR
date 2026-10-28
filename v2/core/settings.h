@@ -127,7 +127,9 @@ namespace stream_mirror {
         void open();
 
         // The game this producer runs for; a crop profile made for it (crop-profiles.ini, see below) then overrides the
-        // crop keys of the file, now and at every reload. Empty = no profile.
+        // crop keys of the file, now and at every reload - unless the file names it as the profile open in the app
+        // (open_crop_profile=<name>): the app keeps that profile's framing in the file, so the file wins. Empty = no
+        // profile.
         void setGame(const char* program, const char* application);
         const std::string& activeProfile() const {
             return _activeProfile;
@@ -177,7 +179,7 @@ namespace stream_mirror {
         static void ApplyKey(Settings& settings, const std::string& key, const std::string& value);
 
         Settings _settings;
-        std::string _program, _application, _activeProfile;
+        std::string _program, _application, _activeProfile, _openProfile;
         HANDLE _mapping = nullptr;
         Signal* _signal = nullptr;
         LONG _seenGeneration = 0;

@@ -101,6 +101,9 @@ namespace stream_mirror {
         _program = program ? program : "";
         _application = application ? application : "";
         applyProfile(_settings);
+        if (!_activeProfile.empty())
+            Log("settings: crop profile %s for this game%s", _activeProfile.c_str(),
+                _activeProfile == _openProfile ? " (open in the app: the file's framing)" : "");
     }
 
     SettingsSource::~SettingsSource() {
@@ -143,26 +146,30 @@ namespace stream_mirror {
             return;
         }
         char line[512];
+        std::string openProfile;
         while (fgets(line, sizeof(line), file)) {
             std::string text = line;
             const size_t comment = text.find('#');
             if (comment != std::string::npos) text.erase(comment);
             const size_t equals = text.find('=');
             if (equals == std::string::npos) continue;
-            ApplyKey(fresh, Trim(text.substr(0, equals)), Trim(text.substr(equals + 1)));
+            const std::string key = Trim(text.substr(0, equals)), value = Trim(text.substr(equals + 1));
+            if (key == "open_crop_profile") openProfile = value;
+            else ApplyKey(fresh, key, value);
         }
         fclose(file);
+        _openProfile = openProfile;
         applyProfile(fresh);
         // The tilt choice decides over the older switch, wherever in the file either stands.
         if (fresh.stabilizeTilt == "level") { fresh.levelHorizon = true; fresh.stabilizeRoll = false; }
         else if (fresh.stabilizeTilt == "smooth") fresh.stabilizeRoll = true;
         else if (fresh.stabilizeTilt == "head") fresh.stabilizeRoll = false;
         _settings = fresh;
-        Log("settings: ring %s style %d, crop %s h %.3f aspect %.3f at (%.3f, %.3f) follow %s steady %s, eye %s, output max %u fps %.0f%s%s",
+        Log("settings: ring %s style %d, crop %s h %.3f aspect %.3f at (%.3f, %.3f) follow %s steady %s, eye %s, output max %u fps %.0f%s%s%s",
             fresh.enabled ? "on" : "off", int(fresh.style), fresh.cropEnabled ? "on" : "off", fresh.cropHeight, fresh.cropAspect,
             fresh.cropCenterX, fresh.cropCenterY, fresh.cropFollowVertical ? "on" : "off", fresh.stabilize ? "on" : "off",
             fresh.eye == 0 ? "left" : "right", fresh.outputMaxSide, fresh.outputFps, _activeProfile.empty() ? "" : ", crop profile ",
-            _activeProfile.c_str());
+            _activeProfile.c_str(), !_activeProfile.empty() && _activeProfile == _openProfile ? " (open in the app: the file's framing)" : "");
     }
 
     // The crop profile made for the running game, if any, on top of the file's values.
@@ -196,10 +203,13 @@ namespace stream_mirror {
                 if (entry.first == "game" && !entry.second.empty() && (sameName(entry.second, _program) || sameName(entry.second, _application))) matches = true;
             }
             if (!matches) continue;
+            _activeProfile = section.first;
+            // The profile open in the app: the file already holds its framing as the app's page shows it, unsaved
+            // edits included, so the file wins and moving the box reaches the stream.
+            if (section.first == _openProfile) return;
             for (const auto& entry : section.second) {
                 if (entry.first != "game" && entry.first != "mirror_eye" && entry.first.rfind("output_", 0) != 0) ApplyKey(settings, entry.first, entry.second);
             }
-            _activeProfile = section.first;
             return;
         }
     }

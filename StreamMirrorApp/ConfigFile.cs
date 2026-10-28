@@ -73,6 +73,9 @@ public static class ConfigFile
             known.Add(key);
             text.AppendLine($"{key}={(values.TryGetValue(key, out var managed) ? managed : "0")}");
         }
+        text.AppendLine("# The crop profile open in the app: for its game the mirror takes the framing in this file, as the app shows it.");
+        known.Add("open_crop_profile");
+        text.AppendLine($"open_crop_profile={values.GetValueOrDefault("open_crop_profile") ?? ""}");
 
         // ("mouse_": settings of the gaze mouse, an experiment that was taken out again - not carried along.)
         var unknown = values.Where(kv => !known.Contains(kv.Key) && !kv.Key.StartsWith("mouse_", StringComparison.Ordinal)).ToList();

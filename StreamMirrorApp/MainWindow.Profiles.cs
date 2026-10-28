@@ -112,6 +112,10 @@ public partial class MainWindow
         CropProfile.ItemsSource = items;
         CropProfile.SelectedItem = items.FirstOrDefault(i => ReferenceEquals(i.Profile, _selectedProfile)) ?? items[0];
         _profileLoading = false;
+        // The mirror takes the settings file's framing for the profile open here, so the stream shows what this page
+        // shows, unsaved edits included. Without the name it would put the saved profile back at every change.
+        var open = _selectedProfile?.Name ?? "";
+        if ((_values.GetValueOrDefault("open_crop_profile") ?? "") != open) ApplyValues(new Dictionary<string, string> { ["open_crop_profile"] = open });
         RefreshProfileUi();
     }
 
@@ -154,7 +158,7 @@ public partial class MainWindow
             ? (MirrorLive.Read() is { Producing: true } live
                 ? $"Running now: {live.Program}. Save as... or New makes a profile, and the mirror applies it at each start of that game."
                 : "No profile open: edits change the settings as they are. Save as... or New makes a profile, and the mirror applies it at a game's start.")
-            : unsaved ? $"Unsaved changes to \"{_selectedProfile.Name}\". The stream shows them now; Save keeps them in the profile, Revert goes back, Ctrl+Z undoes one change. Unsaved, the saved profile comes back {start}."
+            : unsaved ? $"Unsaved changes to \"{_selectedProfile.Name}\". The stream shows them now; Save keeps them in the profile, Revert goes back, Ctrl+Z undoes one change."
             : _appSettings.ProfileAutoSave ? $"Edits save into \"{_selectedProfile.Name}\" as you make them" + (changedSinceOpened ? "; Revert goes back to how it was when you opened it" : "") + $", and Ctrl+Z undoes one change. The mirror applies it {start}."
             : $"\"{_selectedProfile.Name}\" is saved. Edits show on the stream at once, Save keeps them and Ctrl+Z undoes one. The mirror applies it {start}.";
     }
@@ -467,7 +471,7 @@ public partial class MainWindow
         _appSettings.ProfileAutoSave = false;
         var before = _values.GetValueOrDefault("crop_height");
         OnValueChanged("crop_height", "0.31");
-        report.Append($"edit without automatic saving: unsaved {ProfileHasUnsavedChanges()} (expect True), profile keeps {_selectedProfile?.Values.GetValueOrDefault("crop_height") == before} (expect True)\n");
+        report.Append($"edit without automatic saving: unsaved {ProfileHasUnsavedChanges()} (expect True), profile keeps {_selectedProfile?.Values.GetValueOrDefault("crop_height") == before} (expect True), the mirror told it is open {_values.GetValueOrDefault("open_crop_profile") == _selectedProfile?.Name} (expect True)\n");
         snapshot("profiles-unsaved");
         OnProfileRevert(this, new RoutedEventArgs());
         report.Append($"after Revert: unsaved {ProfileHasUnsavedChanges()} (expect False), crop_height back {_values.GetValueOrDefault("crop_height") == before} (expect True)\n");
@@ -500,11 +504,11 @@ public partial class MainWindow
         _profileNaming = ProfileNaming.Rename;
         CropProfileName.Text = "Renamed";
         OnProfileSaveConfirm(this, new RoutedEventArgs());
-        report.Append(Describe("after renaming Fresh to Renamed"));
+        report.Append(Describe("after renaming Fresh to Renamed") + $"  the mirror told \"{_values.GetValueOrDefault("open_crop_profile")}\" is open (expect Renamed)\n");
         OnProfileDelete(this, new RoutedEventArgs());
         CropProfile.SelectedItem = (CropProfile.ItemsSource as List<ProfileItem>)!.First(i => i.Profile?.Name == "Second");
         OnProfileDelete(this, new RoutedEventArgs());
-        report.Append(Describe("after deleting Renamed and Second (expect none)"));
+        report.Append(Describe("after deleting Renamed and Second (expect none)") + $"  the mirror told \"{_values.GetValueOrDefault("open_crop_profile")}\" is open (expect nothing)\n");
         FillGamePicker("");
         report.Append($"game picker: {(CropProfileGame.ItemsSource as List<RunningApp>)?.Count ?? 0} running programs with a window\n");
         return report.ToString();
