@@ -98,6 +98,8 @@
                             </DockPanel>
                         </DockPanel>
 
+                        <StackPanel x:Name="ExplainStatus" Margin="0,0,0,14" />
+
                         <!-- The picture that goes out, as the app last saw it, with the mirror line and its reflection under it (the
                              icon's drawing); beside it, what the mirror sends and the way the picture takes. In a narrow window the
                              column goes under the picture (see LayOutStatusHero). -->
@@ -201,8 +203,6 @@
                         <Border>
                             <WrapPanel x:Name="StatusRows" Margin="0,0,-10,0" SizeChanged="OnStatusTilesSize" />
                         </Border>
-
-                        <StackPanel x:Name="ExplainStatus" Margin="0,18,0,0" />
                     </StackPanel>
                     </Grid>
                 </ScrollViewer>
