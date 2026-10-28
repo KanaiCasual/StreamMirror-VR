@@ -635,8 +635,10 @@
             </TabItem>
 
             <TabItem x:Name="QuadViewsTab" Header="Quad Views">
-                <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="28,20,28,12">
+                <!-- The whole page scrolls, like the others: with the explanation open there is no room left to pin the top part. -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <DockPanel Margin="28,20,28,12">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Content="File" ToolTip="Opens the quad views layer's settings file in the program Windows uses for .cfg files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="6,0,0,0" Click="OnQuadViewsOpenFile" />
                             <Button Content="Log" ToolTip="Opens the quad views layer's log in the program Windows uses for .log files.&#10;&#10;Without one, File Explorer shows the file in its folder." Margin="6,0,0,0" Click="OnQuadViewsOpenLog" />
@@ -644,9 +646,9 @@
                         <TextBlock x:Name="QuadViewsTitle" Style="{StaticResource PageTitle}" Text="Quad Views"
                                    ToolTip="The quad views layer's settings: a game renders sharp where you look and cheaper elsewhere.&#10;&#10;The sliders work like TallyMouse's QuadViews Companion.&#10;&#10;**One difference:** this app also writes the values where every OpenXR runtime reads them, beyond the list of known headsets." />
                     </DockPanel>
-                    <StackPanel x:Name="ExplainQuadViews" DockPanel.Dock="Top" Margin="28,0,28,10" />
-                    <!-- Stays in view while the sliders scroll: which layer does quad views, what the settings cost, Apply, and the presets. -->
-                    <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="28,0,28,0">
+                    <StackPanel x:Name="ExplainQuadViews" Margin="28,0,28,10" />
+                    <!-- Which layer does quad views, what the settings cost, and the presets. -->
+                    <Border Style="{StaticResource Card}" Margin="28,0,28,0">
                         <DockPanel>
                         <!-- What quad views does, drawn on your picture: the sharp area at its size in the view, the rest at the
                              surround's lower resolution, and the share of pixels the game draws (see UpdateQuadViewsScene). -->
@@ -690,14 +692,13 @@
                         </StackPanel>
                         </DockPanel>
                     </Border>
-                    <Border x:Name="QuadViewsNotice" DockPanel.Dock="Top" Margin="28,10,28,0" Padding="12,8"
+                    <Border x:Name="QuadViewsNotice" Margin="28,10,28,0" Padding="12,8"
                             Background="#26F5B342" BorderBrush="#80F5B342" BorderThickness="1" CornerRadius="8">
                         <TextBlock x:Name="QuadViewsNoticeText" TextWrapping="Wrap" FontSize="12" Foreground="#FFE2A8" />
                     </Border>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="PanelQuadViews" Margin="28,12,28,16" />
-                    </ScrollViewer>
-                </DockPanel>
+                    <StackPanel x:Name="PanelQuadViews" Margin="28,12,28,16" />
+                </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <!-- The OpenXR API layers: what loads into OpenXR games, in which order, each with a switch. -->
