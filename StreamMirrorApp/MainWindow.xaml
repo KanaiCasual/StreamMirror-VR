@@ -36,7 +36,7 @@
 
             <!-- Shown when a newer release exists. It only links to the release page; nothing is downloaded by the app. -->
             <Border x:Name="UpdateBanner" Visibility="Collapsed" Margin="20,16,20,0" Padding="14,10"
-                    Background="#16283A" BorderBrush="#2F6FA8" BorderThickness="1" CornerRadius="8">
+                    Background="#1A2C5A" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="10">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -44,7 +44,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock x:Name="UpdateTitle" FontWeight="SemiBold" />
-                        <TextBlock x:Name="UpdateWarning" FontWeight="Bold" Foreground="#FFC35A" Margin="0,2,0,2" TextWrapping="Wrap"
+                        <TextBlock x:Name="UpdateWarning" FontWeight="Bold" Foreground="{StaticResource Warn}" Margin="0,2,0,2" TextWrapping="Wrap"
                                    Text="Close your VR game and OBS first. The installer replaces files they keep open." />
                         <TextBlock x:Name="UpdateDetail" Style="{StaticResource Hint}" TextWrapping="Wrap" />
                     </StackPanel>
@@ -260,25 +260,25 @@
 
                     <!-- Capture from the headset, armed: impossible to miss, and says what to do. -->
                     <Border x:Name="CaptureBanner" DockPanel.Dock="Top" Margin="0,0,0,10" Padding="14,10" Visibility="Collapsed"
-                            Background="#3A2A0C" BorderBrush="#E09A2B" BorderThickness="2" CornerRadius="8">
+                            Background="#33F5B342" BorderBrush="{StaticResource Warn}" BorderThickness="2" CornerRadius="10">
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="Cancel" Margin="12,0,0,0" VerticalAlignment="Center" Click="OnCaptureCancel" />
                             <StackPanel>
-                                <TextBlock x:Name="CaptureBannerTitle" FontSize="16" FontWeight="Bold" Foreground="#FFC35A" Text="CAPTURE ARMED: waiting for the key" />
+                                <TextBlock x:Name="CaptureBannerTitle" FontSize="16" FontWeight="Bold" Foreground="{StaticResource Warn}" Text="CAPTURE ARMED: waiting for the key" />
                                 <TextBlock TextWrapping="Wrap" Margin="0,3,0,0">
                                     <Run Text="1. Put the headset on.  2. Sit the way you play and look straight ahead.  3. Press" />
-                                    <Run x:Name="CaptureBannerKey" FontWeight="Bold" Foreground="#FFC35A" Text="Pause" /><Run x:Name="CaptureBannerTail" Text=".  A sound confirms the picture; the capture then switches itself off." />
+                                    <Run x:Name="CaptureBannerKey" FontWeight="Bold" Foreground="{StaticResource Warn}" Text="Pause" /><Run x:Name="CaptureBannerTail" Text=".  A sound confirms the picture; the capture then switches itself off." />
                                 </TextBlock>
                             </StackPanel>
                         </DockPanel>
                     </Border>
                     <!-- The edge finder, running: what to press, and where the bars are. -->
                     <Border x:Name="EdgeBanner" DockPanel.Dock="Top" Margin="0,0,0,10" Padding="14,10" Visibility="Collapsed"
-                            Background="#0C2A3A" BorderBrush="#2BB5E0" BorderThickness="2" CornerRadius="8">
+                            Background="#1A2C5A" BorderBrush="{StaticResource Accent}" BorderThickness="2" CornerRadius="10">
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="Cancel" Margin="12,0,0,0" VerticalAlignment="Center" Click="OnEdgeCancel" />
                             <StackPanel>
-                                <TextBlock x:Name="EdgeBannerTitle" FontSize="16" FontWeight="Bold" Foreground="#5ADCFF" />
+                                <TextBlock x:Name="EdgeBannerTitle" FontSize="16" FontWeight="Bold" Foreground="#8CC8FF" />
                                 <TextBlock x:Name="EdgeBannerDetail" TextWrapping="Wrap" Margin="0,3,0,0" />
                                 <TextBlock x:Name="EdgeBannerValues" Style="{StaticResource Hint}" FontSize="12" Margin="0,3,0,0" />
                             </StackPanel>
@@ -652,7 +652,7 @@
                                         <TextBlock Text="Hotkey (click to change)" VerticalAlignment="Center"
                                                    ToolTip="Switches the cover on and off.&#10;&#10;**Sides:** modifier keys count by side, so LCtrl + B and RCtrl + B are two hotkeys.&#10;&#10;**In a game:** the mirror looks at the keys itself, because a game that has the keyboard stops Windows' hotkeys.&#10;&#10;**On the desktop:** Windows passes the hotkey on. It cannot tell the sides apart, so it takes the combination from other programs for both sides, and the app then checks the side.&#10;&#10;The game sees the key too, so choose one that does no harm there." />
                                     </DockPanel>
-                                    <TextBlock x:Name="CoverKeyNote" Foreground="Orange" FontSize="12" TextWrapping="Wrap" Margin="0,-4,0,8" Visibility="Collapsed" />
+                                    <TextBlock x:Name="CoverKeyNote" Foreground="{StaticResource Warn}" FontSize="12" TextWrapping="Wrap" Margin="0,-4,0,8" Visibility="Collapsed" />
                                     <TextBlock Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap"
                                                Text="The cover is a window of this app: it works while the app runs (minimised is fine). It cannot cover a game in exclusive full screen." />
                                 </StackPanel>

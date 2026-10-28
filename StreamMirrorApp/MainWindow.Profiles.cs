@@ -149,7 +149,7 @@ public partial class MainWindow
             : "Drops the unsaved changes: back to this profile as saved.\n\nCtrl+Z undoes one change at a time, Ctrl+Y redoes it; Revert itself can be undone too.");
         var game = _selectedProfile?.Game ?? "";
         var start = game.Length > 0 ? $"when {game} starts" : "at the start of the game you name under For game";
-        CropProfileStatus.Foreground = unsaved ? Brushes.Orange : (Brush)FindResource("Muted");
+        CropProfileStatus.Foreground = (Brush)FindResource(unsaved ? "Warn" : "Muted");
         CropProfileStatus.Text = _selectedProfile == null
             ? (MirrorLive.Read() is { Producing: true } live
                 ? $"Running now: {live.Program}. Save as... or New makes a profile, and the mirror applies it at each start of that game."

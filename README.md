@@ -146,28 +146,33 @@ its default. Changes save by themselves and **reach a running game at once** (th
 there); a mark at the foot of the page list says when the app last saved. The app is small on purpose, to sit next to
 OBS while you tune, and the keyboard reaches all of it.
 
-The page list follows the program's purpose: **Status** and **Mirror** first, and most people need no more than those.
-Then come the two pages of the **gaze ring** (Gaze and Ring), the **extras** (Desktop cover, Quad Views and Layers),
-and About. Each page has an icon, and a narrow window shows the icons alone. A
-green dot on Status means the mirror shows a game right now.
+The page list follows the program's purpose: **Status**, **Mirror** and **Desktop cover** first, and most people need
+no more than Status and Mirror. Then come the two pages of the **gaze ring** (Gaze and Ring), the **headset** pages
+(Quad Views and Layers), and About. Each page has an icon, and a narrow window shows the icons alone. A red dot on
+Status means the mirror shows a game right now.
 
 ### Status
 
 ![Status page](docs/page-status.png)
 
+- **The picture:** your last picture, cut to the crop box: what OBS gets (the last saved one, not a live view). Its
+  light says **Live** while the picture reaches OBS or the mirror window, **Not reaching** when one of them should get
+  it and does not, **Mirroring** while a game runs and nothing takes it, and **Waiting for a game** otherwise.
+- **Beside it:** the game, the picture's size and rate, the eye, the capture, the crop and the steadying, and **Where
+  the picture goes**: for OBS and the mirror window, closed, ready, receiving the picture or not receiving it.
 - **Three steps to your mirror:** add the source in OBS, start your VR game, frame the picture. Each step ticks
   itself off once the app has seen it happen, and the card goes away after the third (or at **Hide**).
-- **Parts:** the mirror layer, the OBS plugin, the SteamVR helper and (optional) quad views, each with a
-  coloured dot and, with a fault, what to do about it. While all is well, "All parts working" stands on top. The
-  SteamVR helper is grey on a PC without SteamVR: it has nothing to do there. The line at the top of the page names the
-  game the mirror shows and says whether gaze arrives.
-- **OpenXR API layers:** one line sums up the layers and their order and turns orange on a problem; a click opens the
-  **Layers** page.
+- **Parts:** the mirror layer, the game's own panels, the OBS plugin, the SteamVR helper and (optional) quad views, as
+  tiles with a word for their state and, with a fault, what to do about it. The line above them says "all in place" or
+  counts what needs a look. The SteamVR helper is "Not needed" on a PC without SteamVR. The line at the top of the
+  page names the game the mirror shows and says whether gaze arrives.
+- **OpenXR API layers:** a link above the tiles sums up the layers and their order and turns amber on a problem; it
+  opens the **Layers** page.
 
 ### Layers
 
-The OpenXR API layers on your PC, in the order games load them: the top one loads closest to the game. A tick box
-switches each on or off and arrows **reorder** them. Windows asks for permission for that one change; the app itself
+The OpenXR API layers on your PC, in the order games load them: the top one loads closest to the game. A switch
+turns each on or off and arrows **reorder** them. Windows asks for permission for that one change; the app itself
 runs without administrator rights. The app knows the ordering rules of common layers (the mirror layer has to sit below
 anything that draws into the picture, such as OpenKneeboard or OpenXR Toolkit) and offers **Fix order** for an order
 that breaks one. A game takes a change at its next start.
@@ -189,7 +194,7 @@ makes the picture, so they cost no extra pass.
 VRChat.exe) and the mirror applies it at each start of that game. **New** starts a profile from the default framing,
 **Save as...** copies the current one into a new profile, and the "⋯" button holds **Rename** and **Delete**. Changes
 reach the stream at once but go into the open profile only when you press **Save**; until then the bar says so in orange,
-and **Revert** goes back to the saved profile. Switching to another profile with unsaved changes asks first. Tick **Save
+and **Revert** goes back to the saved profile. Switching to another profile with unsaved changes asks first. Switch on **Save
 edits automatically** to have every change go into the profile as you make it; **Revert** then goes back to the profile
 as it was when you opened it. On every page, **Ctrl+Z** undoes the last change made there (a whole drag counts as one)
 and **Ctrl+Y** redoes it.
@@ -392,7 +397,7 @@ its size from the Ring page. The app greys the choice out once it knows the head
 
 ![Ring page](docs/page-ring.png)
 
-The gaze ring: its look, its tail and its motion, with a **live preview** over cockpit, terrain, sky or black. The
+The gaze ring: its look, its tail and its motion, with a **live preview** on your own last picture (at the ring's own size), or over cockpit, terrain, sky or black. The
 preview stands beside the settings of the two ring pages; in a narrow window it becomes a strip above them, and
 **Hide** puts it away.
 
@@ -435,7 +440,7 @@ is the brightest thing in sight.
 
 The cover puts black over the game's window, so the cameras find no moving points there and keep to the room. A
 headset tracked by base stations (Lighthouse) does not look at the room and has no use for it. The cover is **off until
-you tick it**, and the page states this reason at its top.
+you switch it on**, and the page states this reason at its top.
 
 - **Cover the game's window while in VR:** black over each window of the game in VR, on each monitor it lies on (a
   triple-screen window gets three pieces). The cover touches that game's window and leaves other programs and the
@@ -454,7 +459,7 @@ you tick it**, and the page states this reason at its top.
   the mirror looks at the key itself, once a frame, and tells the app. The game sees the key too: choose one that does
   no harm there. For SteamVR games the helper does the looking, at full pace while OBS or the mirror window shows the
   picture and twice a second otherwise (hold the key a moment).
-- **Screen capture sees the cover:** unticked, the black is on your monitor alone: OBS Display Capture, Discord screen
+- **Screen capture sees the cover:** off, the black is on your monitor alone: OBS Display Capture, Discord screen
   sharing and screenshots still get the game underneath. Ticked, they get the black too. Window and game capture of
   the game, and the StreamMirror VR source, get the game either way.
 - **Tracking pattern (may help):** marks on the black that stay put, fixed to the monitor and the same each time, as
@@ -507,7 +512,7 @@ Version, the update check (as the app opens; betas optional), the changelog with
 **Logs** for the folder with the app's, the layer's and the helper's logs. **Settings file** opens the file of the ring
 and the mirror, and **Reload settings** reads it again.
 
-**Start-up** (both off unless you tick them): **Start with Windows** opens the app when you sign in, through an entry in
+**Start-up** (both off unless you switch them on): **Start with Windows** opens the app when you sign in, through an entry in
 your own account's start-up list, no administrator rights. **Start in the tray** keeps it out of the way: the app opens
 hidden in the notification area, the window's close button hides it, and the tray icon's menu opens it again or quits.
 The desktop cover's hotkey and the mirror window work from the tray.
@@ -571,7 +576,7 @@ File locations:
 - **A layer is red or the order is wrong**: Layers page > Fix order, or run the installer again > Repair.
 - **The mirror window takes ten seconds to appear the first time**: antivirus software is looking at a new, unsigned
   program.
-- **Discord does not list the mirror window**: tick "Title bar".
+- **Discord does not list the mirror window**: switch on "Title bar".
 - **Something odd**: About page > Logs; the three log files say what each part did.
 
 ## Building from source

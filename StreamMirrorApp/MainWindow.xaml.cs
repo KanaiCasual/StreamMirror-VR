@@ -744,7 +744,7 @@ public partial class MainWindow : Window
         SaveMark.Visibility = Visibility.Visible;
         SaveMarkText.Text = brief;
         SaveMarkIcon.Text = problem ? "\uE7BA" : "\uE73E";
-        SaveMarkIcon.Foreground = SaveMarkText.Foreground = problem ? Brushes.Orange : (Brush)FindResource("Muted");
+        SaveMarkIcon.Foreground = SaveMarkText.Foreground = (Brush)FindResource(problem ? "Warn" : "Muted");
         SaveMark.ToolTip = WrappedToolTip(full);
     }
 
@@ -1143,7 +1143,7 @@ public partial class MainWindow : Window
         LayerSummary.Text = shown.Count == 0 ? "none"
             : shown.Count + (shown.Count == 1 ? " layer" : " layers") + (pending ? ", new order not applied yet" : problems.Count > 0 ? ", order problem" : shown.Count > 1 ? ", order fine" : "");
         LayerSummaryLinkText.Text = "OpenXR API layers: " + LayerSummary.Text;
-        LayerSummaryLinkText.Foreground = problems.Count > 0 || pending ? Brushes.Orange : (Brush)FindResource("Muted");
+        LayerSummaryLinkText.Foreground = (Brush)FindResource(problems.Count > 0 || pending ? "Warn" : "Muted");
 
         if (pending) LayerNote.Text = "Order changed, not applied yet. Apply asks Windows for permission once.";
         else if (LayerNote.Text.StartsWith("Order changed", StringComparison.Ordinal) || LayerNote.Text.Length == 0)
@@ -1516,7 +1516,7 @@ public partial class MainWindow : Window
             _ => Colors.Gray,
         });
         // The rail's dot: a game is being mirrored, whatever page is open.
-        _liveDot = state == GazeLiveState.NoGame ? null : (Brush)FindResource("Good");
+        _liveDot = state == GazeLiveState.NoGame ? null : (Brush)FindResource("OnAir");
         if (_statusNav != null) _statusNav.Dot = _liveDot;
         UpdateStartSteps();
         if (ReferenceEquals(Tabs.SelectedItem, StatusTab)) UpdateStatusHero();
@@ -1569,7 +1569,7 @@ public partial class MainWindow : Window
     /// <summary>One step: its number in a circle (a tick on green once done), what to do, and a button where there is somewhere to go.</summary>
     private FrameworkElement StartStep(int number, string title, string detail, bool done, (string Label, RoutedEventHandler Click)? button = null)
     {
-        var good = (Brush)FindResource("Good");
+        var good = (Brush)FindResource("Accent");
         var muted = (Brush)FindResource("Muted");
         var mark = new Border
         {

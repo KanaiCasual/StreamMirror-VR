@@ -36,7 +36,8 @@ The app opens with a short tour of its pages. Take it once; you can start it aga
 
 ## 2. Check the Status page
 
-The **Status** page lists the mirror's parts, each with a coloured dot:
+The **Status** page shows your last picture and where it goes, and lists the mirror's parts as tiles, each with a
+word for its state:
 
 | Part | What it does | You need it for |
 |---|---|---|
@@ -44,8 +45,8 @@ The **Status** page lists the mirror's parts, each with a coloured dot:
 | **OBS plugin** | the "StreamMirror VR" source in OBS | recording or streaming with OBS |
 | **SteamVR helper** | takes the picture from SteamVR | VRChat, Half-Life: Alyx and other SteamVR games |
 
-Green means ready. Grey means not needed on your PC: the helper, for example, is grey when SteamVR is not installed.
-A red or orange dot says what to do about it in its own line.
+Cyan means ready. Grey means not needed on your PC: the helper, for example, says "Not needed" when SteamVR is not
+installed. An amber or red tile says what to do about it.
 
 The line at the very top tells you, while you play, which game the mirror shows and whether your eye gaze arrives.
 Keep that line in mind: it answers most "why is nothing happening" questions.

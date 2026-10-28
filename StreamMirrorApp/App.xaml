@@ -22,7 +22,6 @@
         <SolidColorBrush x:Key="RailHover" Color="#101834" />
         <SolidColorBrush x:Key="WindowBack" Color="#0D1328" />
         <SolidColorBrush x:Key="Picture" Color="#080C1C" />
-        <SolidColorBrush x:Key="Good" Color="#3CB371" />
 
         <!-- The theme's controls take their accent from Windows; these keys hand them the icon's cyan instead (in the dark
              theme fills use Light2, accent text Light3). -->
