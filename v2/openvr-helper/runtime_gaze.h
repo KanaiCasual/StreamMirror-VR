@@ -22,7 +22,7 @@
 
 #include "../core/pipeline.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     class RuntimeGaze {
       public:
@@ -78,4 +78,4 @@ namespace gaze_mirror {
         LONGLONG _sequence = 0;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

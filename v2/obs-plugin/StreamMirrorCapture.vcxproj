@@ -49,7 +49,7 @@
     <ClCompile Include="streammirror-capture.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\protocol\gaze_mirror_protocol.h" />
+    <ClInclude Include="..\protocol\stream_mirror_protocol.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

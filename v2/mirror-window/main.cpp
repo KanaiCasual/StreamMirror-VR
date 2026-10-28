@@ -3,7 +3,7 @@
 // Shows the finished mirror picture (cropped, steadied, with the gaze ring) in an ordinary window, so that anything
 // that can capture a window can use it: OBS Window/Game Capture, Discord, ... - no OBS plugin needed.
 //
-// It is a reader of the 2.0 format (protocol/gaze_mirror_protocol.h): it takes a reader place in the shared block,
+// It is a reader of the 2.0 format (protocol/stream_mirror_protocol.h): it takes a reader place in the shared block,
 // sleeps until the producer - the OpenXR layer inside a game, or the OpenVR helper next to a SteamVR game - signals a
 // frame, and draws that frame's shared texture, scaled with a footprint filter, into a flip-model swap chain. While
 // no game runs it waits without waking up. The eye, the crop and the ring are set in the settings app.
@@ -42,10 +42,10 @@
 #include <string>
 #include <vector>
 
-#include "../protocol/gaze_mirror_protocol.h"
+#include "../protocol/stream_mirror_protocol.h"
 
 using Microsoft::WRL::ComPtr;
-using namespace gaze_mirror;
+using namespace stream_mirror;
 
 namespace {
 

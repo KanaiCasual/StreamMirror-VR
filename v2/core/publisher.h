@@ -1,4 +1,4 @@
-// StreamMirror VR - core: the producer side of the shared format (protocol/gaze_mirror_protocol.h).
+// StreamMirror VR - core: the producer side of the shared format (protocol/stream_mirror_protocol.h).
 // Owns the shared block and the slot textures; tells the readers when a frame is ready; knows whether anybody wants
 // one at all (a few memory reads per frame, and never a timer).
 #pragma once
@@ -6,9 +6,9 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
-#include "../protocol/gaze_mirror_protocol.h"
+#include "../protocol/stream_mirror_protocol.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     class Publisher {
       public:
@@ -86,4 +86,4 @@ namespace gaze_mirror {
         int _logProblem = 0;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

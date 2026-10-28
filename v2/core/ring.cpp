@@ -2,7 +2,7 @@
 
 #include "ring.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     namespace {
         float AlphaFor(float cutoffHz, float dt) {
@@ -217,4 +217,4 @@ namespace gaze_mirror {
         out.color[3] = std::min(settings.opacity * (1.f + 0.3f * _dwell), 1.f) * _alpha;
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

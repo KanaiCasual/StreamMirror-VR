@@ -1,0 +1,886 @@
+using System.Globalization;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace StreamMirror;
+
+/// <summary>
+/// The Crop tab: a box, locked to a chosen shape, that is dragged and scaled on a picture of the whole mirror image. The
+/// mirror layer then hands OBS only that box, so the OBS source IS the box. The values live in the ring's settings file
+/// (crop_* keys) and go live through the same signal as everything else there.
+/// </summary>
+public partial class MainWindow
+{
+    private readonly CropBox _crop = new();
+    private MirrorPicture? _cropPicture;
+    private int _cropFullWidth, _cropFullHeight;
+
+    private readonly Rectangle[] _cropShades = [new(), new(), new(), new()];
+    private readonly Rectangle _cropFrame = new() { StrokeThickness = 2, Fill = Brushes.Transparent };
+    private readonly Rectangle[] _cropHandles = [new(), new(), new(), new()];
+    // Free shape: a bar in the middle of each side (left, right, top, bottom) - a side drags on its own.
+    private readonly Rectangle[] _cropSideHandles = [new(), new(), new(), new()];
+    private CropBox.Side _cropSide;
+    private readonly Line[] _cropThirds = [new(), new(), new(), new()];
+    private readonly Line[] _cropBoxCross = [new(), new()]; // A small cross at the box's own centre, to line it up with the centre mark and the visible edges.
+    private readonly Ellipse _cropGazeRing = new() { StrokeThickness = 2, Fill = Brushes.Transparent }; // The ring as it was when the picture was taken.
+    private readonly Line[] _cropStillZone = [new(), new()];
+    private readonly Rectangle[] _cropReach = [new(), new()];
+    private readonly Rectangle _cropReachFrame = new() { StrokeThickness = 1, Fill = Brushes.Transparent, StrokeDashArray = [3, 3] };
+    private readonly Rectangle[] _cropSteadyRoom = [new(), new(), new(), new()];
+    private readonly Rectangle _cropSteadyFrame = new() { StrokeThickness = 1, Fill = Brushes.Transparent, StrokeDashArray = [3, 3] };
+    // Level horizon: the box turned as far as it may each way inside the eye image, and how far that is.
+    private readonly Polygon[] _cropTurnLimit = [new(), new()];
+    private readonly TextBlock _cropTurnLabel = new() { FontSize = 11, Padding = new Thickness(4, 1, 4, 1), IsHitTestVisible = false };
+    private readonly TextBlock _cropBadge = new() { FontSize = 12, FontWeight = FontWeights.SemiBold, Padding = new Thickness(7, 1, 7, 2), IsHitTestVisible = false };
+    private readonly TextBlock _levelWarning = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 4, 0, 6) };
+    private bool LevelHorizon => _values.GetValueOrDefault("stabilize_tilt") == "level";
+    private readonly Image _cropImage = new() { Stretch = Stretch.Fill };
+    // The centre mark: where straight ahead lands in the eye image (from the headset's own projection, with each
+    // picture), as a dot with a line across and a line down the whole image; a faint small cross marks the image's
+    // geometric middle, which on most headsets is somewhere else.
+    private readonly Line[] _cropCentreLines = [new(), new()];
+    private readonly Ellipse _cropCentreDot = new() { Width = 7, Height = 7 };
+    private readonly Line[] _cropMiddleCross = [new(), new()];
+    private readonly TextBlock _cropPlaceholder = new() { TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
+    private Rect _cropShown;                 // Where the picture is drawn inside the canvas.
+    private enum CropDrag { None, Move, Resize, Side }
+    private CropDrag _cropDrag;
+    private Point _cropAnchor;               // Resize: the corner that stays put (fractions). Move: pointer offset from the centre.
+
+    private static string LastPicturePath => System.IO.Path.Combine(AppSettings.Folder, "last-mirror-picture.png");
+
+    /// <summary>A settings row for the column beside the picture: the label and the value give room to the slider.</summary>
+    private static FrameworkElement SideRow(FrameworkElement row)
+    {
+        if (row is Grid grid)
+        {
+            grid.ColumnDefinitions[0].Width = new GridLength(126);
+            grid.ColumnDefinitions[2].Width = new GridLength(88);
+        }
+        return row;
+    }
+
+    private const double MirrorSideNeedsWidth = 780, MirrorSideWidth = 410;
+    private long _showMenuClosedAt;
+
+    /// <summary>
+    /// The Mirror page: the picture with its tools, and the settings. Side by side, the two take the height the window
+    /// has left under the page's head and the settings scroll on their own; when the head leaves too little (the
+    /// explanation open in a small window), they keep a usable height and the page scrolls. One under the other, the
+    /// page scrolls as a whole.
+    /// </summary>
+    private void LayOutMirrorPage()
+    {
+        var beside = MirrorScroll.ActualWidth >= MirrorSideNeedsWidth;
+        const double pageMargins = 30, leastHeight = 470;
+        MirrorBody.Height = beside ? Math.Max(MirrorScroll.ActualHeight - pageMargins - MirrorHeader.ActualHeight, leastHeight) : double.NaN;
+        MirrorSideScroll.VerticalScrollBarVisibility = beside ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        MirrorSideColumn.Width = new GridLength(beside ? MirrorSideWidth : 0);
+        MirrorSide.Margin = new Thickness(0, 0, beside ? 10 : 0, 0); // clear of the column's scroll bar
+        Grid.SetColumnSpan(MirrorPictureArea, beside ? 1 : 2);
+        MirrorPictureArea.Margin = beside ? new Thickness(0, 0, 12, 0) : new Thickness(0, 0, 0, 12);
+        MirrorPictureArea.MinHeight = beside ? 0 : 440;
+        Grid.SetRow(MirrorSideScroll, beside ? 0 : 1);
+        Grid.SetRowSpan(MirrorSideScroll, beside ? 2 : 1);
+        Grid.SetColumn(MirrorSideScroll, beside ? 1 : 0);
+        Grid.SetColumnSpan(MirrorSideScroll, beside ? 1 : 2);
+    }
+
+    private void OnShowMenu(object sender, RoutedEventArgs e)
+    {
+        // A click on the button while the list is open closes the list (any click outside it does); it must not open it again at once.
+        if (Environment.TickCount64 - _showMenuClosedAt <= 250) return;
+        ShowMenu.IsOpen = true;
+        ShowCropBox.Focus(); // The keyboard goes into the list; Esc closes it.
+    }
+
+    private void BuildCropUi()
+    {
+        var accent = (Brush)FindResource("Accent");
+        _cropFrame.Stroke = accent;
+        CropCanvas.Children.Add(_cropImage);
+        _cropPlaceholder.Foreground = (Brush)FindResource("Muted");
+        CropCanvas.Children.Add(_cropPlaceholder);
+        foreach (var shade in _cropShades)
+        {
+            shade.Fill = new SolidColorBrush(Color.FromArgb(160, 8, 12, 28));
+            shade.IsHitTestVisible = false;
+            CropCanvas.Children.Add(shade);
+        }
+        foreach (var line in _cropThirds)
+        {
+            line.Stroke = new SolidColorBrush(Color.FromArgb(70, 255, 255, 255));
+            line.StrokeThickness = 1;
+            line.IsHitTestVisible = false;
+            CropCanvas.Children.Add(line);
+        }
+        foreach (var line in _cropBoxCross)
+        {
+            line.Stroke = accent;
+            line.StrokeThickness = 1.5;
+            line.IsHitTestVisible = false;
+            CropCanvas.Children.Add(line);
+        }
+        _cropGazeRing.IsHitTestVisible = false;
+        CropCanvas.Children.Add(_cropGazeRing);
+        // How far the box may follow the gaze: a tint above and below it, inside a dashed outline.
+        foreach (var reach in _cropReach)
+        {
+            reach.Fill = new SolidColorBrush(Color.FromArgb(70, 77, 178, 255));
+            reach.IsHitTestVisible = false;
+            CropCanvas.Children.Add(reach);
+        }
+        _cropReachFrame.Stroke = new SolidColorBrush(Color.FromArgb(190, 77, 178, 255));
+        _cropReachFrame.IsHitTestVisible = false;
+        CropCanvas.Children.Add(_cropReachFrame);
+        // Room for the picture steadying: a band of another colour all around the box. The box cannot enter it.
+        foreach (var band in _cropSteadyRoom)
+        {
+            band.Fill = new SolidColorBrush(Color.FromArgb(85, 70, 220, 150));
+            band.IsHitTestVisible = false;
+            CropCanvas.Children.Add(band);
+        }
+        _cropSteadyFrame.Stroke = new SolidColorBrush(Color.FromArgb(200, 70, 220, 150));
+        _cropSteadyFrame.IsHitTestVisible = false;
+        CropCanvas.Children.Add(_cropSteadyFrame);
+        foreach (var limit in _cropTurnLimit)
+        {
+            limit.Stroke = new SolidColorBrush(Color.FromArgb(210, 255, 205, 90));
+            limit.StrokeThickness = 1.5;
+            limit.StrokeDashArray = [6, 4];
+            limit.IsHitTestVisible = false;
+            CropCanvas.Children.Add(limit);
+        }
+        _cropTurnLabel.Foreground = new SolidColorBrush(Color.FromArgb(240, 255, 205, 90));
+        _cropTurnLabel.Background = new SolidColorBrush(Color.FromArgb(170, 0, 0, 0));
+        CropCanvas.Children.Add(_cropTurnLabel);
+        foreach (var line in _cropStillZone)
+        {
+            line.Stroke = new SolidColorBrush(Color.FromArgb(200, 255, 190, 60));
+            line.StrokeThickness = 1.5;
+            line.StrokeDashArray = [5, 4];
+            line.IsHitTestVisible = false;
+            CropCanvas.Children.Add(line);
+        }
+        foreach (var line in _cropCentreLines)
+        {
+            line.Stroke = new SolidColorBrush(Color.FromArgb(150, 255, 255, 255));
+            line.StrokeThickness = 1;
+            line.IsHitTestVisible = false;
+            CropCanvas.Children.Add(line);
+        }
+        foreach (var line in _cropMiddleCross)
+        {
+            line.Stroke = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255));
+            line.StrokeThickness = 1;
+            line.IsHitTestVisible = false;
+            CropCanvas.Children.Add(line);
+        }
+        _cropCentreDot.Fill = new SolidColorBrush(Color.FromArgb(230, 255, 255, 255));
+        _cropCentreDot.Stroke = new SolidColorBrush(Color.FromArgb(200, 0, 0, 0));
+        _cropCentreDot.StrokeThickness = 1;
+        _cropCentreDot.IsHitTestVisible = false;
+        CropCanvas.Children.Add(_cropCentreDot);
+        _cropFrame.IsHitTestVisible = false;
+        CropCanvas.Children.Add(_cropFrame);
+        // A calmer picture (2.3.0): the box and the centre mark show by default, and each other aid shows while its
+        // section is open. A settings file from before gets that once; the Show list switches any aid on for good.
+        if (!_appSettings.PictureAidsCalm)
+        {
+            _appSettings.ShowFollow = _appSettings.ShowSteady = _appSettings.ShowEdges = _appSettings.ShowBoxCross = false;
+            _appSettings.PictureAidsCalm = true;
+            if (!App.Headless) _appSettings.Save();
+        }
+        _loading = true; // Setting the boxes fires their handlers, which must not save a half-filled row.
+        ShowCropBox.IsChecked = _appSettings.ShowCropBox;
+        ShowFollow.IsChecked = _appSettings.ShowFollow;
+        ShowSteady.IsChecked = _appSettings.ShowSteady;
+        ShowTurnArea.IsChecked = _appSettings.ShowTurnArea;
+        ShowEdges.IsChecked = _appSettings.ShowEdges;
+        ShowCentre.IsChecked = _appSettings.ShowCentre;
+        ShowBoxCross.IsChecked = _appSettings.ShowBoxCross;
+        ShowGaze.IsChecked = _appSettings.ShowGaze;
+        _loading = false;
+        // The corner handles: small rounded squares, cyan rim on the page's navy.
+        foreach (var handle in _cropHandles)
+        {
+            handle.Width = handle.Height = 12;
+            handle.Fill = (Brush)FindResource("WindowBack");
+            handle.Stroke = accent;
+            handle.StrokeThickness = 2;
+            handle.RadiusX = handle.RadiusY = 3;
+            handle.IsHitTestVisible = false;
+            CropCanvas.Children.Add(handle);
+        }
+        // The box's shape, in its bottom right corner.
+        _cropBadge.Background = accent;
+        _cropBadge.Foreground = (Brush)FindResource("OnAccent");
+        CropCanvas.Children.Add(_cropBadge);
+        for (var i = 0; i < 4; i++)
+        {
+            var handle = _cropSideHandles[i];
+            (handle.Width, handle.Height) = i < 2 ? (6, 18) : (18, 6); // upright on the left and right side, flat on the top and bottom
+            handle.Fill = accent;
+            handle.RadiusX = handle.RadiusY = 2;
+            handle.IsHitTestVisible = false;
+            CropCanvas.Children.Add(handle);
+        }
+
+        foreach (var choice in Settings.All.First(d => d.Key == "crop_aspect").Choices)
+        {
+            CropAspect.Items.Add(new ComboBoxItem { Content = choice.Label, Tag = choice.Value });
+        }
+
+        // The crop keys are ordinary settings: loading the file, and changes made outside the app, arrive through these.
+        _controlSetters["crop_enabled"] = v => { CropEnabled.IsChecked = v != "0"; DrawCrop(); };
+        _controlSetters["crop_aspect"] = v =>
+        {
+            CropAspect.SelectedItem = CropAspect.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == v) ?? CropAspect.Items[0];
+            _crop.Aspect = CropBox.ParseAspect(v);
+            DrawCrop();
+        };
+        _controlSetters["crop_center_x"] = v => { _crop.CenterX = Settings.ParseDouble(v, 0.5); DrawCrop(); };
+        _controlSetters["crop_center_y"] = v => { _crop.CenterY = Settings.ParseDouble(v, 0.5); DrawCrop(); };
+        _controlSetters["crop_height"] = v => { _crop.Height = Settings.ParseDouble(v, 0.5); DrawCrop(); };
+        _controlSetters["crop_width"] = v => { _crop.FreeWidth = Settings.ParseDouble(v, 1); DrawCrop(); };
+
+        // Gaze following: ordinary rows, folded away until wanted. The picture shows the still zone.
+        foreach (var def in Settings.All.Where(d => d.Key.StartsWith("crop_follow", StringComparison.Ordinal)))
+        {
+            var row = SideRow(BuildRow(def));
+            PanelCropFollow.Children.Add(row);
+            var setter = _controlSetters[def.Key];
+            _controlSetters[def.Key] = v =>
+            {
+                setter(v);
+                DrawCrop(); // (the section stays folded until it is wanted; its header says whether following is on)
+            };
+        }
+
+        // Stabilisation: the same kind of fold-away section, with the level horizon's warning under its Tilt row.
+        _levelWarning.Foreground = Brushes.Orange;
+        _levelWarning.Text = "Level: the box turns only as far as the eye image reaches, and eases off before it gets there. Beyond that the horizon tilts with you instead of showing black.\n\nA smaller box, or less follow, leaves more room; Show > Turn limit draws how far it can turn.";
+        foreach (var def in Settings.All.Where(d => d.Key.StartsWith("stabilize", StringComparison.Ordinal)))
+        {
+            var row = SideRow(BuildRow(def));
+            PanelStabilize.Children.Add(row);
+            if (def.Key == "stabilize_tilt") PanelStabilize.Children.Add(_levelWarning);
+            var setter = _controlSetters[def.Key];
+            _controlSetters[def.Key] = v =>
+            {
+                setter(v);
+                ApplyCropMargin(moveBox: false); // loading: show it; the box is only moved when the user changes something
+            };
+        }
+        // The settings stand beside the picture while there is room for both; under it in a narrow window.
+        MirrorScroll.SizeChanged += (_, _) => LayOutMirrorPage();
+        MirrorHeader.SizeChanged += (_, _) => LayOutMirrorPage();
+        StartCard.SizeChanged += (_, _) => LayOutCards(StartSteps, StartCard.ActualWidth >= 640);
+        ShowMenu.Closed += (_, _) => _showMenuClosedAt = Environment.TickCount64;
+        ShowMenu.PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key != System.Windows.Input.Key.Escape) return;
+            ShowMenu.IsOpen = false;
+            ShowMenuButton.Focus();
+            e.Handled = true;
+        };
+
+        CropEnabled.Click += (_, _) => { OnValueChanged("crop_enabled", CropEnabled.IsChecked == true ? "1" : "0"); DrawCrop(); };
+        CropAspect.SelectionChanged += (_, _) =>
+        {
+            if (_loading || CropAspect.SelectedItem is not ComboBoxItem { Tag: string value }) return;
+            // Going from a locked shape to "free" keeps the box as it is.
+            if (value == "0") _crop.FreeWidth = _crop.Size().Width;
+            _crop.Aspect = CropBox.ParseAspect(value);
+            _crop.Normalize();
+            OnValueChanged("crop_aspect", value);
+            CommitCrop();
+        };
+
+        CropCanvas.SizeChanged += (_, _) => DrawCrop();
+        CropFollowExpander.Expanded += (_, _) => DrawCrop();
+        CropFollowExpander.Collapsed += (_, _) => DrawCrop();
+        StabilizeExpander.Expanded += (_, _) => DrawCrop();
+        StabilizeExpander.Collapsed += (_, _) => DrawCrop();
+        ViewEdgesCard.MouseEnter += (_, _) => DrawCrop();
+        ViewEdgesCard.MouseLeave += (_, _) => DrawCrop();
+        CropCanvas.MouseLeftButtonDown += OnCropMouseDown;
+        CropCanvas.MouseMove += OnCropMouseMove;
+        CropCanvas.MouseLeftButtonUp += (_, _) => { _cropDrag = CropDrag.None; CropCanvas.ReleaseMouseCapture(); };
+        CropCanvas.MouseWheel += (_, e) =>
+        {
+            // Only over the box itself, and only when it is not locked: scrolling past must not resize it.
+            if (CropLocked.IsChecked == true || !IsInsideCropBox(ToFraction(e.GetPosition(CropCanvas)))) return;
+            _crop.Scale(e.Delta > 0 ? 1.04 : 1 / 1.04);
+            CommitCrop();
+            e.Handled = true;
+        };
+
+        // The box by keyboard, for whoever does not use a mouse: a click (or Tab) selects the picture, the arrow keys
+        // move the box, + and - resize it. Not while it is locked, like the mouse.
+        CropCanvas.MouseLeftButtonDown += (_, _) => CropFrameBorder.Focus();
+        CropFrameBorder.KeyDown += (_, e) =>
+        {
+            if (CropLocked.IsChecked == true) return;
+            var step = System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift) ? 0.02 : 0.004;
+            var growth = System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift) ? 1.06 : 1.015;
+            switch (e.Key)
+            {
+                case System.Windows.Input.Key.Left: _crop.MoveTo(_crop.CenterX - step, _crop.CenterY); break;
+                case System.Windows.Input.Key.Right: _crop.MoveTo(_crop.CenterX + step, _crop.CenterY); break;
+                case System.Windows.Input.Key.Up: _crop.MoveTo(_crop.CenterX, _crop.CenterY - step); break;
+                case System.Windows.Input.Key.Down: _crop.MoveTo(_crop.CenterX, _crop.CenterY + step); break;
+                case System.Windows.Input.Key.Add or System.Windows.Input.Key.OemPlus: _crop.Scale(growth); break;
+                case System.Windows.Input.Key.Subtract or System.Windows.Input.Key.OemMinus: _crop.Scale(1 / growth); break;
+                default: return;
+            }
+            CommitCrop();
+            e.Handled = true;
+        };
+
+        _loading = true;
+        CropLocked.IsChecked = _appSettings.CropLocked;
+        _loading = false;
+        void LockChanged()
+        {
+            CropCentreButton.IsEnabled = CropLargestButton.IsEnabled = CropAspect.IsEnabled = CropLocked.IsChecked != true;
+            CropLockHint.Visibility = CropLocked.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            if (_loading || !IsLoaded) return;
+            _appSettings.CropLocked = CropLocked.IsChecked == true;
+            _appSettings.Save();
+            DrawCrop();
+        }
+        CropLocked.Checked += (_, _) => LockChanged();
+        CropLocked.Unchecked += (_, _) => LockChanged();
+        LockChanged();
+
+        BuildCaptureUi();
+        LoadLastCropPicture();
+        Tabs.SelectionChanged += async (_, e) =>
+        {
+            // Opening the tab with no picture yet asks the running game for one - an event, not a timer.
+            if (ReferenceEquals(e.OriginalSource, Tabs) && ReferenceEquals(Tabs.SelectedItem, CropTab)) await RefreshCropPictureAsync(quietWhenNoGame: true, automatic: true);
+        };
+        // Coming back to the app with this tab open and still no picture: the same. Still an event.
+        Activated += async (_, _) =>
+        {
+            if (ReferenceEquals(Tabs.SelectedItem, CropTab) && CropRefresh.IsEnabled) await RefreshCropPictureAsync(quietWhenNoGame: true, automatic: true);
+        };
+    }
+
+    /// <summary>
+    /// Whether an automatic refresh (opening the Mirror page, coming back to the app) may take a picture: only while there
+    /// is none. A saved picture - refreshed or captured from the headset - stays until a button replaces it, and nothing
+    /// is taken while a capture is armed. And only a game's picture: the SteamVR helper also mirrors SteamVR with no game
+    /// in it (its empty home, the producer's game name blank).
+    /// </summary>
+    internal static bool AutomaticRefreshAllowed(bool havePicture, bool armed, string? producerProgram) => !havePicture && !armed && !string.IsNullOrEmpty(producerProgram);
+
+    private async Task RefreshCropPictureAsync(bool quietWhenNoGame, bool automatic = false)
+    {
+        if (automatic && !AutomaticRefreshAllowed(_pictureFirst != null, _captureArmed, MirrorLive.ReadProducer()?.Program)) return;
+        CropRefresh.IsEnabled = false;
+        var (picture, message) = await MirrorSnapshot.RequestAsync();
+        CropRefresh.IsEnabled = true;
+        if (picture == null)
+        {
+            if (!quietWhenNoGame || _cropImage.Source == null) CropStatus.Text = message + (_cropImage.Source == null ? " You can still set the box, without a picture behind it." : "");
+            return;
+        }
+
+        ShowNewPicture(picture, kept: false);
+        CropStatus.Text = $"Picture taken at {DateTime.Now:T}.";
+    }
+
+    /// <summary>Development aid for --screenshots: a made-up picture, so the tab can be looked at without a game.</summary>
+    internal void ShowCropTestPicture()
+    {
+        const int size = 320;
+        var pixels = new byte[size * size * 4];
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var i = (y * size + x) * 4;
+                var sky = y < size * 0.55;
+                var lens = Math.Sqrt(Math.Pow(x - size / 2.0, 2) + Math.Pow(y - size / 2.0, 2)) < size * 0.48;
+                pixels[i] = (byte)(lens ? (sky ? 200 - y / 3 : 60) : 8);
+                pixels[i + 1] = (byte)(lens ? (sky ? 150 - y / 4 : 90 + (x + y) % 40) : 8);
+                pixels[i + 2] = (byte)(lens ? (sky ? 90 : 70) : 8);
+            }
+        }
+        var image = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgr32, null, pixels, size * 4);
+        image.Freeze();
+        _cropImage.Source = _pictureFirst = image;
+        _cropFullWidth = _cropFullHeight = 8192;
+        _crop.ImageAspect = 1;
+        CropStatus.Text = "(made-up picture for the screenshot)";
+        // Show the gaze-following parts too. Nothing here goes through OnValueChanged, so nothing is saved.
+        CropEnabled.IsChecked = true;
+        _values["crop_follow"] = "vertical";
+        // STREAMMIRROR_SCREENSHOT_EXPANDED=1 shows the folded sections open, to look at their rows.
+        CropFollowExpander.IsExpanded = StabilizeExpander.IsExpanded = MirrorWindowExpander.IsExpanded =
+            Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_EXPANDED") == "1";
+        _values["stabilize"] = "1";
+        _crop.MoveTo(0, _crop.CenterY); // against the left wall: the steadying room has to hold it off
+        // STREAMMIRROR_SCREENSHOT_FREE=1: the box in the free shape, to look at its side handles.
+        if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_FREE") == "1") { _crop.Aspect = 0; _crop.FreeWidth = 0.5; _crop.Height = 0.35; _crop.MoveTo(0.5, 0.5); }
+        ApplyCropMargin(moveBox: false);
+        ShowSelectedPicture();
+        if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_ARMED") == "1")
+        {
+            _captureArmed = true; // only the look of it: nothing is armed anywhere
+            UpdateCaptureUi();
+        }
+    }
+
+    private async void OnCropRefresh(object sender, RoutedEventArgs e) => await RefreshCropPictureAsync(quietWhenNoGame: false);
+
+    private void OnCropCentre(object sender, RoutedEventArgs e)
+    {
+        _crop.MoveTo(0.5, 0.5);
+        CommitCrop();
+    }
+
+    private void OnCropFill(object sender, RoutedEventArgs e)
+    {
+        _crop.Height = 1;
+        _crop.FreeWidth = 1;
+        _crop.MoveTo(0.5, 0.5);
+        CommitCrop();
+    }
+
+    /// <summary>Writes the box to the settings (saved and sent to the game by the usual debounced save) and redraws it.</summary>
+    /// <summary>
+    /// With the picture steadying on, the box keeps its "room to move" free on every side: that band is part of the box as
+    /// far as the edges of the image are concerned. Switching it on (or widening it) pushes or shrinks the box to fit.
+    /// </summary>
+    private void ApplyCropMargin(bool moveBox)
+    {
+        _crop.Margin = _values.GetValueOrDefault("stabilize") == "1"
+            ? Math.Clamp(Settings.ParseDouble(_values.GetValueOrDefault("stabilize_room"), 0.02), 0, 0.25) : 0;
+        var before = (_crop.CenterX, _crop.CenterY, _crop.Height, _crop.FreeWidth);
+        if (moveBox)
+        {
+            _crop.Normalize();
+            if (before != (_crop.CenterX, _crop.CenterY, _crop.Height, _crop.FreeWidth))
+            {
+                CommitCrop();
+                return;
+            }
+        }
+        DrawCrop();
+    }
+
+    private void CommitCrop()
+    {
+        var c = CultureInfo.InvariantCulture;
+        _crop.Normalize();
+        OnValueChanged("crop_center_x", _crop.CenterX.ToString("0.####", c));
+        OnValueChanged("crop_center_y", _crop.CenterY.ToString("0.####", c));
+        OnValueChanged("crop_height", _crop.Height.ToString("0.####", c));
+        if (_crop.Aspect <= 0) OnValueChanged("crop_width", _crop.FreeWidth.ToString("0.####", c));
+        DrawCrop();
+    }
+
+    // ------------------------------------------------------------------ drawing
+
+    private void DrawCrop()
+    {
+        if (CropCanvas.ActualWidth < 4 || CropCanvas.ActualHeight < 4) return;
+
+        // The picture, as large as fits.
+        var aspect = _crop.ImageAspect;
+        var width = Math.Min(CropCanvas.ActualWidth, CropCanvas.ActualHeight * aspect);
+        var height = width / aspect;
+        _cropShown = new Rect((CropCanvas.ActualWidth - width) / 2, (CropCanvas.ActualHeight - height) / 2, width, height);
+        Place(_cropImage, _cropShown);
+        _cropPlaceholder.Visibility = _cropImage.Source == null ? Visibility.Visible : Visibility.Collapsed;
+        _cropPlaceholder.Text = "No picture yet.\nStart your game, then press \"Refresh picture\".";
+        _cropPlaceholder.Width = Math.Max(width - 40, 60);
+        Canvas.SetLeft(_cropPlaceholder, _cropShown.Left + 20);
+        Canvas.SetTop(_cropPlaceholder, _cropShown.Top + height / 2 - 30);
+
+        var (left, top, boxWidth, boxHeight) = _crop.Rect();
+        var box = new Rect(_cropShown.Left + left * width, _cropShown.Top + top * height, boxWidth * width, boxHeight * height);
+        var active = CropEnabled.IsChecked == true;
+
+        Place(_cropShades[0], new Rect(_cropShown.Left, _cropShown.Top, width, Math.Max(box.Top - _cropShown.Top, 0)));
+        Place(_cropShades[1], new Rect(_cropShown.Left, box.Bottom, width, Math.Max(_cropShown.Bottom - box.Bottom, 0)));
+        Place(_cropShades[2], new Rect(_cropShown.Left, box.Top, Math.Max(box.Left - _cropShown.Left, 0), box.Height));
+        Place(_cropShades[3], new Rect(box.Right, box.Top, Math.Max(_cropShown.Right - box.Right, 0), box.Height));
+        foreach (var shade in _cropShades) shade.Opacity = active ? 1 : 0.35;
+
+        Place(_cropFrame, box);
+        _cropFrame.StrokeDashArray = active ? null : [4, 3];
+        PlaceEdgeOutline(_cropShown);
+        var corners = new[] { box.TopLeft, box.TopRight, box.BottomLeft, box.BottomRight };
+        for (var i = 0; i < 4; i++)
+        {
+            Canvas.SetLeft(_cropHandles[i], corners[i].X - 6);
+            Canvas.SetTop(_cropHandles[i], corners[i].Y - 6);
+        }
+        _cropBadge.Text = _crop.Aspect > 0 ? (_values.GetValueOrDefault("crop_aspect") ?? "") : "Free";
+        _cropBadge.Visibility = active && box.Width > 70 && box.Height > 40 && _cropFrame.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+        _cropBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(_cropBadge, box.Right - _cropBadge.DesiredSize.Width - 8);
+        Canvas.SetTop(_cropBadge, box.Bottom - _cropBadge.DesiredSize.Height - 8);
+        for (var i = 0; i < 2; i++)
+        {
+            var x = box.Left + box.Width * (i + 1) / 3;
+            (_cropThirds[i].X1, _cropThirds[i].Y1, _cropThirds[i].X2, _cropThirds[i].Y2) = (x, box.Top, x, box.Bottom);
+            var y = box.Top + box.Height * (i + 1) / 3;
+            (_cropThirds[i + 2].X1, _cropThirds[i + 2].Y1, _cropThirds[i + 2].X2, _cropThirds[i + 2].Y2) = (box.Left, y, box.Right, y);
+        }
+        // The box's own centre, as a small cross in the box's colour: line it up with the centre mark or the visible edges.
+        var boxCentre = new Point(box.Left + box.Width / 2, box.Top + box.Height / 2);
+        (_cropBoxCross[0].X1, _cropBoxCross[0].Y1, _cropBoxCross[0].X2, _cropBoxCross[0].Y2) = (boxCentre.X, boxCentre.Y - 10, boxCentre.X, boxCentre.Y + 10);
+        (_cropBoxCross[1].X1, _cropBoxCross[1].Y1, _cropBoxCross[1].X2, _cropBoxCross[1].Y2) = (boxCentre.X - 10, boxCentre.Y, boxCentre.X + 10, boxCentre.Y);
+
+        var sideMiddles = new[] { new Point(box.Left, box.Top + box.Height / 2), new Point(box.Right, box.Top + box.Height / 2), new Point(box.Left + box.Width / 2, box.Top), new Point(box.Left + box.Width / 2, box.Bottom) };
+        for (var i = 0; i < 4; i++)
+        {
+            Canvas.SetLeft(_cropSideHandles[i], sideMiddles[i].X - _cropSideHandles[i].Width / 2);
+            Canvas.SetTop(_cropSideHandles[i], sideMiddles[i].Y - _cropSideHandles[i].Height / 2);
+        }
+
+        var locked = CropLocked.IsChecked == true;
+        foreach (var handle in _cropHandles) handle.Visibility = locked ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var handle in _cropSideHandles) handle.Visibility = locked || _crop.Aspect > 0 ? Visibility.Collapsed : Visibility.Visible;
+
+        // Gaze following: the tinted area is how far the box may travel, the two dashed lines bound the zone in which the
+        // gaze moves nothing.
+        var following = active && _values.GetValueOrDefault("crop_follow") == "vertical";
+        CropFollowExpander.Header = "Follow my gaze (up / down): " +
+            (_values.GetValueOrDefault("crop_follow") != "vertical" ? "off" : active ? "on" : "on, but the crop is off");
+        StabilizeExpander.Header = "Steady the picture: " +
+            (_values.GetValueOrDefault("stabilize") != "1" ? "off" : active ? "on" : "on, but the crop is off") + (LevelHorizon ? "; horizon level" : "");
+        _levelWarning.Visibility = LevelHorizon ? Visibility.Visible : Visibility.Collapsed;
+        // The steadying's room to move lies OUTSIDE everywhere the box can be: around the box, and - when the box follows
+        // the gaze - around the whole reach. So the reach stops short of the picture's top and bottom by that room (the
+        // layer does the same), and the band never leaves the picture.
+        var steadying = active && _crop.Margin > 0;
+        var steadyX = steadying ? _crop.Margin * _cropShown.Width : 0;
+        var steadyY = steadying ? _crop.Margin * _cropShown.Height : 0;
+        var reachShare = Math.Clamp(Settings.ParseDouble(_values.GetValueOrDefault("crop_follow_reach"), 1), 0, 10);
+        var reachTop = Math.Min(Math.Max(box.Top - reachShare * box.Height, _cropShown.Top + steadyY), box.Top);
+        var reachBottom = Math.Max(Math.Min(box.Bottom + reachShare * box.Height, _cropShown.Bottom - steadyY), box.Bottom);
+        var travelTop = following && reachShare > 0 ? reachTop : box.Top;
+        var travelBottom = following && reachShare > 0 ? reachBottom : box.Bottom;
+        var outer = new Rect(new Point(Math.Max(box.Left - steadyX, _cropShown.Left), Math.Max(travelTop - steadyY, _cropShown.Top)),
+                             new Point(Math.Min(box.Right + steadyX, _cropShown.Right), Math.Min(travelBottom + steadyY, _cropShown.Bottom)));
+        Place(_cropSteadyRoom[0], new Rect(outer.Left, outer.Top, outer.Width, Math.Max(travelTop - outer.Top, 0)));
+        Place(_cropSteadyRoom[1], new Rect(outer.Left, travelBottom, outer.Width, Math.Max(outer.Bottom - travelBottom, 0)));
+        Place(_cropSteadyRoom[2], new Rect(outer.Left, travelTop, Math.Max(box.Left - outer.Left, 0), Math.Max(travelBottom - travelTop, 0)));
+        Place(_cropSteadyRoom[3], new Rect(box.Right, travelTop, Math.Max(outer.Right - box.Right, 0), Math.Max(travelBottom - travelTop, 0)));
+        Place(_cropSteadyFrame, outer);
+        DrawTurnLimit(box, active, following && reachShare > 0 ? box.Top - reachTop : 0, following && reachShare > 0 ? reachBottom - box.Bottom : 0);
+        foreach (var band in _cropSteadyRoom) band.Visibility = steadying ? Visibility.Visible : Visibility.Collapsed;
+        _cropSteadyFrame.Visibility = steadying ? Visibility.Visible : Visibility.Collapsed;
+        Place(_cropReach[0], new Rect(box.Left, reachTop, box.Width, Math.Max(box.Top - reachTop, 0)));
+        Place(_cropReach[1], new Rect(box.Left, box.Bottom, box.Width, Math.Max(reachBottom - box.Bottom, 0)));
+        Place(_cropReachFrame, new Rect(box.Left, reachTop, box.Width, Math.Max(reachBottom - reachTop, 0)));
+        _cropReach[0].Visibility = _cropReach[1].Visibility = _cropReachFrame.Visibility =
+            following && reachShare > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var zone = Math.Clamp(Settings.ParseDouble(_values.GetValueOrDefault("crop_follow_deadzone"), 0.4), 0, 0.9);
+        for (var i = 0; i < 2; i++)
+        {
+            var y = box.Top + box.Height * (i == 0 ? (1 - zone) / 2 : (1 + zone) / 2);
+            (_cropStillZone[i].X1, _cropStillZone[i].Y1, _cropStillZone[i].X2, _cropStillZone[i].Y2) = (box.Left, y, box.Right, y);
+            _cropStillZone[i].Visibility = following ? Visibility.Visible : Visibility.Collapsed;
+        }
+        DrawCaptureOverlays(box, reachTop, reachBottom, following && reachShare > 0);
+
+        // The centre mark: straight ahead as the game reported it with the last picture, else the geometric middle.
+        var axisKnown = _appSettings.MirrorPictureAxisU is double axisU && _appSettings.MirrorPictureAxisV is double axisV;
+        var axis = axisKnown ? new Point(_appSettings.MirrorPictureAxisU!.Value, _appSettings.MirrorPictureAxisV!.Value) : new Point(0.5, 0.5);
+        var centre = new Point(_cropShown.Left + axis.X * _cropShown.Width, _cropShown.Top + axis.Y * _cropShown.Height);
+        (_cropCentreLines[0].X1, _cropCentreLines[0].Y1, _cropCentreLines[0].X2, _cropCentreLines[0].Y2) = (centre.X, _cropShown.Top, centre.X, _cropShown.Bottom);
+        (_cropCentreLines[1].X1, _cropCentreLines[1].Y1, _cropCentreLines[1].X2, _cropCentreLines[1].Y2) = (_cropShown.Left, centre.Y, _cropShown.Right, centre.Y);
+        Canvas.SetLeft(_cropCentreDot, centre.X - 3.5);
+        Canvas.SetTop(_cropCentreDot, centre.Y - 3.5);
+        var middle = new Point(_cropShown.Left + _cropShown.Width / 2, _cropShown.Top + _cropShown.Height / 2);
+        (_cropMiddleCross[0].X1, _cropMiddleCross[0].Y1, _cropMiddleCross[0].X2, _cropMiddleCross[0].Y2) = (middle.X, middle.Y - 8, middle.X, middle.Y + 8);
+        (_cropMiddleCross[1].X1, _cropMiddleCross[1].Y1, _cropMiddleCross[1].X2, _cropMiddleCross[1].Y2) = (middle.X - 8, middle.Y, middle.X + 8, middle.Y);
+        // The ring where the eyes were when the picture was taken, in the ring's colour and at its size (the picture's own
+        // eye only: the other eye's picture has no ring of its own).
+        var gazeKnown = _appSettings.MirrorPictureGazeU is double gazeU && _appSettings.MirrorPictureGazeV is double gazeV && !_appSettings.MirrorPictureShowOther;
+        if (gazeKnown)
+        {
+            var (r, g, b) = Settings.ParseColor(_values.GetValueOrDefault("color"));
+            _cropGazeRing.Stroke = new SolidColorBrush(Color.FromArgb(230, r, g, b));
+            var radius = Math.Max(_appSettings.MirrorPictureGazeRadius * _cropShown.Height, 3);
+            var at = new Point(_cropShown.Left + _appSettings.MirrorPictureGazeU!.Value * _cropShown.Width, _cropShown.Top + _appSettings.MirrorPictureGazeV!.Value * _cropShown.Height);
+            Place(_cropGazeRing, new Rect(at.X - radius, at.Y - radius, 2 * radius, 2 * radius));
+        }
+        ShowGaze.ToolTip = gazeKnown
+            ? "The ring on the spot you were looking at in this picture, at the ring's size and colour."
+            : "The ring on the spot you were looking at in the picture. This picture has none: it came without gaze, or it is the other eye's picture.";
+        ShowCentre.ToolTip = axisKnown
+            ? $"Straight ahead in this eye's image, from the headset's own projection: {axis.X:P1} across, {axis.Y:P1} down. The small faint cross is the image's geometric middle."
+            : "The image's middle. With a picture from a game, this mark moves to the spot where straight ahead lands in the eye image, from the headset's own projection.";
+        ApplyPictureToggles(locked);
+
+        // What OBS will get, in pixels - worked out the way the layer does (even sizes), Picture size included.
+        if (_cropFullWidth > 0 && _cropFullHeight > 0)
+        {
+            var pixelWidth = (int)(boxWidth * _cropFullWidth) & ~1;
+            var pixelHeight = (int)(boxHeight * _cropFullHeight) & ~1;
+            var share = 100.0 * pixelWidth * pixelHeight / ((double)_cropFullWidth * _cropFullHeight);
+            // The box's exact size goes into the sum, as in the mirror: its whole pixels are a hair off its shape.
+            var (sentWidth, sentHeight) = active ? (boxWidth * _cropFullWidth, boxHeight * _cropFullHeight) : (_cropFullWidth, _cropFullHeight);
+            var (outWidth, outHeight) = Settings.OutputSize(sentWidth, sentHeight, PictureSizeCap());
+            _obsGets = (outWidth, outHeight);
+            CropReadout.Text = active
+                ? $"OBS gets {outWidth} x {outHeight} px: the box, {pixelWidth} x {pixelHeight} px of the {_cropFullWidth} x {_cropFullHeight} eye image ({share:0} %)."
+                : $"Crop is off: OBS gets {outWidth} x {outHeight} px, the whole {_cropFullWidth} x {_cropFullHeight} image.";
+            RelabelPictureSize(sentWidth, sentHeight);
+        }
+        else
+        {
+            CropReadout.Text = active ? "Crop is on." : "Crop is off: OBS gets the whole eye image.";
+            RelabelPictureSize(0, 0);
+        }
+        UpdateMirrorObsCard();
+    }
+
+    private int PictureSizeCap() => int.TryParse(_values.GetValueOrDefault("output_max_side") ?? "3840", out var cap) ? cap : 3840;
+
+    /// <summary>
+    /// The Picture size choices name what this box gets (a 4:3 box at 4K: 2880 x 2160); without a picture, the frames
+    /// themselves. The selected item is chosen again so its box shows the new name (with _loading set, nothing is saved).
+    /// </summary>
+    private void RelabelPictureSize(double boxWidth, double boxHeight)
+    {
+        if (!_choiceCombos.TryGetValue("output_max_side", out var combo)) return;
+        var classes = new Dictionary<string, string> { ["3840"] = "4K", ["2560"] = "1440p", ["1920"] = "1080p" };
+        var changed = false;
+        foreach (var item in combo.Items.Cast<ComboBoxItem>())
+        {
+            var value = (string)item.Tag;
+            var cap = int.TryParse(value, out var number) ? number : 0;
+            string label;
+            if (boxWidth <= 0 || boxHeight <= 0)
+            {
+                label = Settings.All.First(d => d.Key == "output_max_side").Choices.First(c => c.Value == value).Label;
+            }
+            else
+            {
+                var (width, height) = Settings.OutputSize(boxWidth, boxHeight, cap);
+                label = cap < 64 ? $"As large as the box: {width} x {height}"
+                    : width == ((int)boxWidth & ~1) && height == ((int)boxHeight & ~1) ? $"{width} x {height} ({classes.GetValueOrDefault(value, value)}, the box as it is)"
+                    : $"{width} x {height} ({classes.GetValueOrDefault(value, value)})";
+            }
+            if ((string)item.Content == label) continue;
+            item.Content = label;
+            changed = true;
+        }
+        if (!changed || combo.SelectedItem is not ComboBoxItem selected) return;
+        var wasLoading = _loading;
+        _loading = true;
+        combo.SelectedItem = null;
+        combo.SelectedItem = selected;
+        _loading = wasLoading;
+    }
+
+    /// <summary>The Show toggles above the picture: each switched-off help is hidden, whatever DrawCrop worked out for it.</summary>
+    private void ApplyPictureToggles(bool locked)
+    {
+        static void Hide(bool show, params FrameworkElement[] elements)
+        {
+            if (show) return;
+            foreach (var element in elements) element.Visibility = Visibility.Collapsed;
+        }
+        var showBox = ShowCropBox.IsChecked == true;
+        foreach (var shade in _cropShades) shade.Visibility = showBox ? Visibility.Visible : Visibility.Collapsed;
+        _cropFrame.Visibility = showBox ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var third in _cropThirds) third.Visibility = showBox ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var line in _cropBoxCross) line.Visibility = showBox && ShowBoxCross.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        var gazeShown = ShowGaze.IsChecked == true && _appSettings.MirrorPictureGazeU is not null && !_appSettings.MirrorPictureShowOther;
+        _cropGazeRing.Visibility = gazeShown ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var handle in _cropHandles) handle.Visibility = showBox && !locked ? Visibility.Visible : Visibility.Collapsed;
+        // An aid shows when it is ticked in the Show list, and while its own section is open (or its card under the pointer).
+        Hide(ShowFollow.IsChecked == true || CropFollowExpander.IsExpanded, _cropReach[0], _cropReach[1], _cropReachFrame, _cropStillZone[0], _cropStillZone[1],
+             _cropTravelLines[0], _cropTravelLines[1], _cropTravelLabels[0], _cropTravelLabels[1]);
+        Hide(ShowSteady.IsChecked == true || StabilizeExpander.IsExpanded, _cropSteadyRoom[0], _cropSteadyRoom[1], _cropSteadyRoom[2], _cropSteadyRoom[3], _cropSteadyFrame);
+        Hide(ShowEdges.IsChecked == true || _edgeActive || ViewEdgesCard.IsMouseOver, _edgeOutline);
+        Hide(ShowTurnArea.IsChecked == true || StabilizeExpander.IsExpanded, _cropTurnLimit[0], _cropTurnLimit[1], _cropTurnLabel);
+        var showCentre = ShowCentre.IsChecked == true;
+        foreach (var line in _cropCentreLines) line.Visibility = showCentre ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var line in _cropMiddleCross) line.Visibility = showCentre ? Visibility.Visible : Visibility.Collapsed;
+        _cropCentreDot.Visibility = showCentre ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Level horizon: the box turned each way as far as the mirror lets it - inside the eye image - and a label with that
+    /// angle, and with the smaller one at the end of the follow's travel when it follows.
+    /// </summary>
+    private void DrawTurnLimit(Rect box, bool active, double travelUp, double travelDown)
+    {
+        var shown = active && LevelHorizon && box.Width > 2 && box.Height > 2;
+        foreach (var limit in _cropTurnLimit) limit.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        _cropTurnLabel.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        if (!shown) return;
+        var room = _cropShown;
+        double TurnAt(Rect at)
+        {
+            var r = Rect.Union(room, at);
+            var cx = at.Left + at.Width / 2;
+            var cy = at.Top + at.Height / 2;
+            return MaxTurn(at.Width / 2, at.Height / 2, Math.Min(cx - r.Left, r.Right - cx), Math.Min(cy - r.Top, r.Bottom - cy));
+        }
+        var here = TurnAt(box);
+        var centre = new Point(box.Left + box.Width / 2, box.Top + box.Height / 2);
+        for (var i = 0; i < 2; i++)
+        {
+            var angle = i == 0 ? here : -here;
+            var (cos, sin) = (Math.Cos(angle), Math.Sin(angle));
+            var points = new PointCollection();
+            foreach (var (dx, dy) in new[] { (-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0) })
+            {
+                var x = dx * box.Width / 2;
+                var y = dy * box.Height / 2;
+                points.Add(new Point(centre.X + x * cos - y * sin, centre.Y + x * sin + y * cos));
+            }
+            _cropTurnLimit[i].Points = points;
+        }
+        var text = here < 0.5 * Math.PI / 180
+            ? "No room to turn: the box already reaches the edge of the eye image. Make it smaller, or move it away from that edge"
+            : $"Holds the horizon level up to {here * 180 / Math.PI:0} degrees each way";
+        if (travelUp > 0 || travelDown > 0)
+        {
+            var atEnds = Math.Min(TurnAt(new Rect(box.Left, box.Top - travelUp, box.Width, box.Height)), TurnAt(new Rect(box.Left, box.Top + travelDown, box.Width, box.Height)));
+            if (atEnds < here - 0.005) text += $", {atEnds * 180 / Math.PI:0} at the end of the follow";
+        }
+        _cropTurnLabel.Text = text;
+        Canvas.SetLeft(_cropTurnLabel, box.Left + 6);
+        Canvas.SetTop(_cropTurnLabel, box.Top + 6);
+    }
+
+    private void OnPictureToggle(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _appSettings.ShowCropBox = ShowCropBox.IsChecked == true;
+        _appSettings.ShowFollow = ShowFollow.IsChecked == true;
+        _appSettings.ShowSteady = ShowSteady.IsChecked == true;
+        _appSettings.ShowTurnArea = ShowTurnArea.IsChecked == true;
+        _appSettings.ShowEdges = ShowEdges.IsChecked == true;
+        _appSettings.ShowCentre = ShowCentre.IsChecked == true;
+        _appSettings.ShowBoxCross = ShowBoxCross.IsChecked == true;
+        _appSettings.ShowGaze = ShowGaze.IsChecked == true;
+        _appSettings.Save();
+        DrawCrop();
+    }
+
+    private static void Place(FrameworkElement element, Rect rect)
+    {
+        Canvas.SetLeft(element, rect.Left);
+        Canvas.SetTop(element, rect.Top);
+        element.Width = Math.Max(rect.Width, 0);
+        element.Height = Math.Max(rect.Height, 0);
+    }
+
+    // ------------------------------------------------------------------ dragging
+
+    private Point ToFraction(Point canvasPoint) => new(
+        Math.Clamp((canvasPoint.X - _cropShown.Left) / Math.Max(_cropShown.Width, 1), 0, 1),
+        Math.Clamp((canvasPoint.Y - _cropShown.Top) / Math.Max(_cropShown.Height, 1), 0, 1));
+
+    private bool IsInsideCropBox(Point fraction)
+    {
+        var (left, top, width, height) = _crop.Rect();
+        return fraction.X >= left && fraction.X <= left + width && fraction.Y >= top && fraction.Y <= top + height;
+    }
+
+    /// <summary>
+    /// Free shape: the side under the pointer (within 7 px of it, along its length but clear of the corners, which take
+    /// precedence), or none. A fixed shape has no sides to drag: one side alone would change the shape.
+    /// </summary>
+    private CropBox.Side? CropSideAt(Point pointer)
+    {
+        if (_crop.Aspect > 0 || CropLocked.IsChecked == true) return null;
+        var (left, top, width, height) = _crop.Rect();
+        double x0 = _cropShown.Left + left * _cropShown.Width, x1 = x0 + width * _cropShown.Width;
+        double y0 = _cropShown.Top + top * _cropShown.Height, y1 = y0 + height * _cropShown.Height;
+        const double reach = 7, clear = 14;
+        var alongHeight = pointer.Y > y0 + clear && pointer.Y < y1 - clear;
+        var alongWidth = pointer.X > x0 + clear && pointer.X < x1 - clear;
+        if (alongHeight && Math.Abs(pointer.X - x0) <= reach) return CropBox.Side.Left;
+        if (alongHeight && Math.Abs(pointer.X - x1) <= reach) return CropBox.Side.Right;
+        if (alongWidth && Math.Abs(pointer.Y - y0) <= reach) return CropBox.Side.Top;
+        if (alongWidth && Math.Abs(pointer.Y - y1) <= reach) return CropBox.Side.Bottom;
+        return null;
+    }
+
+    private void OnCropMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (CropLocked.IsChecked == true) return;
+        var pointer = e.GetPosition(CropCanvas);
+        var (left, top, width, height) = _crop.Rect();
+        var corners = new[] { new Point(left, top), new Point(left + width, top), new Point(left, top + height), new Point(left + width, top + height) };
+        var fraction = ToFraction(pointer);
+
+        // A corner (within 14 px): resize, with the opposite corner as the anchor.
+        for (var i = 0; i < 4; i++)
+        {
+            var corner = new Point(_cropShown.Left + corners[i].X * _cropShown.Width, _cropShown.Top + corners[i].Y * _cropShown.Height);
+            if ((corner - pointer).Length > 14) continue;
+            _cropDrag = CropDrag.Resize;
+            _cropAnchor = corners[3 - i];
+            CropCanvas.CaptureMouse();
+            return;
+        }
+
+        // Free shape: a side drags on its own.
+        if (CropSideAt(pointer) is { } side)
+        {
+            _cropDrag = CropDrag.Side;
+            _cropSide = side;
+            CropCanvas.CaptureMouse();
+            return;
+        }
+
+        // Only a drag that starts inside the box moves it; a click anywhere else does nothing.
+        if (!IsInsideCropBox(fraction)) return;
+        _cropDrag = CropDrag.Move;
+        _cropAnchor = new Point(fraction.X - _crop.CenterX, fraction.Y - _crop.CenterY);
+        CropCanvas.CaptureMouse();
+    }
+
+    private void OnCropMouseMove(object sender, MouseEventArgs e)
+    {
+        var pointer = e.GetPosition(CropCanvas);
+        if (_cropDrag == CropDrag.None)
+        {
+            // Show what a click here would do.
+            if (CropLocked.IsChecked == true)
+            {
+                CropCanvas.Cursor = Cursors.Arrow;
+                return;
+            }
+            var (left, top, width, height) = _crop.Rect();
+            var corners = new[] { new Point(left, top), new Point(left + width, top), new Point(left, top + height), new Point(left + width, top + height) };
+            var cursor = CropSideAt(pointer) is { } side ? (side is CropBox.Side.Left or CropBox.Side.Right ? Cursors.SizeWE : Cursors.SizeNS)
+                : IsInsideCropBox(ToFraction(pointer)) ? Cursors.SizeAll : Cursors.Arrow;
+            for (var i = 0; i < 4; i++)
+            {
+                var corner = new Point(_cropShown.Left + corners[i].X * _cropShown.Width, _cropShown.Top + corners[i].Y * _cropShown.Height);
+                if ((corner - pointer).Length <= 14) cursor = i is 0 or 3 ? Cursors.SizeNWSE : Cursors.SizeNESW;
+            }
+            CropCanvas.Cursor = cursor;
+            return;
+        }
+
+        var fraction = ToFraction(pointer);
+        if (_cropDrag == CropDrag.Move) _crop.MoveTo(fraction.X - _cropAnchor.X, fraction.Y - _cropAnchor.Y);
+        else if (_cropDrag == CropDrag.Side) _crop.ResizeFromSide(_cropSide, _cropSide is CropBox.Side.Left or CropBox.Side.Right ? fraction.X : fraction.Y);
+        else _crop.ResizeFromCorner(_cropAnchor.X, _cropAnchor.Y, fraction.X, fraction.Y);
+        CommitCrop();
+    }
+}

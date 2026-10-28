@@ -13,7 +13,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     namespace {
 
@@ -504,4 +504,4 @@ namespace gaze_mirror {
         _block->sequence = ++_sequence; // Even: done.
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

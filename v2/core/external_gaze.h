@@ -1,5 +1,5 @@
 // StreamMirror VR - core: eye gaze handed in from outside (VRChat's OSC output, received by the helper), see
-// protocol/gaze_mirror_protocol.h (ExternalGaze). Read only when a frame needs it; opening the block is retried now
+// protocol/stream_mirror_protocol.h (ExternalGaze). Read only when a frame needs it; opening the block is retried now
 // and then, never on a timer.
 #pragma once
 
@@ -10,9 +10,9 @@
 #endif
 #include <windows.h>
 
-#include "../protocol/gaze_mirror_protocol.h"
+#include "../protocol/stream_mirror_protocol.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     struct ExternalGazeSample {
         bool valid = false;   // Fresh, and at least one eye valid.
@@ -47,4 +47,4 @@ namespace gaze_mirror {
         int _retryIn = 0;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

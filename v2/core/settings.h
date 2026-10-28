@@ -16,7 +16,7 @@
 #include "gaze_grid.h"
 #include "log.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     enum class Style { Ring = 0, Glow = 1, Dot = 2, Spotlight = 3, Bubble = 4, Solid = 5, Heatmap = 6, Ghost = 7 };
 
@@ -188,4 +188,4 @@ namespace gaze_mirror {
     // and any crop_* / stabilize* keys, written by the settings app.
     std::wstring ProfilesFilePath();
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

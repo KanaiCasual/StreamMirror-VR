@@ -22,9 +22,9 @@
 #include <winsock2.h>
 #include <windows.h>
 
-#include "../protocol/gaze_mirror_protocol.h"
+#include "../protocol/stream_mirror_protocol.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     class RawGazeLink {
       public:
@@ -67,4 +67,4 @@ namespace gaze_mirror {
         std::vector<std::string> _addresses; // The distinct addresses seen (the first 20), for the log.
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

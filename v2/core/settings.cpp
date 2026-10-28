@@ -3,10 +3,10 @@
 #include "settings.h"
 #include "log.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     namespace {
-        constexpr wchar_t SignalName[] = L"GazeOverlay.SettingsSignal";
+        constexpr wchar_t SignalName[] = L"StreamMirror.SettingsSignal";
         constexpr uint32_t SignalMagic = 0x53534F47; // 'GOSS'
 
         std::string Trim(const std::string& text) {
@@ -334,4 +334,4 @@ namespace gaze_mirror {
         MoveFileExW(temporary.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING);
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

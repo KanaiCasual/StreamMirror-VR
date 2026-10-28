@@ -13,7 +13,7 @@
 #include "settings.h"
 #include "snapshot.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     // How the eye tracker's answer arrives.
     struct GazeFrame {
@@ -167,4 +167,4 @@ namespace gaze_mirror {
         int _logRaw = 0;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

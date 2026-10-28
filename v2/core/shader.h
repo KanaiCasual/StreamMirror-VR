@@ -2,7 +2,7 @@
 // the same pass that crops and scales the picture.
 #pragma once
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     constexpr char ShaderSource[] = R"_(
 cbuffer C : register(b0)
@@ -258,4 +258,4 @@ float4 psSnapshot(V i) : SV_Target
 }
 )_";
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

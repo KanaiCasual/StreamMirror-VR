@@ -12,7 +12,7 @@
 
 #include "../core/pipeline.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     class HeadsetMarker {
       public:
@@ -45,4 +45,4 @@ namespace gaze_mirror {
         int _logProblem = 0;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

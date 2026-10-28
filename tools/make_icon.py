@@ -1,165 +1,113 @@
-# Draws the StreamMirror VR logo from code (no image libraries needed) and writes:
-#   <out_dir>\icon.ico         multi-size Windows icon (16..128 as 32-bit bitmaps, 256 as PNG)
-#   <out_dir>\logo-256.png     the 256 px version
-#   <out_dir>\logo-concepts.png  three concepts side by side, to choose from
-# Usage: python make_icon.py <out_dir> [concept A|B|C]
-#
-# Every size is drawn on its own (with a heavier stroke at small sizes) rather than scaled down, so 16 px stays legible.
-import math, struct, sys, zlib
+"""StreamMirror VR icon (Reflection tile, dot on the mirror line, cyan-leaning blue): drawings plus the final PNGs and .ico.
+Run it to rebuild dist/logo/final. make_compare.py borrows the drawing functions for study sheets."""
+import math, os, subprocess
+from PIL import Image
 
-def clamp(x, a=0.0, b=1.0): return a if x < a else b if x > b else x
-def mix(a, b, t): return a + (b - a) * t
-def smooth(a, b, x):
-    t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t)
-def hexcol(h):
-    # Hex colours are sRGB; all blending below happens in linear light and is converted back on output.
-    return tuple((int(h[i:i + 2], 16) / 255) ** 2.2 for i in (1, 3, 5))
+HERE = os.path.dirname(os.path.abspath(__file__))
+EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+BLUE, BLUE2, DOT = '#2E9BFF', '#1E6FE0', 'line'
+ICE, RED = '#C9D6FF', '#FF3B4D'
+TILE_TOP, TILE_BOTTOM = '#17213F', '#10162C'
 
-BG_TOP, BG_BOTTOM = hexcol('#1C2432'), hexcol('#0D1015')
-CYAN, BLUE, WHITE = hexcol('#38DCFF'), hexcol('#2F78FF'), hexcol('#D8F8FF')
 
-def sd_round_box(x, y, half, r):
-    qx, qy = abs(x) - half + r, abs(y) - half + r
-    return math.hypot(max(qx, 0), max(qy, 0)) + min(max(qx, qy), 0) - r
+def squircle(x, y, size, n=5.0, steps=160):
+    """A continuous-corner tile (superellipse), the shape Windows 11 and macOS tiles use."""
+    a = size / 2
+    pts = []
+    for i in range(steps):
+        t = 2 * math.pi * i / steps
+        c, s = math.cos(t), math.sin(t)
+        pts.append((x + a + a * math.copysign(abs(c) ** (2 / n), c), y + a + a * math.copysign(abs(s) ** (2 / n), s)))
+    return 'M' + 'L'.join(f'{px:.2f} {py:.2f}' for px, py in pts) + 'Z'
 
-def sd_tapered_capsule(px, py, bx, by, ra, rb):
-    h = bx * bx + by * by
-    qx = abs((px * by - py * bx) / h); qy = (px * bx + py * by) / h
-    b = ra - rb; cx, cy = math.sqrt(max(h - b * b, 0.0)), b
-    k = cx * qy - cy * qx; m = cx * qx + cy * qy; n = qx * qx + qy * qy
-    if k < 0: return math.sqrt(h * n) - ra
-    if k > cx: return math.sqrt(h * (n + 1 - 2 * qy)) - rb
-    return m - ra
 
-def over(dst, src, a):
-    return tuple(mix(d, s, a) for d, s in zip(dst, src))
+def master(blue, blue2, dot):
+    """256 px drawing: tapered visor with strap stubs, mirror line, shortening reflection lines."""
+    strap = blue2
+    s = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256"><defs>'
+         f'<linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{TILE_TOP}"/><stop offset="1" stop-color="{TILE_BOTTOM}"/></linearGradient>'
+         f'<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{blue}"/><stop offset="1" stop-color="{blue2}"/></linearGradient></defs>'
+         f'<path d="{squircle(16, 16, 224)}" fill="url(#t)"/>'
+         f'<path d="{squircle(17, 17, 222)}" fill="none" stroke="#FFFFFF" stroke-opacity="0.09" stroke-width="2"/>'
+         '<g transform="translate(0 -3)">'
+         f'<rect x="46" y="80" width="18" height="28" rx="8" fill="{strap}"/><rect x="192" y="80" width="18" height="28" rx="8" fill="{strap}"/>'
+         '<path d="M80 60H176Q196 60 196 80L192 104Q190 126 168 126H150Q144 126 140 116Q134 102 128 102Q122 102 116 116'
+         'Q112 126 106 126H88Q66 126 64 104L60 80Q60 60 80 60Z" fill="url(#g)"/>')
+    if dot == 'line':
+        s += (f'<rect x="52" y="139" width="58" height="4" rx="2" fill="{ICE}"/><rect x="146" y="139" width="58" height="4" rx="2" fill="{ICE}"/>'
+              f'<circle cx="128" cy="141" r="11" fill="{RED}"/>')
+    else:
+        s += (f'<rect x="52" y="139" width="152" height="4" rx="2" fill="{ICE}"/>'
+              f'<circle cx="166" cy="86" r="15" fill="{TILE_BOTTOM}"/><circle cx="166" cy="86" r="9" fill="{RED}"/>')
+    for y, w, h, op in ((153, 136, 9, .55), (167, 108, 7, .40), (179, 80, 6, .28), (190, 52, 5, .18)):
+        s += f'<rect x="{128 - w / 2}" y="{y}" width="{w}" height="{h}" rx="{h / 2}" fill="{blue}" opacity="{op}"/>'
+    return s + '</g></svg>'
 
-def shade(concept, x, y, size):
-    """x, y in -1..1 (y down). Returns (r, g, b, a) straight alpha."""
-    small = size <= 32
-    aa = 2.2 / size                                   # roughly one pixel, in these units
-    # Rounded dark tile.
-    d_bg = sd_round_box(x, y, 0.96, 0.44)
-    alpha = 1 - smooth(-aa, aa, d_bg)
-    if alpha <= 0: return (0, 0, 0, 0)
-    col = tuple(mix(t, b, (y + 1) / 2) for t, b in zip(BG_TOP, BG_BOTTOM))
-    accent = tuple(mix(c, b, clamp((x - y) * 0.5 + 0.5)) for b, c in zip(CYAN, BLUE))   # blue lower-left -> cyan upper-right
 
-    if concept == 'A':       # the overlay itself: ring with a teardrop tail, pupil dot in the middle
-        cx, cy, R = 0.16, -0.14, 0.43
-        stroke = 0.17 if small else 0.125
-        px, py = x - cx, y - cy
-        tipx, tipy = -0.80 - cx, 0.78 - cy
-        d_ring = abs(math.hypot(px, py) - R) - stroke / 2
-        d_disc = math.hypot(px, py) - (R + stroke / 2)
-        d_tail = sd_tapered_capsule(px, py, tipx, tipy, R * 0.97, 0.03)
-        tail_len = math.hypot(tipx, tipy)
-        along = clamp(((px * tipx + py * tipy) / tail_len - R) / (tail_len - R))
-        if not small:
-            # Glow hugs the ring on both sides, and the tail only outside the ring: the inside stays clear, like the overlay.
-            glow_ring = math.exp(-max(d_ring, 0) / 0.07)
-            glow_tail = math.exp(-max(d_tail, 0) / 0.09) * smooth(-aa, aa, d_disc)
-            col = over(col, accent, max(glow_ring, glow_tail) * 0.22)
-        tail_a = (1 - smooth(-aa, aa, d_tail)) * smooth(-aa, aa, d_disc) * mix(0.85, 0.12, along ** 0.8)
-        col = over(col, accent, tail_a)
-        col = over(col, accent, 1 - smooth(-aa, aa, d_ring))
-        col = over(col, WHITE, 1 - smooth(-aa, aa, math.hypot(px, py) - (0.15 if small else 0.12)))
-    elif concept == 'B':     # calibration brackets around a ring
-        R, stroke = 0.40, (0.16 if small else 0.11)
-        d_ring = abs(math.hypot(x, y) - R) - stroke / 2
-        col = over(col, accent, 1 - smooth(-aa, aa, d_ring))
-        col = over(col, WHITE, 1 - smooth(-aa, aa, math.hypot(x, y) - 0.11))
-        arm, off, w = 0.30, 0.70, (0.13 if small else 0.09)
-        rounding = w * 0.3
-        def bar(px, py, x0, x1, y0, y1):
-            # Rounded rectangle spanning x0..x1, y0..y1.
-            cx, cy, hx, hy = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 - rounding, (y1 - y0) / 2 - rounding
-            dx, dy = abs(px - cx) - hx, abs(py - cy) - hy
-            return math.hypot(max(dx, 0), max(dy, 0)) + min(max(dx, dy), 0) - rounding
-        for sx in (-1, 1):
-            for sy in (-1, 1):
-                qx, qy = (x * sx - off), (y * sy - off)       # corner-local: towards the centre is negative
-                # Both arms run through the corner block itself, so the outer corner is solid rather than notched.
-                d_h = bar(qx, qy, -arm, w / 2, -w / 2, w / 2)
-                d_v = bar(qx, qy, -w / 2, w / 2, -arm, w / 2)
-                col = over(col, accent, (1 - smooth(-aa, aa, min(d_h, d_v))) * 0.9)
-    else:                    # an eye: almond outline with the ring as its iris
-        R, stroke = 0.34, (0.15 if small else 0.10)
-        # Almond = intersection of two big circles.
-        off, big = 0.62, 1.02
-        d_lens = max(math.hypot(x, y - off) - big, math.hypot(x, y + off) - big)
-        d_outline = abs(d_lens) - stroke * 0.42
-        col = over(col, WHITE, (1 - smooth(-aa, aa, d_outline)) * 0.9)
-        d_ring = abs(math.hypot(x, y) - R) - stroke / 2
-        col = over(col, accent, 1 - smooth(-aa, aa, d_ring))
-        col = over(col, WHITE, 1 - smooth(-aa, aa, math.hypot(x, y) - 0.10))
-    return (*col, alpha)
+def small(n, blue, blue2, dot):
+    """Hand-placed drawings on the pixel grid for 32, 24 and 16 px."""
+    k = {32: dict(r=7, stub=(3, 9, 3, 5), top=(5, 27, 6), bot=(6, 26, 16), notch=(3, 3), line=(4, 19, 24, 1),
+                  dot_line=(16, 19.5, 2.4), lens=(21, 10, 2.6, 1.6), bars=[(7, 22, 18, 2, .55), (10, 25, 12, 1, .4), (12, 27, 8, 1, .25)]),
+             24: dict(r=5, stub=(2, 7, 2, 3), top=(4, 20, 4), bot=(5, 19, 12), notch=(2, 2), line=(3, 14, 18, 1),
+                      dot_line=(12, 14.5, 1.9), lens=(15.5, 7.5, 2, 1.25), bars=[(5, 16, 14, 1, .55), (8, 18, 8, 1, .35)]),
+             16: dict(r=3, stub=(1, 4, 1, 3), top=(2, 14, 3), bot=(3, 13, 8), notch=(1.5, 1.5), line=(2, 10, 12, 1),
+                      dot_line=(8, 10.5, 1.5), lens=(10.5, 5, 1.5, 1), bars=[(4, 12, 8, 1, .5)])}[n]
+    (tx0, tx1, ty), (bx0, bx1, by), (nw, nh) = k['top'], k['bot'], k['notch']
+    c, r = n / 2, 2 if n > 16 else 1
+    body = (f'M{tx0 + r} {ty}H{tx1 - r}Q{tx1} {ty} {tx1} {ty + r}L{bx1} {by - r}Q{bx1} {by} {bx1 - r} {by}H{c + nw}'
+            f'L{c + nw * 0.4} {by - nh}H{c - nw * 0.4}L{c - nw} {by}H{bx0 + r}Q{bx0} {by} {bx0} {by - r}L{tx0} {ty + r}Q{tx0} {ty} {tx0 + r} {ty}Z')
+    sx, sy, sw, sh = k['stub']
+    s = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {n} {n}" width="{n}" height="{n}">'
+         f'<defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{TILE_TOP}"/><stop offset="1" stop-color="{TILE_BOTTOM}"/></linearGradient></defs>'
+         f'<rect width="{n}" height="{n}" rx="{k["r"]}" fill="url(#t)"/>'
+         f'<rect x="{sx}" y="{sy}" width="{sw}" height="{sh}" fill="{blue2}"/><rect x="{n - sx - sw}" y="{sy}" width="{sw}" height="{sh}" fill="{blue2}"/>'
+         f'<path d="{body}" fill="{blue}"/>')
+    lx, ly, lw, lh = k['line']
+    if dot == 'line':
+        dx, dy, dr = k['dot_line']
+        gap = dr + (1 if n > 16 else 0.5)
+        s += (f'<rect x="{lx}" y="{ly}" width="{dx - gap - lx}" height="{lh}" fill="{ICE}"/>'
+              f'<rect x="{dx + gap}" y="{ly}" width="{lx + lw - dx - gap}" height="{lh}" fill="{ICE}"/>'
+              f'<circle cx="{dx}" cy="{dy}" r="{dr}" fill="{RED}"/>')
+    else:
+        ex, ey, er, ir = k['lens']
+        s += (f'<rect x="{lx}" y="{ly}" width="{lw}" height="{lh}" fill="{ICE}"/>'
+              f'<circle cx="{ex}" cy="{ey}" r="{er}" fill="{TILE_BOTTOM}"/><circle cx="{ex}" cy="{ey}" r="{ir}" fill="{RED}"/>')
+    for bx, by_, bw, bh, op in k['bars']:
+        s += f'<rect x="{bx}" y="{by_}" width="{bw}" height="{bh}" fill="{blue}" opacity="{op}"/>'
+    return s + '</svg>'
 
-def render(concept, size, samples=4):
-    px = []
-    for j in range(size):
-        row = []
-        for i in range(size):
-            acc = [0.0, 0.0, 0.0, 0.0]
-            for sj in range(samples):
-                for si in range(samples):
-                    x = ((i + (si + 0.5) / samples) / size) * 2 - 1
-                    y = ((j + (sj + 0.5) / samples) / size) * 2 - 1
-                    r, g, b, a = shade(concept, x, y, size)
-                    acc[0] += r * a; acc[1] += g * a; acc[2] += b * a; acc[3] += a
-            a = acc[3] / (samples * samples)
-            if a > 0:
-                rgb = [clamp(c / acc[3]) ** (1 / 2.2) for c in acc[:3]]     # linear -> sRGB
-            else:
-                rgb = [0, 0, 0]
-            row.append((int(rgb[0] * 255 + 0.5), int(rgb[1] * 255 + 0.5), int(rgb[2] * 255 + 0.5), int(a * 255 + 0.5)))
-        px.append(row)
-    return px
 
-def png_bytes(pixels):
-    h, w = len(pixels), len(pixels[0])
-    raw = b''.join(b'\x00' + bytes(c for p in row for c in p) for row in pixels)
-    def chunk(tag, data): return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xFFFFFFFF)
-    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b'')
 
-def dib_bytes(pixels):
-    """32-bit bottom-up DIB + empty AND mask, the classic ICO image format."""
-    h, w = len(pixels), len(pixels[0])
-    header = struct.pack('<IiiHHIIiiII', 40, w, h * 2, 1, 32, 0, 0, 0, 0, 0, 0)
-    body = b''.join(bytes(c for (r, g, b, a) in row for c in (b, g, r, a)) for row in reversed(pixels))
-    mask_row = b'\x00' * (((w + 31) // 32) * 4)
-    return header + body + mask_row * h
 
-def write_ico(path, images):
-    entries, blobs, offset = [], [], 6 + 16 * len(images)
-    for size, data in images:
-        entries.append(struct.pack('<BBBBHHII', size % 256, size % 256, 0, 0, 1, 32, len(data), offset))
-        blobs.append(data); offset += len(data)
-    open(path, 'wb').write(struct.pack('<HHH', 0, 1, len(images)) + b''.join(entries) + b''.join(blobs))
+def build(out=os.path.join(os.path.dirname(HERE), 'dist', 'logo', 'final')):
+    os.makedirs(out, exist_ok=True)
+    for old in os.listdir(out):
+        if old.startswith('icon'):
+            os.remove(os.path.join(out, old))
+    drawings = {256: master(BLUE, BLUE2, DOT), 32: small(32, BLUE, BLUE2, DOT), 24: small(24, BLUE, BLUE2, DOT), 16: small(16, BLUE, BLUE2, DOT)}
+    for n, text in drawings.items():
+        open(os.path.join(out, f'icon-{n}.svg'), 'w', encoding='utf-8').write(text)
+    # Each size from the drawing meant for it: 16/20 from 16, 24 from 24, 32/40 from 32, the rest from the master.
+    sizes = {16: 16, 20: 16, 24: 24, 32: 32, 40: 32, 48: 256, 64: 256, 96: 256, 128: 256, 256: 256}
+    x, cells, places = 0, '', {}
+    for size, src in sizes.items():
+        cells += f'<img src="icon-{src}.svg" width="{size}" height="{size}" style="position:absolute;left:{x}px;top:0">'
+        places[size] = x
+        x += size + 8
+    page, shot = os.path.join(out, '_render.html'), os.path.join(out, '_render.png')
+    open(page, 'w', encoding='utf-8').write(f'<!doctype html><body style="margin:0;background:transparent">{cells}</body>')
+    subprocess.run([EDGE, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--allow-file-access-from-files',
+                    '--default-background-color=00000000', f'--window-size={x + 100},{256 + 240}', f'--screenshot={shot}',
+                    'file:///' + page.replace('\\', '/')], check=True, capture_output=True)
+    strip = Image.open(shot).convert('RGBA')
+    images = [strip.crop((left, 0, left + size, size)) for size, left in places.items()]
+    for size, im in zip(sizes, images):
+        im.save(os.path.join(out, f'icon-{size}.png'))
+    images[-1].save(os.path.join(out, 'icon.ico'), format='ICO', sizes=[(s, s) for s in sizes], append_images=images[:-1])
+    os.remove(page); os.remove(shot)
+    return sorted(Image.open(os.path.join(out, 'icon.ico')).info['sizes'])
 
-out_dir = sys.argv[1]
-concept = sys.argv[2] if len(sys.argv) > 2 else 'A'
 
-images = []
-for size in (16, 20, 24, 32, 40, 48, 64, 128, 256):
-    pixels = render(concept, size)
-    images.append((size, png_bytes(pixels) if size == 256 else dib_bytes(pixels)))
-    if size == 256:
-        open(out_dir + '\\logo-256.png', 'wb').write(png_bytes(pixels))
-write_ico(out_dir + '\\icon.ico', images)
-
-# Concept sheet: each concept at 256, 48, 32 and 16 px on a mid-grey strip, the way it will really be seen.
-sheet_w, sheet_h = 3 * 400, 300
-sheet = [[(58, 61, 68, 255)] * sheet_w for _ in range(sheet_h)]
-def blit(pixels, ox, oy):
-    for j, row in enumerate(pixels):
-        for i, (r, g, b, a) in enumerate(row):
-            br, bg, bb, _ = sheet[oy + j][ox + i]
-            sheet[oy + j][ox + i] = ((r * a + br * (255 - a)) // 255, (g * a + bg * (255 - a)) // 255, (b * a + bb * (255 - a)) // 255, 255)
-for n, c in enumerate('ABC'):
-    blit(render(c, 256), n * 400 + 16, 22)
-    blit(render(c, 48), n * 400 + 292, 22)
-    blit(render(c, 32), n * 400 + 292, 90)
-    blit(render(c, 16), n * 400 + 292, 142)
-open(out_dir + '\\logo-concepts.png', 'wb').write(png_bytes(sheet))
-print('ok')
+if __name__ == '__main__':
+    print('icon.ico sizes:', build())

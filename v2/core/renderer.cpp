@@ -6,7 +6,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     Renderer::~Renderer() {
         stop();
@@ -339,4 +339,4 @@ namespace gaze_mirror {
         return true;
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

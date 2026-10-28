@@ -2,7 +2,7 @@
 
 #include "log.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     namespace {
         std::mutex g_lock;
@@ -87,4 +87,4 @@ namespace gaze_mirror {
         va_end(arguments);
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

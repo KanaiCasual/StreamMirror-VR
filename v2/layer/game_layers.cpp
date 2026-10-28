@@ -3,7 +3,7 @@
 #include "../core/log.h"
 #include "game_layers.h"
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     namespace {
         struct Watch {
@@ -108,14 +108,14 @@ namespace gaze_mirror::layer {
         return t_frame;
     }
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer
 
 // The manifest XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers.json names this function in place of the usual one.
 extern "C" __declspec(dllexport) XrResult XRAPI_CALL xrNegotiateLoaderApiLayerInterface_GameLayers(const XrNegotiateLoaderInfo* loaderInfo,
                                                                                                     const char* layerName,
                                                                                                     XrNegotiateApiLayerRequest* request) {
-    using namespace gaze_mirror::layer;
-    gaze_mirror::SetLogName(L"streammirror-layer");
+    using namespace stream_mirror::layer;
+    stream_mirror::SetLogName(L"streammirror-layer");
     if (!loaderInfo || !layerName || !request || loaderInfo->structType != XR_LOADER_INTERFACE_STRUCT_LOADER_INFO ||
         loaderInfo->structVersion != XR_LOADER_INFO_STRUCT_VERSION || loaderInfo->structSize != sizeof(XrNegotiateLoaderInfo) ||
         request->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_REQUEST || request->structVersion != XR_API_LAYER_INFO_STRUCT_VERSION ||
@@ -123,7 +123,7 @@ extern "C" __declspec(dllexport) XrResult XRAPI_CALL xrNegotiateLoaderApiLayerIn
         loaderInfo->minInterfaceVersion > XR_CURRENT_LOADER_API_LAYER_VERSION ||
         loaderInfo->maxInterfaceVersion < XR_CURRENT_LOADER_API_LAYER_VERSION || loaderInfo->minApiVersion > XR_CURRENT_API_VERSION ||
         loaderInfo->maxApiVersion < XR_API_VERSION_1_0) {
-        gaze_mirror::Log("game layers: negotiation refused (unexpected structures, name or versions)");
+        stream_mirror::Log("game layers: negotiation refused (unexpected structures, name or versions)");
         return XR_ERROR_INITIALIZATION_FAILED;
     }
     request->layerInterfaceVersion = XR_CURRENT_LOADER_API_LAYER_VERSION;

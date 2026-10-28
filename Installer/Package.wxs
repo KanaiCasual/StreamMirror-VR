@@ -7,8 +7,8 @@
 
     Everything is declarative - files and registry values that Windows Installer (msiexec) puts in place and removes
       again. The custom actions are WiX's stock ones ("print the licence", and on uninstall Windows' reg.exe taking out the
-      app's Start with Windows entry) and two runs of the app after an install: --order-layers (the OpenXR layer order)
-      and --fix-startup (Start with Windows after the rename). This package never edits another product's registry entries.
+      app's Start with Windows entry) and two runs of the app after an install: one that puts the OpenXR layer list in
+      order (OrderLayers), and one that moves Start with Windows over after the rename (FixStartup). This package never edits another product's registry entries.
   -->
   <Package Name="StreamMirror VR" Manufacturer="Unofficial community build" Version="$(var.ProductVersion)"
            UpgradeCode="DF6B5D59-1894-4633-8E5E-713CC3B92910" Scope="perMachine" Compressed="yes">
@@ -31,7 +31,7 @@
     <Property Id="REINSTALLMODE" Value="amus" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <Icon Id="AppIcon.ico" SourceFile="..\GazeOverlayApp\Assets\icon.ico" />
+    <Icon Id="AppIcon.ico" SourceFile="..\StreamMirrorApp\Assets\icon.ico" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
 
     <!--
@@ -174,8 +174,8 @@
       <Custom Action="FixStartup" After="OrderLayers" Condition="NOT REMOVE = &quot;ALL&quot;" />
     </InstallExecuteSequence>
 
-    <!-- Pages: GazeUI.wxs. Pictures: tools\make_installer_art.py draws them from the app logo. -->
-    <UIRef Id="GazeOverlayUI" />
+    <!-- Pages: StreamMirrorUI.wxs. Pictures: tools\make_installer_art.py draws them from the app logo. -->
+    <UIRef Id="StreamMirrorUI" />
     <WixVariable Id="WixUIDialogBmp" Value="Assets\dialog.bmp" />
     <WixVariable Id="WixUIBannerBmp" Value="Assets\banner.bmp" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="Open &quot;StreamMirror VR&quot; from the Start menu to set it up. In OBS, add a &quot;StreamMirror VR&quot; source to your scene. If the Status page reports the layer order, press its Fix order button. Run this installer again for Repair and Uninstall." />

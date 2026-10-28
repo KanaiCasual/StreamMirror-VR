@@ -26,7 +26,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     struct RuntimeGaze::Calls {
         PFN_xrGetInstanceProcAddr get = nullptr;
@@ -318,7 +318,7 @@ namespace gaze_mirror {
         if (XR_FAILED(result)) return fail("it will not have a second program", result);
 
         XrActionSetCreateInfo setInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
-        strcpy_s(setInfo.actionSetName, "gaze_mirror");
+        strcpy_s(setInfo.actionSetName, "stream_mirror");
         strcpy_s(setInfo.localizedActionSetName, "StreamMirror VR");
         XrActionSet actionSet = XR_NULL_HANDLE;
         XrAction action = XR_NULL_HANDLE;
@@ -509,4 +509,4 @@ namespace gaze_mirror {
         _running = false;
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

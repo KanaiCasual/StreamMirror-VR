@@ -5,7 +5,7 @@
 #include <cstdarg>
 #include <string>
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     // Chooses the file. `name` is used as %LocalAppData%\StreamMirror\<name>.log; the environment variable
     // STREAMMIRROR_LOG_FILE (tests) wins over it. The previous log of the same name is kept once as ".previous".
@@ -21,4 +21,4 @@ namespace gaze_mirror {
     // For things that would otherwise be written every frame: only the first `limit` times.
     void LogFewTimes(int& counter, int limit, const char* format, ...);
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

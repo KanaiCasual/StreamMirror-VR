@@ -3,7 +3,7 @@
 #include "log.h"
 #include "snapshot.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     SnapshotService::~SnapshotService() {
         if (_block) UnmapViewOfFile(_block);
@@ -102,4 +102,4 @@ namespace gaze_mirror {
         Log("snapshot: %u x %u of %d x %d, eye %d%s", width, height, first->fullWidth(), first->fullHeight(), firstEye, second ? " + the other eye" : "");
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

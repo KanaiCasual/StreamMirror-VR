@@ -36,7 +36,7 @@
 #include "vrchat_osc.h"
 
 using Microsoft::WRL::ComPtr;
-using namespace gaze_mirror;
+using namespace stream_mirror;
 
 namespace {
 

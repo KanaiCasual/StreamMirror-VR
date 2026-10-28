@@ -4,7 +4,7 @@
 
 #include <cstring>
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     ExternalGazeReader::~ExternalGazeReader() {
         close();
@@ -71,4 +71,4 @@ namespace gaze_mirror {
         return sample;
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

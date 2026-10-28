@@ -6,7 +6,7 @@
 
 #include "../core/renderer.h"
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     class Marker {
       public:
@@ -59,4 +59,4 @@ namespace gaze_mirror::layer {
         int _logProblem = 0;
     };
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

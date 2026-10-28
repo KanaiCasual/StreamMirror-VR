@@ -5,7 +5,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     namespace {
         constexpr DXGI_FORMAT OutputFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -271,4 +271,4 @@ namespace gaze_mirror {
         }
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

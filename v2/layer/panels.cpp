@@ -5,7 +5,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     namespace {
         // The four corners come in clip space (w = the distance ahead), so the picture is interpolated with perspective.
@@ -201,4 +201,4 @@ float4 ps(V i) : SV_Target {
         return true;
     }
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

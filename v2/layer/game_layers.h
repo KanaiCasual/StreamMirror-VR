@@ -4,7 +4,7 @@
 // tell the game's own panels from the ones other tools lay over the game on the way down.
 #pragma once
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     constexpr const char* GameLayersName = "XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers";
 
@@ -18,4 +18,4 @@ namespace gaze_mirror::layer {
     // came down another way (a layer between that hands frames to a thread of its own).
     const GameFrame* GameFrameNow();
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

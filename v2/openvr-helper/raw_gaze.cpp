@@ -9,7 +9,7 @@
 #include "../core/log.h"
 #include "osc.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     RawGazeLink::~RawGazeLink() {
         stop();
@@ -162,4 +162,4 @@ namespace gaze_mirror {
         _block->sequence = ++_sequence; // Even: done.
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

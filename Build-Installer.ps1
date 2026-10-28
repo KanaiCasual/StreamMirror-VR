@@ -62,12 +62,12 @@ $appVersion = if ($Label) { "$Version-$Label" } else { $Version }
 & (Join-Path $root 'v2\Get-External.ps1') | Out-Null
 & (Join-Path $root 'v2\Build-Dev.ps1') | Out-Null
 
-# 2) Layer, OBS plugin, Quad-Views-Foveated installer and licences -> GazeOverlayApp\Payload
-& (Join-Path $root 'GazeOverlayApp\Collect-Payload.ps1') | Out-Null
+# 2) Layer, OBS plugin, Quad-Views-Foveated installer and licences -> StreamMirrorApp\Payload
+& (Join-Path $root 'StreamMirrorApp\Collect-Payload.ps1') | Out-Null
 
 # 3) Settings app, self-contained, as a plain folder (the MSI installs it).
 if (Test-Path $appOut) { Remove-Item $appOut -Recurse -Force }
-dotnet publish (Join-Path $root 'GazeOverlayApp\GazeOverlayApp.csproj') -c Release -o $appOut -v q --nologo `
+dotnet publish (Join-Path $root 'StreamMirrorApp\StreamMirrorApp.csproj') -c Release -o $appOut -v q --nologo `
     "-p:Version=$appVersion" "-p:GitHubRepository=$GitHubRepository"
 if ($LASTEXITCODE -ne 0) { throw "Publishing the settings app failed." }
 
@@ -98,14 +98,14 @@ function Sign([string[]]$files) {
 if ($signWith) {
     $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
     if (-not $signtool) { throw 'No signtool.exe: install the Windows SDK.' }
-    $unsigned = Get-ChildItem (Join-Path $root 'GazeOverlayApp\Payload'), $appOut -Recurse -Include *.exe, *.dll |
+    $unsigned = Get-ChildItem (Join-Path $root 'StreamMirrorApp\Payload'), $appOut -Recurse -Include *.exe, *.dll |
         Where-Object { (Get-AuthenticodeSignature $_.FullName).Status -eq 'NotSigned' }
     Sign $unsigned.FullName
 }
 
 # 4) The MSI.
-$payload = Join-Path $root 'GazeOverlayApp\Payload'
-dotnet build (Join-Path $root 'Installer\GazeOverlay.Installer.wixproj') -c Release -v q --nologo `
+$payload = Join-Path $root 'StreamMirrorApp\Payload'
+dotnet build (Join-Path $root 'Installer\StreamMirror.Installer.wixproj') -c Release -v q --nologo `
     "-p:ProductVersion=$Version" "-p:PayloadDir=$payload" "-p:AppDir=$appOut"
 if ($LASTEXITCODE -ne 0) { throw "Building the MSI failed." }
 

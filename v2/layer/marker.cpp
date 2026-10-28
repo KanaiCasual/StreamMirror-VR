@@ -5,7 +5,7 @@
 
 using Microsoft::WRL::ComPtr;
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     namespace {
         const char MarkerShader[] = R"(
@@ -263,4 +263,4 @@ float4 psBars(V i) : SV_Target {
         if (SUCCEEDED(_deferred->FinishCommandList(FALSE, &commands))) _immediate->ExecuteCommandList(commands.Get(), TRUE);
     }
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

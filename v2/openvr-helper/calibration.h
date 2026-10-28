@@ -21,7 +21,7 @@
 
 #include "../core/pipeline.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     class VrchatOscLink;
 
@@ -54,4 +54,4 @@ namespace gaze_mirror {
         EyePose _poses[2];
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

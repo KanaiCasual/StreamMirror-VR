@@ -8,7 +8,7 @@
 // Seven-segment digits, for the capture countdown shown in the headset (the layer's shader carries the same geometry).
 // (x, y) in a digit box of -0.3..0.3 by -0.5..0.5 (y down); returns 1 inside a lit segment of `digit`, with soft edges,
 // or - with `grow` - inside the segment grown by that much (the dark outline).
-namespace gaze_mirror {
+namespace stream_mirror {
     inline float SevenSegmentCoverage(float x, float y, int digit, float grow) {
         static const int masks[10] = {63, 6, 91, 79, 102, 109, 125, 7, 127, 111}; // a=1 b=2 c=4 d=8 e=16 f=32 g=64
         static const float centers[7][2] = {{0, -0.45f}, {0.25f, -0.23f}, {0.25f, 0.23f}, {0, 0.45f}, {-0.25f, 0.23f}, {-0.25f, -0.23f}, {0, 0}};
@@ -26,14 +26,14 @@ namespace gaze_mirror {
         }
         return best < 0 ? 0.f : best > 1 ? 1.f : best;
     }
-} // namespace gaze_mirror
+} // namespace stream_mirror
 
 #include <deque>
 
 #include "math.h"
 #include "settings.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     constexpr int MaxTrail = 32;
 
@@ -106,4 +106,4 @@ namespace gaze_mirror {
         std::deque<HeatSpot> _heat;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

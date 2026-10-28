@@ -1,6 +1,6 @@
 // StreamMirror VR - the OBS source "StreamMirror VR".
 //
-// A reader of the 2.0 format (protocol/gaze_mirror_protocol.h): it takes a reader place in the shared block while the
+// A reader of the 2.0 format (protocol/stream_mirror_protocol.h): it takes a reader place in the shared block while the
 // source is shown, sleeps on its event until a producer - the OpenXR layer inside a game, or the OpenVR helper next to
 // a SteamVR game - says a frame is ready, and draws that frame's shared texture straight from the graphics card. No
 // copy of the picture, no timer, nothing to set up: the eye, the crop, the ring all come from the settings app.
@@ -14,9 +14,9 @@
 #include <cstdio>
 #include <cstring>
 
-#include "../protocol/gaze_mirror_protocol.h"
+#include "../protocol/stream_mirror_protocol.h"
 
-using namespace gaze_mirror;
+using namespace stream_mirror;
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("streammirror-capture", "en-US")

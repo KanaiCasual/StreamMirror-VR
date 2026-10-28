@@ -40,10 +40,10 @@
 #include <openxr/openxr_platform.h>
 #include <openxr/openxr_loader_negotiation.h>
 
-#include "../protocol/gaze_mirror_protocol.h"
+#include "../protocol/stream_mirror_protocol.h"
 
 using Microsoft::WRL::ComPtr;
-using namespace gaze_mirror;
+using namespace stream_mirror;
 
 namespace {
 
@@ -762,7 +762,7 @@ int wmain(int argc, wchar_t** argv) {
     // The thorough VRChat calibration's sums, on made-up eyes: a tracker that reports sines with some cross-talk and
     // trails the target by 120 ms, a little noise, VRChat sending at 50 Hz, two blinks.
     {
-        using namespace gaze_mirror::grid;
+        using namespace stream_mirror::grid;
         printf("case grid-fit\n");
         const std::vector<Waypoint> path = BuildPath(35.f, 35.f, 28.f, 35.f, 12.f, 600.f, 1500.f, 10.f);
         const auto eyes = [](float tanX, float tanY, float& vx, float& vy) {
@@ -1126,7 +1126,7 @@ int wmain(int argc, wchar_t** argv) {
             fputs(test.settings, again);
             fputs("picture_source=game\n", again);
             fclose(again);
-            HANDLE signalMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"GazeOverlay.SettingsSignal");
+            HANDLE signalMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"StreamMirror.SettingsSignal");
             volatile LONG* signal = signalMapping ? static_cast<volatile LONG*>(MapViewOfFile(signalMapping, FILE_MAP_ALL_ACCESS, 0, 0, 16)) : nullptr;
             if (signal) InterlockedIncrement(&signal[2]); // generation: the settings changed
             for (int i = 0; i < 100; i++) endFrame(session, &empty);
@@ -1398,7 +1398,7 @@ int wmain(int argc, wchar_t** argv) {
 
         // The crop tool's picture: ask through the app's signal block, expect both eyes in the snapshot block.
         {
-            HANDLE signalMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"GazeOverlay.SettingsSignal");
+            HANDLE signalMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"StreamMirror.SettingsSignal");
             struct Signal { uint32_t magic, version; volatile LONG generation, snapshotRequest, captureKey, countdown, edgeTool; float edgeLeft, edgeRight, edgeTop, edgeBottom; };
             Signal* signal = signalMapping ? static_cast<Signal*>(MapViewOfFile(signalMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(Signal))) : nullptr;
             Check(signal != nullptr, "the settings signal block exists");
@@ -1407,7 +1407,7 @@ int wmain(int argc, wchar_t** argv) {
                 acquire(swapchain, nullptr, &index);
                 release(swapchain, nullptr);
                 endFrame(session, &frameEnd);
-                HANDLE snapshotMapping = OpenFileMappingW(FILE_MAP_READ, FALSE, L"GazeOverlay.MirrorSnapshot");
+                HANDLE snapshotMapping = OpenFileMappingW(FILE_MAP_READ, FALSE, L"StreamMirror.MirrorSnapshot");
                 struct SnapshotHeader { uint32_t magic, version; volatile LONG generation; uint32_t width, height, fullWidth, fullHeight, cropX, cropY, cropWidth, cropHeight, eye, secondEye; float axisU, axisV; uint32_t axisValid; };
                 const SnapshotHeader* snapshot = snapshotMapping ? static_cast<const SnapshotHeader*>(MapViewOfFile(snapshotMapping, FILE_MAP_READ, 0, 0, sizeof(SnapshotHeader))) : nullptr;
                 Check(snapshot && snapshot->magic == 0x4E534F47 && snapshot->version >= 2, "the crop tool's picture block was written");
@@ -1715,7 +1715,7 @@ int wmain(int argc, wchar_t** argv) {
         // the layer and announced once per press. Really pressed here - Ctrl + Alt + F23, a key no keyboard has - for a moment.
         if (!strcmp(test.name, "plain") && !appListening) {
             struct CoverSignal { uint32_t magic, version; volatile LONG generation, snapshotRequest, captureKey, countdown, edgeTool; float edges[4]; volatile LONG coverKey; };
-            HANDLE signalMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"GazeOverlay.SettingsSignal");
+            HANDLE signalMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"StreamMirror.SettingsSignal");
             CoverSignal* signal = signalMapping ? static_cast<CoverSignal*>(MapViewOfFile(signalMapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(CoverSignal))) : nullptr;
             HANDLE coverKey = CreateEventW(nullptr, FALSE, FALSE, CoverKeyName);
             const auto runFrame = [&] {
@@ -1987,7 +1987,7 @@ int wmain(int argc, wchar_t** argv) {
             fputs(test.settings, noPanels);
             fputs("show_panels=0\n", noPanels);
             fclose(noPanels);
-            HANDLE panelSignalMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"GazeOverlay.SettingsSignal");
+            HANDLE panelSignalMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"StreamMirror.SettingsSignal");
             volatile LONG* panelSignal = panelSignalMapping ? static_cast<volatile LONG*>(MapViewOfFile(panelSignalMapping, FILE_MAP_ALL_ACCESS, 0, 0, 16)) : nullptr;
             if (panelSignal) InterlockedIncrement(&panelSignal[2]); // generation: the settings changed
             frameWithPanel();
@@ -2020,7 +2020,7 @@ int wmain(int argc, wchar_t** argv) {
         if (!strcmp(test.name, "plain")) {
             // A frame-rate cap of 20 with the game at 60 for a second: about 20 pictures, the frames the cap leaves out are
             // not copied (the log says so), and no picture the cap lets through is lost to a copy skipped on a wrong guess.
-            HANDLE capMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"GazeOverlay.SettingsSignal");
+            HANDLE capMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, L"StreamMirror.SettingsSignal");
             volatile LONG* capSignal = capMapping ? static_cast<volatile LONG*>(MapViewOfFile(capMapping, FILE_MAP_ALL_ACCESS, 0, 0, 16)) : nullptr;
             FILE* capped = nullptr;
             _wfopen_s(&capped, settingsFile.c_str(), L"w");

@@ -1,6 +1,6 @@
 // StreamMirror VR - dev viewer.
 //
-// The smallest possible reader of the 2.0 format (v2\protocol\gaze_mirror_protocol.h): registers as a reader, sleeps
+// The smallest possible reader of the 2.0 format (v2\protocol\stream_mirror_protocol.h): registers as a reader, sleeps
 // until the producer signals a frame, shows it. No timer anywhere - while no game runs it waits without waking up.
 // It exists so that the new layer can be tested before the OBS plugin and the real mirror window speak the format;
 // OBS can record it with Window Capture in the meantime.
@@ -17,10 +17,10 @@
 #include <cstdint>
 #include <cstdio>
 
-#include "../protocol/gaze_mirror_protocol.h"
+#include "../protocol/stream_mirror_protocol.h"
 
 using Microsoft::WRL::ComPtr;
-using namespace gaze_mirror;
+using namespace stream_mirror;
 
 namespace {
 

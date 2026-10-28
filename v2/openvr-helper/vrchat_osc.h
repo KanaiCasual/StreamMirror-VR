@@ -4,7 +4,7 @@
 // VRChat - through VRCFaceTracking, EyeTrackVR, Babble, ALVR and the like - as the avatar's eye parameters. VRChat
 // sends those parameters out over OSC to every OSCQuery service it finds on the machine. So the helper is one: it
 // advertises itself over mDNS, answers VRChat's two HTTP questions, receives the OSC messages, and writes the eye
-// values into the shared block the mirror reads (protocol/gaze_mirror_protocol.h, ExternalGaze). Nothing is sent to
+// values into the shared block the mirror reads (protocol/stream_mirror_protocol.h, ExternalGaze). Nothing is sent to
 // VRChat and nothing is configured in it: OSC only has to be switched on there, which it is for every face-tracking user.
 //
 // Three small threads, all of them waiting on their sockets - none looks at anything on a timer:
@@ -26,9 +26,9 @@
 #include <winsock2.h>
 #include <windows.h>
 
-#include "../protocol/gaze_mirror_protocol.h"
+#include "../protocol/stream_mirror_protocol.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     class VrchatOscLink {
       public:
@@ -91,4 +91,4 @@ namespace gaze_mirror {
         int _seen = 0;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

@@ -17,7 +17,7 @@
 #include "../core/log.h"
 #include "vrchat_osc.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     namespace {
 
@@ -376,4 +376,4 @@ namespace gaze_mirror {
         return true;
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

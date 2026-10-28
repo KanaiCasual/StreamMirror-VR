@@ -9,7 +9,7 @@
 !/docs/
 !/Build-Installer.ps1
 !/gaze.cfg
-!/GazeOverlayApp/
+!/StreamMirrorApp/
 !/Installer/
 !/tools/
 # The layer, OBS plugin, SteamVR helper, shared core and tests.
@@ -20,7 +20,7 @@ bin/
 obj/
 *.user
 # The installer payload is collected from build outputs (and the upstream OBS plugin) by Collect-Payload.ps1.
-/GazeOverlayApp/Payload/
+/StreamMirrorApp/Payload/
 # Recordings reviewed with tools/clip-review.
 /tools/clip-review/*.mp4
 __pycache__/

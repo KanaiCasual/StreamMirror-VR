@@ -5,7 +5,7 @@
 #include "../core/log.h"
 #include "vulkan_bridge.h"
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     struct VulkanBridge::Functions {
         PFN_vkGetDeviceProcAddr getDeviceProcAddr = nullptr;
@@ -491,4 +491,4 @@ namespace gaze_mirror::layer {
         _context->Flush();
     }
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

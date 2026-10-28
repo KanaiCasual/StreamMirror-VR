@@ -544,7 +544,7 @@ File locations:
 | What | Where |
 |---|---|
 | Program, layer, helper, mirror window | `C:\Program Files\StreamMirror-VR` |
-| Ring, crop, follow, steadying, gaze settings | `%LocalAppData%\XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg` |
+| Ring, crop, follow, steadying, gaze settings | `%LocalAppData%\StreamMirror\settings.cfg` (before 3.0 `%LocalAppData%\XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg`; the update copies it over) |
 | App preferences, saved slots, crop profiles and pictures, layer-order backups | `%LocalAppData%\StreamMirror\` |
 | Logs: `app.log`, `streammirror-layer.log`, `streammirror-helper.log` | `%LocalAppData%\StreamMirror\` |
 | StreamMirror VR's quad views layer: `settings.cfg`, `QuadViews.log` | `%LocalAppData%\StreamMirror\QuadViews\` |
@@ -595,7 +595,7 @@ git clone <this repo>
 | `v2/viewer/` | A small viewer of the shared picture, for development |
 | `v2/test/` | The offline layer test: plays game and runtime, checks the picture, the crop tool and the marker |
 | `v2/protocol/` | The shared-memory blocks the parts agree on |
-| `GazeOverlayApp/` | The settings app (WPF, .NET 10) |
+| `StreamMirrorApp/` | The settings app (WPF, .NET 10) |
 | `Installer/` | WiX 5 project for the MSI |
 | `tools/` | The logo and installer-artwork generators, an offline ring preview, an MSI inspector, a clip reviewer |
 

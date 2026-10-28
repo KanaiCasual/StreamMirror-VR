@@ -1,4 +1,4 @@
-// StreamMirror VR - core: the settings app's crop-tool picture ("GazeOverlay.MirrorSnapshot", format v2 of
+// StreamMirror VR - core: the settings app's crop-tool picture ("StreamMirror.MirrorSnapshot", format v2 of
 // 1.x, unchanged so the app works as it is). Made only when the app asks (a counter in its signal block) or when the
 // armed capture key is pressed - the key is looked at here, inside the game, and only while armed. Both eyes are taken
 // in the SAME frame: a producer that sees both images needs no second frame.
@@ -9,9 +9,9 @@
 #include "renderer.h"
 #include "settings.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
-    constexpr wchar_t SnapshotName[] = L"GazeOverlay.MirrorSnapshot";
+    constexpr wchar_t SnapshotName[] = L"StreamMirror.MirrorSnapshot";
     constexpr uint32_t SnapshotMagic = 0x4E534F47; // 'GOSN'
     constexpr uint32_t SnapshotMaxSide = 640;
     constexpr uint32_t SnapshotNoEye = 0xFFFFFFFF;
@@ -61,4 +61,4 @@ namespace gaze_mirror {
         std::vector<uint8_t> _pixels;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

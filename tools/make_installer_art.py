@@ -1,4 +1,4 @@
-# Draws the two pictures the installer's dialogs use, from the app logo (GazeOverlayApp\Assets\logo-256.png):
+# Draws the two pictures the installer's dialogs use, from the app logo (StreamMirrorApp\Assets\logo-256.png):
 #   Installer\Assets\dialog.bmp  493x312  first/last page: dark strip with the logo on the left, white under the text
 #   Installer\Assets\banner.bmp  493x58   top of the other pages: white, logo on the right
 # Windows Installer draws its text in black on top of these, so the area under the text has to stay light.
@@ -8,7 +8,13 @@ import os, struct, zlib
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def read_png(path):
-    """Only what make_icon.py writes: 8-bit RGBA, no interlace, filter 0 on every row."""
+    """8-bit RGBA rows of (r, g, b, a). With Pillow any PNG; without it, only unfiltered 8-bit RGBA."""
+    try:
+        from PIL import Image
+        image = Image.open(path).convert('RGBA')
+        return [[image.getpixel((x, y)) for x in range(image.width)] for y in range(image.height)]
+    except ImportError:
+        pass
     data = open(path, 'rb').read()
     assert data[:8] == b'\x89PNG\r\n\x1a\n'
     pos, idat, width, height = 8, b'', 0, 0
@@ -59,7 +65,7 @@ def write_bmp(path, canvas):
     header = struct.pack('<2sIHHI', b'BM', 54 + len(body), 0, 0, 54) + struct.pack('<IiiHHIIiiII', 40, width, height, 1, 24, 0, len(body), 2835, 2835, 0, 0)
     open(path, 'wb').write(header + body)
 
-logo = read_png(os.path.join(ROOT, 'GazeOverlayApp', 'Assets', 'logo-256.png'))
+logo = read_png(os.path.join(ROOT, 'StreamMirrorApp', 'Assets', 'logo-256.png'))
 out_dir = os.path.join(ROOT, 'Installer', 'Assets')
 os.makedirs(out_dir, exist_ok=True)
 
@@ -68,10 +74,10 @@ STRIP = 164
 dialog = []
 for y in range(312):
     shade = y / 311
-    dark = (int(31 - 8 * shade), int(32 - 8 * shade), int(36 - 9 * shade))     # the app's window colour, fading to its panel colour
+    dark = (int(19 - 6 * shade), int(27 - 8 * shade), int(54 - 14 * shade))    # the app's navy, from its panels to its window
     dialog.append([dark if x < STRIP else (255, 255, 255) for x in range(493)])
 for y in range(312):
-    dialog[y][STRIP - 1] = (77, 178, 255)                                       # the app's accent as a hairline
+    dialog[y][STRIP - 1] = (46, 155, 255)                                       # the icon's cyan as a hairline
 blit(dialog, shrink(logo, 116), (STRIP - 116) // 2, 40)
 write_bmp(os.path.join(out_dir, 'dialog.bmp'), dialog)
 

@@ -10,7 +10,7 @@
 // the runtime which ones to enable (XR_KHR_vulkan_enable and _enable2).
 #pragma once
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     // What the bridge needs to know of a swapchain, from its create info.
     struct VulkanSwapchainInfo {
@@ -85,4 +85,4 @@ namespace gaze_mirror::layer {
         Microsoft::WRL::ComPtr<ID3D11Fence> _fence;
     };
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

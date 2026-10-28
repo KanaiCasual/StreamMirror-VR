@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-namespace gaze_mirror::grid {
+namespace stream_mirror::grid {
 
     constexpr float Pi = 3.14159265f;
 
@@ -338,4 +338,4 @@ namespace gaze_mirror::grid {
         return g;
     }
 
-} // namespace gaze_mirror::grid
+} // namespace stream_mirror::grid

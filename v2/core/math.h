@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     struct Vec3 {
         float x, y, z;
@@ -115,4 +115,4 @@ namespace gaze_mirror {
         return ProjectDirection(view, current, x, y);
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

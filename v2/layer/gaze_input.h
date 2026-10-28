@@ -9,10 +9,10 @@
 
 #include "next.h"
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
-    using gaze_mirror::Log;
-    using gaze_mirror::LogFewTimes;
+    using stream_mirror::Log;
+    using stream_mirror::LogFewTimes;
 
     struct GazeSample {
         bool valid = false;
@@ -68,4 +68,4 @@ namespace gaze_mirror::layer {
         int _logLocate = 0;
     };
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

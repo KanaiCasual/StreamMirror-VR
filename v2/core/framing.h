@@ -9,7 +9,7 @@
 #include "math.h"
 #include "settings.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     struct CropRect {
         int32_t x = 0, y = 0;
@@ -62,4 +62,4 @@ namespace gaze_mirror {
         float _stabLogLargest = 0.f;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

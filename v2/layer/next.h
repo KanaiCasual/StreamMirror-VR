@@ -1,7 +1,7 @@
 // StreamMirror VR - OpenXR layer: the functions of whatever comes after us (the next layer or the runtime).
 #pragma once
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     struct Next {
         XrInstance instance = XR_NULL_HANDLE;
@@ -34,4 +34,4 @@ namespace gaze_mirror::layer {
         PFN_xrSyncActions xrSyncActions = nullptr;
     };
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

@@ -3,7 +3,7 @@
 #include "log.h"
 #include "pipeline.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     bool Pipeline::start(ID3D11Device* device, LONG producerKind, const char* program, const char* application, bool underSteamVR, bool takeOver) {
         stop();
@@ -418,4 +418,4 @@ namespace gaze_mirror {
         }
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

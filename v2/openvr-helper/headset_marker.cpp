@@ -12,7 +12,7 @@
 #include "../core/log.h"
 #include "../core/ring.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     namespace {
 
@@ -301,4 +301,4 @@ namespace gaze_mirror {
         _edgesBar = 0;
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

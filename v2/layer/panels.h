@@ -5,7 +5,7 @@
 
 #include "../core/renderer.h"
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     // One panel as it lands in one eye.
     struct Panel {
@@ -51,4 +51,4 @@ namespace gaze_mirror::layer {
         int _logProblem = 0;
     };
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer

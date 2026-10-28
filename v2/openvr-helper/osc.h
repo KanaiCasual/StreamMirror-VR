@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace gaze_mirror::osc {
+namespace stream_mirror::osc {
 
     // A 4-byte padded string at `pos`; false when it does not end inside the packet.
     inline bool ReadString(const uint8_t* p, int length, int& pos, std::string& out) {
@@ -61,4 +61,4 @@ namespace gaze_mirror::osc {
         return address;
     }
 
-} // namespace gaze_mirror::osc
+} // namespace stream_mirror::osc

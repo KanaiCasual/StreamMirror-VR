@@ -16,7 +16,7 @@
 #include "publisher.h"
 #include "ring.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     struct SourceImage {
         ID3D11Texture2D* texture = nullptr;
@@ -98,4 +98,4 @@ namespace gaze_mirror {
         int _logFocus = 0;
     };
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

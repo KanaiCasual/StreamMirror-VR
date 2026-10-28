@@ -2,7 +2,7 @@
 
 #include "framing.h"
 
-namespace gaze_mirror {
+namespace stream_mirror {
 
     namespace {
         float AlphaFor(float cutoffHz, float dt) {
@@ -200,4 +200,4 @@ namespace gaze_mirror {
         }
     }
 
-} // namespace gaze_mirror
+} // namespace stream_mirror

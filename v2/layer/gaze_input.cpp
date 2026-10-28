@@ -3,7 +3,7 @@
 #include "../core/log.h"
 #include "gaze_input.h"
 
-namespace gaze_mirror::layer {
+namespace stream_mirror::layer {
 
     namespace {
         constexpr int FramesBeforeAttachingOnOurOwn = 300;
@@ -61,7 +61,7 @@ namespace gaze_mirror::layer {
         _next->xrStringToPath(_next->instance, "/user/eyes_ext/input/gaze_ext/pose", &_gazePath);
 
         XrActionSetCreateInfo setInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
-        strcpy_s(setInfo.actionSetName, "gaze_mirror");
+        strcpy_s(setInfo.actionSetName, "stream_mirror");
         strcpy_s(setInfo.localizedActionSetName, "StreamMirror VR");
         XrResult result = _next->xrCreateActionSet(_next->instance, &setInfo, &_actionSet);
         if (XR_FAILED(result)) {
@@ -222,4 +222,4 @@ namespace gaze_mirror::layer {
         return sample;
     }
 
-} // namespace gaze_mirror::layer
+} // namespace stream_mirror::layer
