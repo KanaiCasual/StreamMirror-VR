@@ -1,20 +1,23 @@
 {\rtf1\ansi\deff0{\fonttbl{\f0\fswiss Segoe UI;}}\fs18
 {\b StreamMirror VR \emdash  unofficial community build}\par
 \par
-This package mirrors your VR view for OBS and window capture, and draws a ring on that mirror where you are looking. The ring is never visible in the headset.\par
+StreamMirror VR mirrors your VR view into OBS and window capture. It crops and steadies the picture, and can draw a ring where you look. Nothing it adds shows in the headset.\par
+\par
+{\b Updating from VR Gaze Mirror:} StreamMirror VR is its new name. Your settings come over, your OBS scenes keep their source, and Start with Windows stays on.\par
 \par
 Everything it installs is this project's own code (MIT licence):\par
 \par
-\bullet  {\b The gaze mirror layer} \emdash  an OpenXR API layer that makes the mirror picture for OpenXR games.\par
-\bullet  {\b The SteamVR helper} \emdash  makes the mirror picture for games that use SteamVR directly. It uses Valve's OpenVR library (BSD licence).\par
+\bullet  {\b The OpenXR layers} \emdash  the mirror layer, which makes the picture in OpenXR games, and a small layer that tells the game's own panels from other tools'.\par
+\bullet  {\b The quad views layer} \emdash  sharp where you look, cheaper elsewhere. It is installed switched off; the app's Quad Views page switches it on. It is built on Quad-Views-Foveated by Matthieu Bucchianeri (MIT licence). He did not build, test or endorse this package; please do not ask him for support with it.\par
+\bullet  {\b The SteamVR helper} \emdash  makes the picture in games that use SteamVR directly. It uses Valve's OpenVR library (BSD licence).\par
 \bullet  {\b The "StreamMirror VR" OBS plugin} \emdash  shows the picture in OBS (GPL-2, as OBS plugins are).\par
 \bullet  {\b The mirror window and the settings app.}\par
 \par
-Nothing third-party is modified. {\b Quad-Views-Foveated} by Matthieu Bucchianeri (MIT licence) is optional: it gives foveated rendering and is not needed for the ring. His official, unmodified 1.1.3 installer is shipped with this package and offered on the last page when it is not installed. He did not build, test or endorse this package; please do not ask him for support with it.\par
+After installing, setup puts the OpenXR layer list in order, and saves the old order first.\par
 \par
-Upgrading from 1.x removes the modified layers and the "OpenXR Mirror Capture" OBS plugin that 1.x installed. Replace that source in your OBS scenes with the new "StreamMirror VR" source.\par
+{\b Updating from 1.x:} setup removes the modified layers and the "OpenXR Mirror Capture" OBS plugin that 1.x installed. In your OBS scenes, replace that source with a "StreamMirror VR" source.\par
 \par
-This package is not code-signed. Games that use anti-cheat software may refuse to load the layer.\par
+Release builds are code-signed. Some games' anti-cheat software may still refuse OpenXR layers.\par
 \par
 The full licence texts are installed in the Licences folder next to the app.\par
 \par

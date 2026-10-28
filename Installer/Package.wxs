@@ -178,7 +178,7 @@
     <UIRef Id="StreamMirrorUI" />
     <WixVariable Id="WixUIDialogBmp" Value="Assets\dialog.bmp" />
     <WixVariable Id="WixUIBannerBmp" Value="Assets\banner.bmp" />
-    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="Open &quot;StreamMirror VR&quot; from the Start menu to set it up. In OBS, add a &quot;StreamMirror VR&quot; source to your scene. If the Status page reports the layer order, press its Fix order button. Run this installer again for Repair and Uninstall." />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="Open StreamMirror VR from the Start menu: its Status page shows whether everything is in place. In OBS, add a &quot;StreamMirror VR&quot; source to your scene; scenes from VR Gaze Mirror keep theirs. Run this installer again to repair or uninstall." />
   </Package>
 
   <Fragment>

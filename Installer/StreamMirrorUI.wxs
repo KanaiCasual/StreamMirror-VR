@@ -42,13 +42,13 @@
           <Publish Property="WixUI_InstallMode" Value="Repair" />
         </Control>
         <Control Id="RepairText" Type="Text" X="120" Y="64" Width="230" Height="44" NoPrefix="yes"
-                 Text="Puts the files back and registers the mirror layer again, for the case that another tool removed or disabled it. Your settings stay as they are." />
+                 Text="Puts the files back, registers the OpenXR layers again and puts them in order, for when another tool removed, switched off or moved them. Your settings stay as they are." />
 
         <Control Id="RemoveButton" Type="PushButton" X="30" Y="122" Width="80" Height="17" Text="&amp;Uninstall" ToolTip="Remove [ProductName] from this PC">
           <Publish Property="WixUI_InstallMode" Value="Remove" />
         </Control>
         <Control Id="RemoveText" Type="Text" X="120" Y="120" Width="230" Height="54" NoPrefix="yes"
-                 Text="Removes the layer, the SteamVR helper, the OBS plugin, the mirror window, the settings app and the Start menu shortcut. Your settings files stay in your profile. Quad-Views-Foveated is a separate product and stays." />
+                 Text="Removes the OpenXR layers, the SteamVR helper, the OBS plugin, the mirror window, the settings app and the shortcuts. Your settings stay in your profile. The official Quad-Views-Foveated is a separate product and stays." />
 
         <Control Id="UpdateText" Type="Text" X="30" Y="192" Width="320" Height="30" NoPrefix="yes"
                  Text="To update, run the newer installer: it replaces this version by itself. Close your game and OBS first, so their files are free." />
