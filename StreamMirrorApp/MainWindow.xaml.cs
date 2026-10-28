@@ -703,6 +703,8 @@ public partial class MainWindow : Window
             namePanel.Visibility = Visibility.Collapsed;
             Tell("");
             listing = true;
+            // Off first: the box draws its name once per pick, so picking the same preset again after a rename redraws it.
+            picker.SelectedItem = null;
             picker.ItemsSource = presets.ToList();
             picker.SelectedItem = select;
             listing = false;
@@ -806,6 +808,19 @@ public partial class MainWindow : Window
         void Menu(string header) => menu.Single(m => Equals(m.Header, header)).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         string Names() => string.Join(", ", picker.Items.OfType<SavedPreset>().Select(p => p.Name));
         var note = bar.Children.OfType<TextBlock>().Last();
+        // What the closed list draws: the text in its box (the preset object behind it can be right while this is not).
+        string BoxText()
+        {
+            picker.UpdateLayout();
+            var texts = new List<string>();
+            void Walk(DependencyObject element)
+            {
+                if (element is TextBlock { Text.Length: > 0 } text) texts.Add(text.Text);
+                for (var i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++) Walk(VisualTreeHelper.GetChild(element, i));
+            }
+            Walk(picker);
+            return texts.FirstOrDefault() ?? "";
+        }
         bool ShowsEdited(Panel panel) => panel.Children.OfType<Button>().Single(b => Equals(b.Content, "Save")).IsEnabled &&
                                          panel.Children.OfType<TextBlock>().Last().Visibility == Visibility.Visible;
         void Check(bool ok, string what) => report.AppendLine($"{(ok ? "ok  " : "FAIL")} {what}");
@@ -844,6 +859,7 @@ public partial class MainWindow : Window
         nameBox.Text = "Renamed";
         Click(Named(namePanel, "OK"));
         Check(Names() == "Renamed, Second" && (picker.SelectedItem as SavedPreset)?.Name == "Renamed", $"renamed: {Names()}");
+        Check(BoxText() == "Renamed", $"the list's box shows the new name: {BoxText()}");
         Click(Named(bar, "Save"));
         Check(presets[0].Values.SequenceEqual(capture()) && !ShowsEdited(bar), "Save keeps the current values in the preset picked, and the edited line goes");
         Check(_appSettings.PickedPresets.GetValueOrDefault(page) == "Renamed", "the remembered pick follows the rename");
