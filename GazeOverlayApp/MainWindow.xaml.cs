@@ -526,7 +526,7 @@ public partial class MainWindow : Window
         AddRowLabel(row, def.Label, def.Description);
         var picker = new ColorPicker { Margin = new Thickness(0, 6, 0, 0) };
         // The colour in use, as a swatch: a click opens the picker for any colour.
-        var current = new Border { Width = 34, Height = 20, CornerRadius = new CornerRadius(4), BorderBrush = (Brush)FindResource("Line"), BorderThickness = new Thickness(1) };
+        var current = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(13), BorderBrush = (Brush)FindResource("Text"), BorderThickness = new Thickness(2) };
         var currentButton = new Button
         {
             Style = (Style)FindResource("FlatButton"), Padding = new Thickness(2), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center,
@@ -561,10 +561,10 @@ public partial class MainWindow : Window
             var (r, g, b) = Settings.ParseColor(value);
             var swatch = new Button
             {
-                Style = (Style)FindResource("FlatButton"), Padding = new Thickness(2), Margin = new Thickness(-2, 0, 1, 0), ToolTip = name,
+                Style = (Style)FindResource("FlatButton"), Padding = new Thickness(2), Margin = new Thickness(-2, 0, 4, 0), ToolTip = name,
                 Content = new Border
                 {
-                    Width = 22, Height = 18, CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(Color.FromRgb(r, g, b)),
+                    Width = 22, Height = 22, CornerRadius = new CornerRadius(11), Background = new SolidColorBrush(Color.FromRgb(r, g, b)),
                     BorderBrush = (Brush)FindResource("Line"), BorderThickness = new Thickness(1),
                 },
             };
@@ -960,8 +960,30 @@ public partial class MainWindow : Window
         var background = BgTerrain.IsChecked == true ? PreviewBackground.Terrain
                        : BgSky.IsChecked == true ? PreviewBackground.Sky
                        : BgBlack.IsChecked == true ? PreviewBackground.Black
-                       : PreviewBackground.Cockpit;
-        PreviewImage.Source = RingPreview.Render(_values, background, PreviewMoving.IsChecked == true, _previewStrip ? PreviewStripSize : PreviewBesideSize);
+                       : BgCockpit.IsChecked == true ? PreviewBackground.Cockpit
+                       : PreviewBackground.Game;
+        PreviewImage.Source = RingPreview.Render(_values, background, PreviewMoving.IsChecked == true, _previewStrip ? PreviewStripSize : PreviewBesideSize,
+            background == PreviewBackground.Game ? Backdrop() : null);
+    }
+
+    private System.Windows.Media.Imaging.BitmapSource? _backdropSource;
+    private GameBackdrop? _backdrop;
+
+    /// <summary>The Mirror page's picture as the preview's backdrop, centred on the crop box; converted once per picture.</summary>
+    private GameBackdrop? Backdrop()
+    {
+        var source = _cropImage.Source as System.Windows.Media.Imaging.BitmapSource ?? _pictureFirst;
+        if (source == null) return null;
+        var (left, top, width, height) = _values.GetValueOrDefault("crop_enabled") == "1" ? _crop.Rect() : (0, 0, 1, 1);
+        if (!ReferenceEquals(source, _backdropSource))
+        {
+            var bgra = new System.Windows.Media.Imaging.FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+            var pixels = new byte[bgra.PixelWidth * bgra.PixelHeight * 4];
+            bgra.CopyPixels(pixels, bgra.PixelWidth * 4, 0);
+            _backdropSource = source;
+            _backdrop = new GameBackdrop(pixels, bgra.PixelWidth, bgra.PixelHeight, 0.5, 0.5);
+        }
+        return _backdrop! with { CenterU = left + width / 2, CenterV = top + height / 2 };
     }
 
     // ------------------------------------------------------------------ status tab (read-only)

@@ -803,13 +803,15 @@
                                 ToolTip="Hides the preview; a button at the top right of the page brings it back" />
                         <TextBlock Style="{StaticResource CardTitle}" Text="Preview" />
                     </DockPanel>
-                    <Border x:Name="PreviewFrame" Grid.Row="1" Background="Black" Width="260" Height="260" CornerRadius="6" ClipToBounds="True" HorizontalAlignment="Left">
+                    <Border x:Name="PreviewFrame" Grid.Row="1" Background="Black" Width="260" Height="260" CornerRadius="8" ClipToBounds="True" HorizontalAlignment="Left">
                         <Image x:Name="PreviewImage" Stretch="None"
                                ToolTip="Approximate: about what a cropped 1080p stream shows.&#10;&#10;The real ring scales with the size and crop of your OBS source." />
                     </Border>
                     <StackPanel x:Name="PreviewOptions" Grid.Row="2" Margin="0,6,0,0">
                         <UniformGrid Columns="2">
-                            <RadioButton x:Name="BgCockpit" Content="Cockpit" IsChecked="True" MinWidth="0" Checked="OnPreviewOptionChanged" />
+                            <RadioButton x:Name="BgGame" Content="Your picture" IsChecked="True" MinWidth="0" Checked="OnPreviewOptionChanged"
+                                         ToolTip="The last picture from the Mirror page, around the crop box's centre, at the ring's own scale.&#10;&#10;Without a picture, the cockpit stands in." />
+                            <RadioButton x:Name="BgCockpit" Content="Cockpit" MinWidth="0" Checked="OnPreviewOptionChanged" />
                             <RadioButton x:Name="BgTerrain" Content="Terrain" MinWidth="0" Checked="OnPreviewOptionChanged" />
                             <RadioButton x:Name="BgSky" Content="Sky" MinWidth="0" Checked="OnPreviewOptionChanged" />
                             <RadioButton x:Name="BgBlack" Content="Black" MinWidth="0" Checked="OnPreviewOptionChanged" />

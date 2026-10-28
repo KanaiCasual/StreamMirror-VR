@@ -4,7 +4,13 @@ using System.Windows.Media.Imaging;
 
 namespace GazeOverlay;
 
-public enum PreviewBackground { Cockpit, Terrain, Sky, Black }
+public enum PreviewBackground { Game, Cockpit, Terrain, Sky, Black }
+
+/// <summary>
+/// The saved mirror picture as the preview's backdrop: the eye image in 32-bit BGRA, and the spot the preview centres on
+/// (the crop box's centre), as fractions of the image.
+/// </summary>
+public sealed record GameBackdrop(byte[] Bgra, int Width, int Height, double CenterU, double CenterV);
 
 /// <summary>
 /// CPU port of the layer's gaze pixel shader, so the look can be tuned without the game running. It follows the HLSL in
@@ -17,8 +23,9 @@ public static class RingPreview
 
     private readonly record struct Shade(double R, double G, double B, double A);
 
-    public static WriteableBitmap Render(IReadOnlyDictionary<string, string> values, PreviewBackground background, bool moving, int size)
+    public static WriteableBitmap Render(IReadOnlyDictionary<string, string> values, PreviewBackground background, bool moving, int size, GameBackdrop? game = null)
     {
+        if (background == PreviewBackground.Game && game == null) background = PreviewBackground.Cockpit;
         double Get(string key) => Settings.ParseDouble(values.GetValueOrDefault(key), Settings.ParseDouble(Settings.All.First(d => d.Key == key).Default, 0));
 
         var style = values.GetValueOrDefault("style") ?? "ghost";
@@ -46,7 +53,7 @@ public static class RingPreview
         {
             for (var x = 0; x < size; x++)
             {
-                var (br, bg, bb) = Background(background, x, y);
+                var (br, bg, bb) = background == PreviewBackground.Game ? Sample(game!, x - size * 0.5, y - size * 0.5) : Background(background, x, y);
                 var shade = enabled
                     ? ShadePixel(style, p, color, (x + 0.5 - centerX) / PixelsPerImageHeight, (y + 0.5 - centerY) / PixelsPerImageHeight, tipX, tipY, places)
                     : default;
@@ -254,6 +261,27 @@ public static class RingPreview
         var alpha = foreground + shadow * (1 - foreground);
         var scale = foreground / Math.Max(alpha, 1e-4);
         return new Shade(color.R * scale, color.G * scale, color.B * scale, alpha);
+    }
+
+    private static readonly double[] LinearOf = Enumerable.Range(0, 256).Select(c => Math.Pow(c / 255.0, 2.2)).ToArray();
+
+    /// <summary>
+    /// The game's picture at the ring's own scale: the preview's pixels stand for PixelsPerImageHeight to an image height,
+    /// so its middle shows the eye image around the box's centre as large as the ring sees it. Bilinear, in linear light.
+    /// </summary>
+    private static (double R, double G, double B) Sample(GameBackdrop game, double dx, double dy)
+    {
+        var perPixel = game.Height / PixelsPerImageHeight;
+        var u = Math.Clamp(game.CenterU * game.Width + dx * perPixel - 0.5, 0, game.Width - 1.001);
+        var v = Math.Clamp(game.CenterV * game.Height + dy * perPixel - 0.5, 0, game.Height - 1.001);
+        int x0 = (int)u, y0 = (int)v;
+        double fx = u - x0, fy = v - y0;
+        double Channel(int c)
+        {
+            double At(int x, int y) => LinearOf[game.Bgra[(y * game.Width + x) * 4 + c]];
+            return Lerp(Lerp(At(x0, y0), At(x0 + 1, y0), fx), Lerp(At(x0, y0 + 1), At(x0 + 1, y0 + 1), fx), fy);
+        }
+        return (Channel(2), Channel(1), Channel(0));
     }
 
     /// <summary>Procedural stand-ins for typical flight-sim backdrops, in linear light.</summary>
