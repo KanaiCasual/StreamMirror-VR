@@ -383,11 +383,12 @@ public static class QuadViewsPixels
 /// <paramref name="pixels"/> and the headset's size are null until a game has started once.</summary>
 public static class QuadViewsReadout
 {
-    /// <summary>The file's multiplier in plain words: it scales width and height alike, so the pixels go by its square.</summary>
+    /// <summary>The multiplier in plain words: how much the game draws (its square), and what that does.</summary>
     public static string Sharpness(double multiplier) => Math.Abs(multiplier - 1) < 0.005
-        ? "1x: as sharp as the headset."
-        : $"{multiplier.ToString("0.###", CultureInfo.InvariantCulture)}x: {100 * multiplier:0} % of the headset's width and height, so {100 * multiplier * multiplier:0} % of its pixels" +
-          (multiplier > 1 ? " (sharper than the headset)." : ".");
+        ? "As sharp as the headset."
+        : multiplier > 1
+            ? $"Draws {100 * multiplier * multiplier:0} % of the headset's pixels: sharper than the headset, but slower."
+            : $"Draws {100 * multiplier * multiplier:0} % of the headset's pixels: faster, but softer.";
 
     public static string Focus(double multiplier, QuadViewsPixels.Result? pixels) => pixels != null
         ? $"Sharp area: {pixels.FocusWidth} x {pixels.FocusHeight} per eye.\n{Sharpness(multiplier)}"
@@ -517,13 +518,13 @@ public sealed class QuadViewsSetting
         {
             Id = "focus_res", Label = "Foveate resolution", Suffix = "%", Min = 50, Max = 400, Scale = QuadViewsScale.PixelShare, Live = false,
             Keys = ["focus_multiplier"],
-            Description = "How sharp the sharp region is, against the headset's own sharpness there.\n\n**The first number** (1.22x) is what goes in the file as focus_multiplier: it scales width and height. **The second** is the share of pixels, that number squared (150 %).\n\n**1x:** as sharp as the headset. **Above 1x** is supersampling.\n\nType 1.2x for an exact file number, or 150 for 150 %.",
+            Description = "How sharp the sharp region is.\n\n**100 %:** as sharp as the headset. **More** is sharper, but slower.\n\n**1.22x** is the same setting, written the way the settings file and other quad views tools write it. Type 1.2x to set that number, or 150 for 150 %.",
         },
         new()
         {
             Id = "peripheral_res", Label = "Peripheral resolution", Suffix = "%", Min = 1, Max = 100, Scale = QuadViewsScale.PixelShare, Live = false,
             Keys = ["peripheral_multiplier"],
-            Description = "How sharp the area outside the sharp region is.\n\n**The first number** (0.4x) is what goes in the file as peripheral_multiplier: it scales width and height. **The second** is the share of pixels, that number squared (16 %).\n\nMost of the saving comes from here. The lines under the slider give the size in pixels and what both images cost together.\n\nType 0.4x for an exact file number, or 16 for 16 %.",
+            Description = "How sharp everything outside the sharp region is.\n\n**Lower** runs faster, but looks softer. Most of the speed comes from here.\n\n**0.4x** is the same setting, written the way the settings file and other quad views tools write it. Type 0.4x to set that number, or 16 for 16 %.",
         },
         new()
         {

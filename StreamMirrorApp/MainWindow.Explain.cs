@@ -77,6 +77,7 @@ public partial class MainWindow
             new("Checking.", "Show diagnostics in the headset tints the zones and marks your gaze while you play.\n\nThe layer stays out of games it cannot help (OpenGL); its log says why."),
             new("Focus", "sets the size of the sharp region as a share of the field of view, moves it up or down, and sets the width of the blend into the surround. Without eye tracking the region stays in the middle of the view."),
             new("Resolution", "sets the pixel count of the sharp region and of the surround; most of the saving comes from the surround. The presets set the sliders, and so does My presets: Save as... keeps the sliders under a name of yours, and the list brings them back. A preset keeps later changes only when you press Save, which lights up while there is something to keep."),
+            new("Two numbers.", "The resolution sliders show two numbers, like 0.4x · 16 %.\n\n16 % is how much the game draws, against the headset at full sharpness. Lower runs faster but looks softer.\n\n0.4x is the same setting written the way other quad views tools and the settings file write it. You only need it when you copy a setting from one of them."),
             AboutSliders);
 
         // A page that has been looked at folds its explanation as the user moves on (or closes the app).
