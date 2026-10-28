@@ -83,20 +83,26 @@ public partial class MainWindow
                 var valueText = AddRowValue(row, text =>
                 {
                     var digits = new string(text.Trim().TakeWhile(ch => char.IsDigit(ch) || ch is '.' or ',' or '-').ToArray()).Replace(',', '.');
-                    if (double.TryParse(digits, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) slider.Value = Math.Clamp(Math.Round(number / setting.Step) * setting.Step, setting.Min, setting.Max);
+                    if (!double.TryParse(digits, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) return;
+                    // "0.4x" is the file's own number: kept exact, not snapped to whole percent.
+                    if (setting.Scale == QuadViewsScale.PixelShare && text.Contains('x', StringComparison.OrdinalIgnoreCase))
+                        slider.Value = Math.Clamp(number * number * 100, setting.Min, setting.Max);
+                    else
+                        slider.Value = Math.Clamp(Math.Round(number / setting.Step) * setting.Step, setting.Min, setting.Max);
                 });
                 // The default is Quad-Views-Foveated's own, read from the file it ships for this headset's runtime.
                 slider.MouseDoubleClick += (_, _) => { if (QuadViewsLayerDefaults().TryGetValue(setting.Id, out var standard)) slider.Value = Math.Clamp(standard, setting.Min, setting.Max); };
                 Describe(slider, setting.Label, description + "\n\nDouble-click the slider for Quad-Views-Foveated's own default. Click the value to type one.");
                 slider.ValueChanged += (_, e) =>
                 {
-                    valueText.Text = $"{setting.Show(e.NewValue)} {setting.Suffix}";
+                    valueText.Text = setting.Format(e.NewValue);
                     OnQuadViewsChanged(setting.Id, e.NewValue);
                 };
                 _quadViewsSetters[setting.Id] = v =>
                 {
-                    slider.Value = Math.Clamp(Math.Round(v / setting.Step) * setting.Step, setting.Min, setting.Max);
-                    valueText.Text = $"{setting.Show(slider.Value)} {setting.Suffix}";
+                    // A resolution keeps the file's exact multiplier (0.35 stays 0.35, not the 12 % step's 0.346).
+                    slider.Value = Math.Clamp(setting.Scale == QuadViewsScale.PixelShare ? v : Math.Round(v / setting.Step) * setting.Step, setting.Min, setting.Max);
+                    valueText.Text = setting.Format(slider.Value);
                 };
                 AddRowEditor(row, slider);
             }
@@ -186,7 +192,7 @@ public partial class MainWindow
 
     private static string DescribeQuadViewsPreset(Dictionary<string, string> values) =>
         string.Join("\n", QuadViewsSetting.All.Where(s => !s.IsToggle && values.ContainsKey(s.Id)).Select(s =>
-            $"{s.Label}: {(double.TryParse(values[s.Id], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? s.Show(v) : values[s.Id])} {s.Suffix}"));
+            $"{s.Label}: {(double.TryParse(values[s.Id], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? s.Format(v) : values[s.Id])}"));
 
     /// <summary>Slider values for "QV defaults": the shipped settings file alone, as the layer reads it for this runtime.</summary>
     private Dictionary<string, double> QuadViewsLayerDefaults()
@@ -432,7 +438,7 @@ public partial class MainWindow
             section = section.StartsWith("app:", StringComparison.Ordinal) || section.StartsWith("exe:", StringComparison.Ordinal) ? section[4..] : section;
             var setting = QuadViewsSetting.All.FirstOrDefault(s => s.Keys.Contains(o.Key));
             if (setting == null || !double.TryParse(o.Value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) return null;
-            var shown = setting.IsToggle ? (number != 0 ? "on" : "off") : $"{setting.Show(setting.ToSlider(number))} {setting.Suffix}";
+            var shown = setting.IsToggle ? (number != 0 ? "on" : "off") : setting.Format(setting.ToSlider(number));
             return $"{section}: {setting.Label.ToLowerInvariant()} {shown}";
         }).Where(text => text != null).Distinct().ToList();
         QuadViewsOverrides.Text = overrides.Count > 0 ? "Set apart in the file: " + string.Join("; ", overrides) + "." : "";
@@ -447,7 +453,7 @@ public partial class MainWindow
                 var key = session.EyeTracking == false && setting.Keys.Length > 1 ? setting.Keys[1] : setting.Keys[0];
                 if (ParseQuadViewsValue(key, _quadViewsFile.Intended(key)) is not { } wanted || Math.Abs(wanted - saved[key]) < 0.0005) continue;
                 var source = saved.DecidedBy.TryGetValue(key, out var decidedBy) ? decidedBy : "the layer's built-in value";
-                problems.Add($"{setting.Label}: the file says {setting.Show(setting.ToSlider(wanted))} {setting.Suffix}, the game gets {setting.Show(setting.ToSlider(saved[key]))} {setting.Suffix} (from {source}).");
+                problems.Add($"{setting.Label}: the file says {setting.Format(setting.ToSlider(wanted))}, the game gets {setting.Format(setting.ToSlider(saved[key]))} (from {source}).");
             }
         }
         var turboNote = session != null && _quadViewsValues.GetValueOrDefault("turbo") != 0 && next["turbo_mode"] == 0 && next.DecidedBy.TryGetValue("turbo_mode", out var turboBy)

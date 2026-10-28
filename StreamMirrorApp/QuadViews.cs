@@ -383,12 +383,11 @@ public static class QuadViewsPixels
 /// <paramref name="pixels"/> and the headset's size are null until a game has started once.</summary>
 public static class QuadViewsReadout
 {
-    /// <summary>A multiplier scales both sides of the picture: say so, against the headset's own sharpness.</summary>
+    /// <summary>The file's multiplier in plain words: it scales width and height alike, so the pixels go by its square.</summary>
     public static string Sharpness(double multiplier) => Math.Abs(multiplier - 1) < 0.005
-        ? "As sharp as the headset."
-        : multiplier > 1
-            ? $"{multiplier:0.##}x the headset's sharpness on each side (supersampled)."
-            : $"{multiplier:0.##}x the headset's sharpness on each side.";
+        ? "1x: as sharp as the headset."
+        : $"{multiplier.ToString("0.###", CultureInfo.InvariantCulture)}x: {100 * multiplier:0} % of the headset's width and height, so {100 * multiplier * multiplier:0} % of its pixels" +
+          (multiplier > 1 ? " (sharper than the headset)." : ".");
 
     public static string Focus(double multiplier, QuadViewsPixels.Result? pixels) => pixels != null
         ? $"Sharp area: {pixels.FocusWidth} x {pixels.FocusHeight} per eye.\n{Sharpness(multiplier)}"
@@ -454,6 +453,11 @@ public sealed class QuadViewsSetting
     /// <summary>The value as the page shows it: tenths where the slider moves in tenths.</summary>
     public string Show(double sliderValue) => sliderValue.ToString(Step < 1 ? "0.0" : "0");
 
+    /// <summary>The value with its unit. A resolution leads with the number the file holds (0.4x), then the share of pixels.</summary>
+    public string Format(double sliderValue) => Scale == QuadViewsScale.PixelShare
+        ? $"{ToFile(sliderValue)}x · {Show(sliderValue)} %"
+        : $"{Show(sliderValue)} {Suffix}";
+
     /// <summary>File value -> what the slider shows (percent, or the number itself).</summary>
     public double ToSlider(double fileValue) => Scale switch
     {
@@ -511,15 +515,15 @@ public sealed class QuadViewsSetting
         },
         new()
         {
-            Id = "focus_res", Label = "Foveate resolution", Suffix = "% of native", Min = 50, Max = 400, Scale = QuadViewsScale.PixelShare, Live = false,
+            Id = "focus_res", Label = "Foveate resolution", Suffix = "%", Min = 50, Max = 400, Scale = QuadViewsScale.PixelShare, Live = false,
             Keys = ["focus_multiplier"],
-            Description = "How sharp the sharp region is: a share of the pixels the headset itself would give that same area.\n\n**100 %:** as sharp as the headset. **Above 100 %** is supersampling: 200 % doubles the pixels, 1.41x on each side.\n\nThe line under the slider gives the size in pixels.",
+            Description = "How sharp the sharp region is, against the headset's own sharpness there.\n\n**The first number** (1.22x) is what goes in the file as focus_multiplier: it scales width and height. **The second** is the share of pixels, that number squared (150 %).\n\n**1x:** as sharp as the headset. **Above 1x** is supersampling.\n\nType 1.2x for an exact file number, or 150 for 150 %.",
         },
         new()
         {
-            Id = "peripheral_res", Label = "Peripheral resolution", Suffix = "% of native", Min = 1, Max = 100, Scale = QuadViewsScale.PixelShare, Live = false,
+            Id = "peripheral_res", Label = "Peripheral resolution", Suffix = "%", Min = 1, Max = 100, Scale = QuadViewsScale.PixelShare, Live = false,
             Keys = ["peripheral_multiplier"],
-            Description = "How sharp the area outside the sharp region is: a share of the headset's own pixel count. 25 % is half the sharpness on each side, a quarter of the pixels.\n\nMost of the saving comes from here. The lines under the slider give the size in pixels and what both images cost together.",
+            Description = "How sharp the area outside the sharp region is.\n\n**The first number** (0.4x) is what goes in the file as peripheral_multiplier: it scales width and height. **The second** is the share of pixels, that number squared (16 %).\n\nMost of the saving comes from here. The lines under the slider give the size in pixels and what both images cost together.\n\nType 0.4x for an exact file number, or 16 for 16 %.",
         },
         new()
         {

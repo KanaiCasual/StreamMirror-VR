@@ -536,8 +536,10 @@ public partial class App : Application
             ("...and the official layer's file gets none of them", untouched.InCommon("gaze_smoothing_ms") == null && untouched.InCommon("show_diagnostics") == null
                 && untouched.InCommon("debug_eye_gaze") != null),
             ("StreamMirror VR's quad views layer must sit above the mirror, and Fix order puts it there", OwnOrderOk()),
-            ("...and say the sharpness against the headset's", QuadViewsReadout.Sharpness(1.0) == "As sharp as the headset." && QuadViewsReadout.Sharpness(1.414).StartsWith("1.41x")
-                && QuadViewsReadout.Sharpness(0.5) == "0.5x the headset's sharpness on each side."),
+            ("...and say the sharpness against the headset's", QuadViewsReadout.Sharpness(1.0) == "1x: as sharp as the headset." && QuadViewsReadout.Sharpness(1.414).EndsWith("(sharper than the headset).")
+                && QuadViewsReadout.Sharpness(0.4) == "0.4x: 40 % of the headset's width and height, so 16 % of its pixels."),
+            ("a resolution shows the file's multiplier first", QuadViewsSetting.All.First(s => s.Id == "peripheral_res").Format(16) == "0.4x · 16 %"
+                && QuadViewsSetting.All.First(s => s.Id == "focus_h").Format(20) == "20 % of FOV"),
         };
         foreach (var (name, ok) in checks) report.WriteLine($"quad views - {(ok ? "ok  " : "FAIL")} {name}");
 
