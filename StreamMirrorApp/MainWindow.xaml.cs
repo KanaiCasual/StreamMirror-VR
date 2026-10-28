@@ -587,6 +587,12 @@ public partial class MainWindow : Window
     }
 
     private Panel? _ringPresetBar;
+    /// <summary>Called on every change to the ring's values: the bar says whether the picked preset was edited since it was saved.</summary>
+    private Action? _ringPresetsChanged;
+
+    private Panel BuildRingPresetBar(out Action changed) => (Panel)BuildPresetBar("ring", _appSettings.RingPresets, "look", CaptureRingSlot,
+        values => ApplyValues(values.Where(kv => Settings.All.Any(d => d.Key == kv.Key && IsRingSlotKey(d))).ToDictionary(kv => kv.Key, kv => kv.Value)),
+        DescribeRingSlot, out changed);
 
     private FrameworkElement BuildPresets()
     {
@@ -598,9 +604,7 @@ public partial class MainWindow : Window
             button.Click += (_, _) => ApplyValues(preset.Values);
             bar.Children.Add(button);
         }
-        var mine = _ringPresetBar = (Panel)BuildPresetBar(_appSettings.RingPresets, "look", CaptureRingSlot,
-            values => ApplyValues(values.Where(kv => Settings.All.Any(d => d.Key == kv.Key && IsRingSlotKey(d))).ToDictionary(kv => kv.Key, kv => kv.Value)),
-            DescribeRingSlot);
+        var mine = _ringPresetBar = BuildRingPresetBar(out _ringPresetsChanged);
         mine.Margin = new Thickness(10, 0, 0, 0);
         bar.Children.Add(mine);
 
@@ -615,13 +619,15 @@ public partial class MainWindow : Window
     /// <summary>
     /// "My presets [list] Save, Save as..., [...]", worked like the Mirror page's profiles. Picking a preset applies it. Changes
     /// after that apply at once too, but a preset only keeps them when Save is pressed: nothing saves into a preset by itself.
-    /// Save as... names the current values (a name in use takes them); the menu renames or deletes.
+    /// While the values differ from the picked preset, Save lights up and a line says so. The pick is remembered under page.
+    /// Save as... names the current values (a name in use takes them); the menu renames or deletes. changed: call it whenever
+    /// the values change.
     /// </summary>
-    private FrameworkElement BuildPresetBar(List<SavedPreset> presets, string what, Func<Dictionary<string, string>> capture,
-        Action<Dictionary<string, string>> apply, Func<Dictionary<string, string>, string> describe)
+    private FrameworkElement BuildPresetBar(string page, List<SavedPreset> presets, string what, Func<Dictionary<string, string>> capture,
+        Action<Dictionary<string, string>> apply, Func<Dictionary<string, string>, string> describe, out Action changed)
     {
         var picker = new ComboBox { MinWidth = 150, Margin = new Thickness(0, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, DisplayMemberPath = nameof(SavedPreset.Name) };
-        var save = new Button { Content = "Save", Margin = new Thickness(0, 2, 6, 2), ToolTip = WrappedToolTip($"Keeps the current {what} in this preset.\n\nChanges apply at once, but the preset keeps them only when you press Save.") };
+        var save = new Button { Content = "Save", Margin = new Thickness(0, 2, 6, 2), ToolTip = WrappedToolTip($"Keeps the current {what} in this preset.\n\nChanges apply at once, but the preset keeps them only when you press Save. Save lights up when there is something to keep.") };
         var saveAs = new Button { Content = "Save as...", Margin = new Thickness(0, 2, 6, 2), ToolTip = $"Keeps the current {what} as a new preset" };
         var nameBox = new TextBox { Width = 140, MinWidth = 0, Margin = new Thickness(0, 2, 4, 2), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Name of the preset. Enter saves, Esc cancels." };
         var ok = new Button { Content = "OK", Margin = new Thickness(0, 2, 0, 2) };
@@ -640,17 +646,46 @@ public partial class MainWindow : Window
         bar.Children.Add(new TextBlock { Text = "My presets", Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
         foreach (var element in new UIElement[] { picker, save, saveAs, namePanel, more, note }) bar.Children.Add(element);
         ToolTipService.SetShowOnDisabled(picker, true);
+        ToolTipService.SetShowOnDisabled(save, true);
         ShowToolTipsPatiently(picker);
 
         var listing = false;
         var renaming = false;
         SavedPreset? Chosen() => picker.SelectedItem as SavedPreset;
 
+        // Values the app stored back may be written a little differently (0.050 for 0.05): numbers compare as numbers.
+        static bool Same(string a, string b) =>
+            string.Equals(a, b, StringComparison.OrdinalIgnoreCase) ||
+            (double.TryParse(a, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x) &&
+             double.TryParse(b, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var y) &&
+             Math.Abs(x - y) <= 1e-9 * Math.Max(1, Math.Abs(x)));
+
+        // Settings added after a preset was saved are not in it: they do not count as an edit.
+        bool Edited(SavedPreset preset)
+        {
+            var now = capture();
+            return preset.Values.Any(kv => now.TryGetValue(kv.Key, out var value) && !Same(value, kv.Value));
+        }
+
+        void Remember(SavedPreset? preset)
+        {
+            if (preset == null) _appSettings.PickedPresets.Remove(page);
+            else _appSettings.PickedPresets[page] = preset.Name;
+            _appSettings.Save();
+        }
+
         void ShowState()
         {
             var chosen = Chosen();
+            var edited = chosen != null && Edited(chosen);
             picker.IsEnabled = presets.Count > 0;
-            save.IsEnabled = more.IsEnabled = chosen != null;
+            more.IsEnabled = chosen != null;
+            save.IsEnabled = edited;
+            // Accent while something waits to be saved; otherwise the theme's own button look (a null Style would drop the theme).
+            save.Style = (Style)FindResource(edited ? "AccentButtonStyle" : typeof(Button));
+            // Short, so it fits a line of its own in the bar (a text in a wrapping row cannot wrap); the tooltip says the rest.
+            Tell(edited ? $"Edited: Save to keep it in \"{chosen!.Name}\", or Save as..." : "");
+            note.ToolTip = edited ? WrappedToolTip($"You changed the {what} since you saved \"{chosen!.Name}\". The changes apply already, and the app keeps them through a restart.\n\nThe preset itself keeps its saved values until you press Save. Save as... keeps the changes in a new preset instead.") : null;
             picker.ToolTip = WrappedToolTip(chosen != null
                 ? $"{chosen.Name}, saved {chosen.SavedAt:g}\n\n{describe(chosen.Values)}\n\nPicking a preset sets the {what}. Changes after that apply at once, and the preset keeps them only when you press Save."
                 : presets.Count == 0 ? $"No presets of your own yet. Set the {what}, then Save as... keeps them under a name."
@@ -676,7 +711,7 @@ public partial class MainWindow : Window
 
         void Store(SavedPreset select)
         {
-            _appSettings.Save();
+            Remember(select);
             List(select);
         }
 
@@ -716,6 +751,7 @@ public partial class MainWindow : Window
         {
             if (listing) return;
             if (Chosen() is { } chosen) apply(new Dictionary<string, string>(chosen.Values));
+            Remember(Chosen());
             ShowState();
         };
         save.Click += (_, _) =>
@@ -733,7 +769,7 @@ public partial class MainWindow : Window
             if (!App.Headless && MessageBox.Show(this, $"Delete your preset \"{chosen.Name}\"? This cannot be undone.", "Delete preset",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
             presets.Remove(chosen);
-            _appSettings.Save();
+            Remember(null);
             List(null);
         };
         more.Click += (_, _) =>
@@ -746,9 +782,10 @@ public partial class MainWindow : Window
         nameBox.KeyDown += (_, e) =>
         {
             if (e.Key == System.Windows.Input.Key.Enter) Confirm();
-            if (e.Key == System.Windows.Input.Key.Escape) { namePanel.Visibility = Visibility.Collapsed; Tell(""); }
+            if (e.Key == System.Windows.Input.Key.Escape) { namePanel.Visibility = Visibility.Collapsed; ShowState(); }
         };
-        List(null);
+        List(presets.FirstOrDefault(p => p.Name == _appSettings.PickedPresets.GetValueOrDefault(page)));
+        changed = ShowState;
         return bar;
     }
 
@@ -756,7 +793,8 @@ public partial class MainWindow : Window
     /// Development aid for --screenshots: saves, picks, edits, renames and deletes presets through a bar's own controls.
     /// builtIn applies a built-in preset (0 or 1), so there are two different sets of values to save.
     /// </summary>
-    private string ExercisePresetBar(Panel bar, List<SavedPreset> presets, Action<int> builtIn, Func<Dictionary<string, string>> capture, Action<string> snapshot)
+    private string ExercisePresetBar(string page, Panel bar, Func<Panel> buildAgain, List<SavedPreset> presets, Action<int> builtIn,
+        Func<Dictionary<string, string>> capture, Action<string> snapshot)
     {
         var report = new System.Text.StringBuilder();
         var picker = bar.Children.OfType<ComboBox>().Single();
@@ -767,6 +805,9 @@ public partial class MainWindow : Window
         void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
         void Menu(string header) => menu.Single(m => Equals(m.Header, header)).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         string Names() => string.Join(", ", picker.Items.OfType<SavedPreset>().Select(p => p.Name));
+        var note = bar.Children.OfType<TextBlock>().Last();
+        bool ShowsEdited(Panel panel) => panel.Children.OfType<Button>().Single(b => Equals(b.Content, "Save")).IsEnabled &&
+                                         panel.Children.OfType<TextBlock>().Last().Visibility == Visibility.Visible;
         void Check(bool ok, string what) => report.AppendLine($"{(ok ? "ok  " : "FAIL")} {what}");
         void SaveAs(int preset, string name)
         {
@@ -788,8 +829,14 @@ public partial class MainWindow : Window
         Check(!first.SequenceEqual(capture()), "the two built-in presets differ");
         picker.SelectedIndex = 0;
         Check(first.SequenceEqual(capture()), "picking First brings its values back");
+        Check(!ShowsEdited(bar) && _appSettings.PickedPresets.GetValueOrDefault(page) == "First", "picked and not edited: Save is off, the pick is remembered");
         builtIn(1);
         Check(presets[0].Values.SequenceEqual(first) && !first.SequenceEqual(capture()), "an edit applies, and the preset keeps its saved values until Save");
+        Check(ShowsEdited(bar), $"edited: Save lights up and the line says so ({note.Text})");
+        snapshot("edited");
+        var again = buildAgain();
+        var pickerAgain = again.Children.OfType<ComboBox>().Single();
+        Check((pickerAgain.SelectedItem as SavedPreset)?.Name == "First" && ShowsEdited(again), "built again, as at a restart: First is picked and shows as edited");
         Menu("Rename...");
         nameBox.Text = "second";
         Click(Named(namePanel, "OK"));
@@ -798,17 +845,19 @@ public partial class MainWindow : Window
         Click(Named(namePanel, "OK"));
         Check(Names() == "Renamed, Second" && (picker.SelectedItem as SavedPreset)?.Name == "Renamed", $"renamed: {Names()}");
         Click(Named(bar, "Save"));
-        Check(presets[0].Values.SequenceEqual(capture()), "Save keeps the current values in the preset picked");
+        Check(presets[0].Values.SequenceEqual(capture()) && !ShowsEdited(bar), "Save keeps the current values in the preset picked, and the edited line goes");
+        Check(_appSettings.PickedPresets.GetValueOrDefault(page) == "Renamed", "the remembered pick follows the rename");
         Menu("Delete...");
-        Check(Names() == "Second" && picker.SelectedItem == null, $"deleted: {Names()}");
+        Check(Names() == "Second" && picker.SelectedItem == null && !_appSettings.PickedPresets.ContainsKey(page), $"deleted, nothing picked: {Names()}");
         snapshot("after");
         return report.ToString();
     }
 
     /// <summary>Development aid for --screenshots: the presets of the Ring and Quad Views pages.</summary>
     public string ExercisePresets(string page, Action<string> snapshot) => page == "ring"
-        ? ExercisePresetBar(_ringPresetBar!, _appSettings.RingPresets, i => ApplyValues(Settings.Presets[i].Values), CaptureRingSlot, name => snapshot("ring-presets-" + name))
-        : ExercisePresetBar((Panel)QuadViewsSlots.Children[0], _appSettings.QuadViewsPresets,
+        ? ExercisePresetBar(page, _ringPresetBar!, () => BuildRingPresetBar(out _), _appSettings.RingPresets, i => ApplyValues(Settings.Presets[i].Values),
+            CaptureRingSlot, name => snapshot("ring-presets-" + name))
+        : ExercisePresetBar(page, (Panel)QuadViewsSlots.Children[0], () => BuildQuadViewsPresetBar(out _), _appSettings.QuadViewsPresets,
             i => ApplyQuadViewsPreset(QuadViewsSetting.Presets[i].Values.ToDictionary(kv => kv.Key, kv => kv.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture))),
             CaptureQuadViewsPreset, name => snapshot("qv-presets-" + name));
 
@@ -917,6 +966,7 @@ public partial class MainWindow : Window
         _loading = false;
         _previewTimer.Stop(); _previewTimer.Start();
         _saveTimer.Stop(); _saveTimer.Start();
+        _ringPresetsChanged?.Invoke();
     }
 
     /// <summary>
@@ -953,6 +1003,7 @@ public partial class MainWindow : Window
         if (key == "stabilize_tilt" || key == "output_max_side") DrawCrop();
         if (!_previewTimer.IsEnabled) _previewTimer.Start();
         _saveTimer.Stop(); _saveTimer.Start();
+        _ringPresetsChanged?.Invoke();
     }
 
     // ------------------------------------------------------------------ config file
@@ -968,6 +1019,7 @@ public partial class MainWindow : Window
         _dirtyKeys.Clear();
         UpdateDependentRows();
         SyncFixedFocusKeys();
+        _ringPresetsChanged?.Invoke();
         AppLog.Write(existed ? $"Ring settings loaded from {_configPath} ({_values.Count} keys)." : $"No ring settings file yet ({_configPath}); defaults shown.");
         if (existed) SetSaveMark("Saves by itself", "Loaded your current settings. Changes save by themselves and reach a running game at once.");
         else SetSaveMark("Defaults", "No settings file yet, so these are the defaults. The app creates the file at your first change.");
@@ -991,6 +1043,7 @@ public partial class MainWindow : Window
             changed = true;
         }
         _loading = false;
+        if (changed) _ringPresetsChanged?.Invoke();
         return changed;
     }
 

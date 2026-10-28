@@ -32,6 +32,8 @@ public sealed class AppSettings
     /// <summary>The user's own presets by name: ring looks (Look + Tail tabs) and Quad Views sliders.</summary>
     public List<SavedPreset> RingPresets { get; set; } = [];
     public List<SavedPreset> QuadViewsPresets { get; set; } = [];
+    /// <summary>The preset picked on each page ("ring", "quadviews"), so a restart shows it again, and whether it was edited since.</summary>
+    public Dictionary<string, string> PickedPresets { get; set; } = [];
     /// <summary>The three numbered slots of 2.x and 3.0 dev builds up to rev12: read once, carried into the lists above.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SavedPreset?[]? RingSlots { get; set; }

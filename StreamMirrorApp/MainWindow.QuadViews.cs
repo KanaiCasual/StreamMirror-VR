@@ -143,7 +143,7 @@ public partial class MainWindow
             QuadViewsPresets.Children.Add(button);
         }
 
-        QuadViewsSlots.Children.Add(BuildPresetBar(_appSettings.QuadViewsPresets, "sliders", CaptureQuadViewsPreset, ApplyQuadViewsPreset, DescribeQuadViewsPreset));
+        QuadViewsSlots.Children.Add(BuildQuadViewsPresetBar(out _quadViewsPresetsChanged));
 
         // Pick up what another tool (the Companion, a text editor) saved - when the tab is opened, not on a timer.
         Tabs.SelectionChanged += (_, e) =>
@@ -160,6 +160,12 @@ public partial class MainWindow
     }
 
     // ---- the user's own presets (the bar is BuildPresetBar, shared with the Ring page)
+
+    /// <summary>Called on every change to the sliders: the bar says whether the picked preset was edited since it was saved.</summary>
+    private Action? _quadViewsPresetsChanged;
+
+    private Panel BuildQuadViewsPresetBar(out Action changed) =>
+        (Panel)BuildPresetBar("quadviews", _appSettings.QuadViewsPresets, "sliders", CaptureQuadViewsPreset, ApplyQuadViewsPreset, DescribeQuadViewsPreset, out changed);
 
     private Dictionary<string, string> CaptureQuadViewsPreset() =>
         QuadViewsSetting.All.Where(s => !s.IsToggle).ToDictionary(s => s.Id, s => _quadViewsValues.GetValueOrDefault(s.Id).ToString("R", CultureInfo.InvariantCulture));
@@ -375,6 +381,7 @@ public partial class MainWindow
     private void RefreshQuadViewsReadout()
     {
         SaveOwnQuadViews();
+        _quadViewsPresetsChanged?.Invoke();
         var session = _quadViewsSession;
         var saved = EvaluateQuadViews(_quadViewsFile);
         var planned = PlannedQuadViewsFile();
