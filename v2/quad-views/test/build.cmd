@@ -12,7 +12,7 @@ set DEPS=%~dp0..\..\external\qvf-deps\openxr-sdk
 cl /nologo /std:c++17 /EHsc /O2 /W3 /MD /I "%DEPS%\include" /I "%DEPS%\src\common" /I "%~dp0..\..\external\vulkan-headers\include" /I "%~dp0..\layer" "%~dp0qvf_test.cpp" /Fe:qvf_test.exe /link d3d11.lib d3d12.lib dxgi.lib dxguid.lib windowscodecs.lib ole32.lib
 if errorlevel 1 exit /b 1
 del qvf_test.obj 2>nul
-set LAYER=%~dp0..\..\bin\quad-views\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll
+set LAYER=%~dp0..\..\bin\quad-views\XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.dll
 set FAILED=0
 for %%c in (gaze-filter d3d11 d3d12 d3d12-array d3d11-and-d3d12 vulkan opengl-declared official-below stereo-game) do (
     "%OUT%\qvf_test.exe" "%LAYER%" "%OUT%\out" %%c

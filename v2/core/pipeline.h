@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - core: one frame, start to finish. The OpenXR layer and the OpenVR helper both hand
+// StreamMirror VR - core: one frame, start to finish. The OpenXR layer and the OpenVR helper both hand
 // this the same things - the eye images, where the head is, where the eyes point - and it does the rest: settings,
 // ring motion, framing, the one draw, the crop tool's picture, the calibration nudge keys, the frame-rate cap.
 #pragma once

@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OpenVR helper: the headset's own eye gaze, from its OpenXR runtime.
+// StreamMirror VR - the OpenVR helper: the headset's own eye gaze, from its OpenXR runtime.
 //
 // A SteamVR game gets its gaze from the headset's SteamVR driver, and some drivers pass none on (Pimax's own has no eye
 // tracking in it at all) although the same headset's OpenXR runtime has it. That runtime answers through the standard

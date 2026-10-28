@@ -1,4 +1,4 @@
-// Offline test of VR Gaze Mirror's quad views layer (built on Quad-Views-Foveated).
+// Offline test of StreamMirror VR's quad views layer (built on Quad-Views-Foveated).
 //
 // Plays both the game and the runtime: loads the layer DLL the way the OpenXR loader does, hands it a fake runtime
 // whose swapchain images are real textures, submits quad-view frames whose four views are each filled with one colour,
@@ -47,7 +47,7 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
 
-    constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews";
+    constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews";
     constexpr uint32_t StereoWidth = 2000, StereoHeight = 2100;
     constexpr int ImagesPerSwapchain = 3;
     constexpr int64_t Format = 29;       // DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
@@ -767,7 +767,7 @@ int main(int argc, char** argv) {
     SetEnvironmentVariableA("LOCALAPPDATA", folder.c_str());
     _putenv_s("LOCALAPPDATA", folder.c_str());
     // The official layer's settings, for the first start to copy; the layer's own folder starts empty.
-    const std::string settings = folder + "\\GazeMirror\\QuadViews\\settings.cfg";
+    const std::string settings = folder + "\\StreamMirror\\QuadViews\\settings.cfg";
     DeleteFileA(settings.c_str());
     CreateDirectoryA((folder + "\\Quad-Views-Foveated").c_str(), nullptr);
     WriteText(folder + "\\Quad-Views-Foveated\\settings.cfg", "# the official layer's file\nsharpen_focus_view=0.3\n");

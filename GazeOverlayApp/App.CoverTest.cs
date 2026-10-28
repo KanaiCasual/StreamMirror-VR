@@ -19,7 +19,7 @@ public partial class App
     {
         new Window
         {
-            Title = "VR Gaze Mirror - cover test", WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize, Topmost = true, ShowActivated = false,
+            Title = "StreamMirror VR - cover test", WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize, Topmost = true, ShowActivated = false,
             ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.Manual, Left = 160, Top = 160, Width = 420, Height = 300,
             Background = new SolidColorBrush(Color.FromRgb(255, 0, 255)),
         }.Show();
@@ -103,7 +103,7 @@ public partial class App
                 Check(presses == 1, "the hotkey is registered with Windows and reaches the app");
                 Check(signalView.ReadInt32(44) == 0x386, "the producers are told which key to look at, and with which modifiers (Ctrl + Alt + F23)");
                 // The producer's way in: it sets the event when it sees the key go down inside the game.
-                using (var fromProducer = EventWaitHandle.OpenExisting("GazeMirror2.CoverKey" + names))
+                using (var fromProducer = EventWaitHandle.OpenExisting("StreamMirror.CoverKey" + names))
                 {
                     fromProducer.Set();
                     Thread.Sleep(100);
@@ -117,7 +117,7 @@ public partial class App
                 }
                 // A producer that turns up later is told the key too.
                 signalView.Write(44, 0);
-                using (var producerChanged = EventWaitHandle.OpenExisting("GazeMirror2.ProducerChanged" + names))
+                using (var producerChanged = EventWaitHandle.OpenExisting("StreamMirror.ProducerChanged" + names))
                 {
                     producerChanged.Set();
                     Thread.Sleep(100);

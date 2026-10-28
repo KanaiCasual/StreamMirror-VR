@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OpenVR helper: calibration of the gaze that comes from VRChat.
+// StreamMirror VR - the OpenVR helper: calibration of the gaze that comes from VRChat.
 //
 // The eye values VRChat's avatar carries are whatever the eye-tracking software makes of the cameras - not angles, and
 // not in proportion to them either. So the helper measures the relation once, with a small target shown in the headset

@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OpenXR layer: Vulkan games.
+// StreamMirror VR - the OpenXR layer: Vulkan games.
 //
 // The core works in Direct3D 11, so a Vulkan game's eye images are brought across. For each of the game's colour
 // swapchains the bridge makes one Direct3D 11 texture, on a D3D11 device of its own on the game's GPU, and imports it

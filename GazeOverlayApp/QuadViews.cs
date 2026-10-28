@@ -26,12 +26,12 @@ public sealed class QuadViewsSession
     public bool HasResolution => StereoWidth > 0 && StereoHeight > 0;
     public long StereoPixels => 2L * StereoWidth * StereoHeight;
 
-    /// <summary>True while VR Gaze Mirror's own quad views layer is the one the Quad Views page edits (its own folder, log
+    /// <summary>True while StreamMirror VR's own quad views layer is the one the Quad Views page edits (its own folder, log
     /// and settings file); false for the official Quad-Views-Foveated.</summary>
     public static bool OwnLayer { get; set; } = true;
 
     public static string OfficialFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Quad-Views-Foveated");
-    public static string OwnFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GazeMirror", "QuadViews");
+    public static string OwnFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StreamMirror", "QuadViews");
     public static string Folder => OwnLayer ? OwnFolder : OfficialFolder;
     public static string LogPath => OwnLayer ? Path.Combine(OwnFolder, "QuadViews.log") : Path.Combine(OfficialFolder, "Quad-Views-Foveated.log");
 
@@ -120,7 +120,7 @@ public sealed class QuadViewsFile
     public static string DefaultPath => Path.Combine(QuadViewsSession.Folder, "settings.cfg");
 
     /// <summary>The first lines of every file the app writes.</summary>
-    public const string OwnFileHeader = "# Quad-Views-Foveated settings, written by VR Gaze Mirror.";
+    public const string OwnFileHeader = "# Quad-Views-Foveated settings, written by StreamMirror VR.";
     private const string OwnFileSecondLine = "# Settings in this first part apply to every headset and OpenXR runtime.";
 
     /// <summary>The settings in groups, in the order a file lists them: the sharp region with eye tracking, the same
@@ -151,7 +151,7 @@ public sealed class QuadViewsFile
         ["horizontal_fixed_offset"] = 0, ["vertical_fixed_offset"] = 0, ["vertical_focus_offset"] = 0,
         ["smoothen_focus_view_edges"] = 0.2, ["sharpen_focus_view"] = 0.7,
         ["turbo_mode"] = 1, ["debug_eye_gaze"] = 0, ["debug_focus_view"] = 0,
-        // VR Gaze Mirror's own layer only (gaze_filter.h and the diagnostics in its layer.cpp).
+        // StreamMirror VR's own layer only (gaze_filter.h and the diagnostics in its layer.cpp).
         ["gaze_smoothing_ms"] = 8, ["gaze_deadzone_degrees"] = 0.5, ["show_diagnostics"] = 0,
     };
 
@@ -220,7 +220,7 @@ public sealed class QuadViewsFile
     /// set it for a runtime or game, and lines the page has no setting for (un-advertise). Headset and per-game values of
     /// the page's settings, the old comments and the old layout go: the page's values count everywhere.
     /// </summary>
-    /// <param name="ownLayer">The file is VR Gaze Mirror's own layer's: its own settings are written, the official's debug
+    /// <param name="ownLayer">The file is StreamMirror VR's own layer's: its own settings are written, the official's debug
     /// switch is not (and the other way round).</param>
     public static QuadViewsFile Plan(QuadViewsFile current, IReadOnlyDictionary<string, double> values, IReadOnlySet<string> changed, bool ownLayer = false)
     {
@@ -424,7 +424,7 @@ public static class QuadViewsReadout
 /// Direct: the slider shows the file's number as it is (milliseconds, degrees).</summary>
 public enum QuadViewsScale { Fraction, PixelShare, Direct }
 
-/// <summary>Which layer a setting belongs to: both, only VR Gaze Mirror's own, or only the official Quad-Views-Foveated.</summary>
+/// <summary>Which layer a setting belongs to: both, only StreamMirror VR's own, or only the official Quad-Views-Foveated.</summary>
 public enum QuadViewsLayers { Both, OwnOnly, OfficialOnly }
 
 /// <summary>One control of the Quad Views tab. A slider can drive two keys: the eye-tracked one and its fixed fallback.</summary>

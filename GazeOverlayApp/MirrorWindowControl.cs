@@ -14,7 +14,7 @@ public sealed record MonitorInfo(int Number, int Width, int Height);
 /// </summary>
 public static class MirrorWindowControl
 {
-    private const string SingleInstanceMutex = "GazeMirror.MirrorWindow.Single";
+    private const string SingleInstanceMutex = "StreamMirror.MirrorWindow.Single";
 
     /// <summary>Next to this app when installed; in the repository's build folder when run from there.</summary>
     public static string? FindProgram()

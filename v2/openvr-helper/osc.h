@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OpenVR helper: the little of OSC's wire format the two receivers need (VRChat's avatar
+// StreamMirror VR - the OpenVR helper: the little of OSC's wire format the two receivers need (VRChat's avatar
 // parameters, SRanibro's raw gaze). Big-endian numbers, 4-byte padded strings, "#bundle" containers.
 #pragma once
 

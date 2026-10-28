@@ -9,13 +9,13 @@ namespace GazeOverlay;
 
 /// <summary>
 /// The Quad Views tab: the settings TallyMouse's QuadViews Companion edits, plus how many pixels they make the game render.
-/// They are the settings of VR Gaze Mirror's quad views layer (built on Quad-Views-Foveated): saved as they are made, and a
+/// They are the settings of StreamMirror VR's quad views layer (built on Quad-Views-Foveated): saved as they are made, and a
 /// running game takes them at once. The switch on top turns the layer on or off.
 /// </summary>
 public partial class MainWindow
 {
     private string _quadViewsPath => QuadViewsFile.DefaultPath;
-    /// <summary>The page edits VR Gaze Mirror's own layer's settings (QuadViewsFile.Plan writes the official layer's too).</summary>
+    /// <summary>The page edits StreamMirror VR's own layer's settings (QuadViewsFile.Plan writes the official layer's too).</summary>
     private const bool _quadViewsOwn = true;
     private QuadViewsFile _quadViewsFile = QuadViewsFile.Load(QuadViewsFile.DefaultPath);
     private QuadViewsSession? _quadViewsSession;
@@ -203,7 +203,7 @@ public partial class MainWindow
         QuadViewsLayerOn.IsChecked = status.OwnQuadViewsOn;
         QuadViewsLayerOn.IsEnabled = status.OwnQuadViewsInstalled;
         QuadViewsLayerNote.Text =
-            !status.OwnQuadViewsInstalled ? "The quad views layer is not installed. Run the VR Gaze Mirror installer's Repair."
+            !status.OwnQuadViewsInstalled ? "The quad views layer is not installed. Run the StreamMirror VR installer's Repair."
             : status.OwnQuadViewsOn ? "On: Direct3D 11, Direct3D 12 and Vulkan games that offer quad views get them, at their next start."
             : status.QuadViews.Health != LayerHealth.NotActive ? "Off. The official Quad-Views-Foveated is on and does quad views now; switching this on turns it off."
             : "Off: no game gets quad views. The settings below wait for it.";
@@ -261,7 +261,7 @@ public partial class MainWindow
 
         if (!keepStatus)
         {
-            SetQuadViewsStatus((imported ? "These are your Quad-Views-Foveated settings: VR Gaze Mirror's layer starts from them.\n" : "") +
+            SetQuadViewsStatus((imported ? "These are your Quad-Views-Foveated settings: StreamMirror VR's layer starts from them.\n" : "") +
                                "Changes are saved as you make them. The card titles below say when a running game takes them.");
         }
         RefreshQuadViewsReadout();

@@ -51,10 +51,10 @@ public partial class MainWindow : Window
         BuildUndo();
         LoadQuadViews();
         AboutText.Text =
-            "VR Gaze Mirror mirrors your VR view for OBS and window capture, with a ring that shows where you look.\n\n" +
+            "StreamMirror VR mirrors your VR view for OBS and window capture, with a ring that shows where you look.\n\n" +
             "Its parts:\n" +
             "  - the mirror layer (OpenXR games) and the SteamVR helper (SteamVR games) make the picture: cropped, steadied, with the ring;\n" +
-            "  - the OBS plugin \"Gaze Mirror\" and the mirror window show it;\n" +
+            "  - the OBS plugin \"StreamMirror VR\" and the mirror window show it;\n" +
             "  - this app holds the settings.\n" +
             "This project wrote all of that code (MIT licence; the OBS plugin under the GPL-2, as OBS plugins are). It modifies no third-party code: " +
             "Quad-Views-Foveated by Matthieu Bucchianeri is optional and installs unchanged (this app ships his official installer), " +
@@ -136,7 +136,7 @@ public partial class MainWindow : Window
             Nav.SelectedItem = Nav.Items.Cast<NavItem>().FirstOrDefault(i => ReferenceEquals(i.Tab, Tabs.SelectedItem));
         };
         RailVersion.Text = UpdateChecker.CurrentVersionText;
-        Title = $"VR Gaze Mirror {UpdateChecker.CurrentVersionText}"; // The version in the title bar too (it is what people quote).
+        Title = $"StreamMirror VR {UpdateChecker.CurrentVersionText}"; // The version in the title bar too (it is what people quote).
     }
 
     /// <summary>The Quad Views page is only listed while Quad-Views-Foveated is installed: there is nothing to set otherwise.</summary>
@@ -278,7 +278,7 @@ public partial class MainWindow : Window
     /// <summary>A section that folds away under its heading; the app remembers the ones left open.</summary>
     private Expander NewSection(string key, string header, UIElement content)
     {
-        var section = new Expander { Header = header, Content = content, Margin = new Thickness(0, 10, 0, 0), IsExpanded = _appSettings.OpenSections.Contains(key) || Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_EXPANDED") == "1" };
+        var section = new Expander { Header = header, Content = content, Margin = new Thickness(0, 10, 0, 0), IsExpanded = _appSettings.OpenSections.Contains(key) || Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_EXPANDED") == "1" };
         void Remember(bool open, RoutedEventArgs e)
         {
             if (!ReferenceEquals(e.OriginalSource, section) || App.Headless) return; // not a fold inside it
@@ -1004,12 +1004,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        // GAZE_SCREENSHOT_FAULTS=1 (a screenshot run only): the page as it looks when things are wrong.
-        if (App.Headless && Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_FAULTS") == "1")
+        // STREAMMIRROR_SCREENSHOT_FAULTS=1 (a screenshot run only): the page as it looks when things are wrong.
+        if (App.Headless && Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_FAULTS") == "1")
         {
             status = status with
             {
-                GazeMirror = new LayerReport(LayerHealth.NotActive, "Not installed. Run the VR Gaze Mirror installer (.msi), or its Repair option."),
+                StreamMirror = new LayerReport(LayerHealth.NotActive, "Not installed. Run the StreamMirror VR installer (.msi), or its Repair option."),
                 ObsPath = status.ObsPath ?? @"C:\Program Files\obs-studio", ObsPluginPresent = false, OrderCorrect = false, Layers = [.. status.Layers.Reverse()], GameLayersFirst = false,
             };
             SetSaveMark("Not saved", "Could not save: the settings file is in use by another program.", problem: true);
@@ -1020,12 +1020,12 @@ public partial class MainWindow : Window
         ShowQuadViewsLayer(status);
         _obsPluginMissing = status.ObsPath != null && !status.ObsPluginPresent;
         UpdateStartSteps();
-        AppLog.Write($"Status: gaze mirror layer {status.GazeMirror.Health} ({status.GazeMirror.Detail}); OBS {(status.ObsPath == null ? "not found" : status.ObsPluginPresent ? "plugin present" : "plugin missing")}; " +
+        AppLog.Write($"Status: gaze mirror layer {status.StreamMirror.Health} ({status.StreamMirror.Detail}); OBS {(status.ObsPath == null ? "not found" : status.ObsPluginPresent ? "plugin present" : "plugin missing")}; " +
                      $"Quad-Views-Foveated {(status.QuadViewsInstalled ? status.QuadViews.Health.ToString() : "not installed")}; own quad views layer {(status.OwnQuadViewsInstalled ? status.OwnQuadViews.Health.ToString() : "not installed")}; " +
                      $"layer order {(status.OrderCorrect switch { true => "ok", false => "WRONG", null => "n/a" })}; " +
                      $"game layers {status.GameLayers.Health}{(status.GameLayersFirst ? ", first" : ", NOT first")}; {status.Layers.Count} layers.");
         var helper = HelperState();
-        var layerActive = status.GazeMirror.Health == LayerHealth.Active;
+        var layerActive = status.StreamMirror.Health == LayerHealth.Active;
         var obsReady = status.ObsPath != null && status.ObsPluginPresent;
         var marker = _values.GetValueOrDefault("headset_marker") == "1";
         // While all is well, one line on top says so; the parts follow, always listed.
@@ -1035,8 +1035,8 @@ public partial class MainWindow : Window
         _statusRowsInto = StatusRows;
         _layerActive = layerActive;
         // An active layer needs no more than the word; where it is installed is its tooltip.
-        AddStatusRow("\uE81E", "Mirror layer", layerActive ? "Takes the picture inside OpenXR games." : status.GazeMirror.Detail, layerActive ? Colors.SeaGreen : Colors.Firebrick,
-            layerActive ? "Active" : "Missing", tip: layerActive ? status.GazeMirror.Detail : null);
+        AddStatusRow("\uE81E", "Mirror layer", layerActive ? "Takes the picture inside OpenXR games." : status.StreamMirror.Detail, layerActive ? Colors.SeaGreen : Colors.Firebrick,
+            layerActive ? "Active" : "Missing", tip: layerActive ? status.StreamMirror.Detail : null);
         // The game-layers layer: with it first in the list, Show other tools' panels can leave the game's own panels in.
         AddStatusRow("\uE737", "Game's own panels",
             gameLayersWell ? "Menus and the game's text stay in the picture."
@@ -1051,7 +1051,7 @@ public partial class MainWindow : Window
             tip: status.GameLayers.Detail);
         AddStatusRow("\uE714", "OBS plugin",
             status.ObsPath == null ? "The app found no OBS Studio on this PC."
-            : status.ObsPluginPresent ? "In OBS, add a \"Gaze Mirror\" source, then press Ctrl+F once to fit it."
+            : status.ObsPluginPresent ? "In OBS, add a \"StreamMirror VR\" source, then press Ctrl+F once to fit it."
             : $"Not in OBS yet ({status.ObsPath}). Run the installer again now that OBS is there, or use its Repair option.",
             obsReady ? Colors.SeaGreen : status.ObsPath == null ? Colors.Gray : Colors.Firebrick,
             obsReady ? "Installed" : status.ObsPath == null ? "No OBS" : "Missing");
@@ -1155,7 +1155,7 @@ public partial class MainWindow : Window
     private FrameworkElement BuildLayerRow(List<LayerEntry> group, int index, int position, bool pending)
     {
         var layer = group[index];
-        var ours = layer.LayerName is LayerStatus.QuadViewsLayer or LayerStatus.GazeMirrorLayer or LayerStatus.OwnQuadViewsLayer or LayerStatus.GameLayersLayer;
+        var ours = layer.LayerName is LayerStatus.QuadViewsLayer or LayerStatus.StreamMirrorLayer or LayerStatus.OwnQuadViewsLayer or LayerStatus.GameLayersLayer;
         var box = new CheckBox
         {
             IsChecked = layer.Enabled, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0),
@@ -1173,7 +1173,7 @@ public partial class MainWindow : Window
         };
         var title = new StackPanel { Orientation = Orientation.Horizontal };
         title.Children.Add(new TextBlock { Text = LayerFriendlyName(layer), FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
-        title.Children.Add(ours ? Pill("VR Gaze Mirror", "#C9D6FF", "#1AC9D6FF") : Pill("Other tool", "#9DA9C8", "#149DA9C8"));
+        title.Children.Add(ours ? Pill("StreamMirror VR", "#C9D6FF", "#1AC9D6FF") : Pill("Other tool", "#9DA9C8", "#149DA9C8"));
         if (layer.PerUser) title.Children.Add(Pill("This user only", "#9DA9C8", "#149DA9C8"));
         if (!layer.Enabled) title.Children.Add(Pill("Off", "#F5B342", "#26F5B342"));
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
@@ -1266,7 +1266,7 @@ public partial class MainWindow : Window
     {
         LayerStatus.GameLayersLayer => "Game's own panels",
         LayerStatus.OwnQuadViewsLayer => "Quad views",
-        LayerStatus.GazeMirrorLayer => "Mirror layer",
+        LayerStatus.StreamMirrorLayer => "Mirror layer",
         LayerStatus.QuadViewsLayer => "Quad-Views-Foveated (official)",
         null => "Unreadable layer",
         var name => name.Split('_') is { Length: >= 4 } parts && parts[0] == "XR" && parts[1] == "APILAYER"
@@ -1362,7 +1362,7 @@ public partial class MainWindow : Window
         {
             ("OpenXR games", "the mirror layer takes the picture and the gaze from the game itself"),
             ("SteamVR games", "the helper takes the picture and the gaze from SteamVR"),
-            ("OBS", "the \"Gaze Mirror\" source shows whichever is live; the mirror window shows the same picture"),
+            ("OBS", "the \"StreamMirror VR\" source shows whichever is live; the mirror window shows the same picture"),
         };
         foreach (var (what, where) in rows)
         {
@@ -1557,7 +1557,7 @@ public partial class MainWindow : Window
         StartSteps.Children.Add(StartStep(1, "Add the source in OBS",
             _obsPluginMissing ? "The OBS plugin is missing. Run the installer again and choose Repair."
             : reading ? "A reader shows the picture now."
-            : "Sources > + > Gaze Mirror, then press Ctrl+F once. Without OBS, open the mirror window on the Mirror page.",
+            : "Sources > + > StreamMirror VR, then press Ctrl+F once. Without OBS, open the mirror window on the Mirror page.",
             _appSettings.SetupSawReader));
         StartSteps.Children.Add(StartStep(2, "Start your VR game",
             producing ? $"Mirroring {live!.Program} now." : "The mirror starts with it. OpenXR and SteamVR games both work.", _appSettings.SetupSawGame));
@@ -1684,7 +1684,7 @@ public partial class MainWindow : Window
         }
         if (Process.GetProcessesByName("obs64").Length > 0 || Process.GetProcessesByName("obs32").Length > 0)
         {
-            UpdateDetail.Text = "OBS is still running (the installer replaces its Gaze Mirror plugin). Close OBS, then press Download and install again.";
+            UpdateDetail.Text = "OBS is still running (the installer replaces its StreamMirror VR plugin). Close OBS, then press Download and install again.";
             return;
         }
 

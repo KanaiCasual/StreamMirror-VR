@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - core: the little geometry the mirror needs, without DirectXMath or OpenXR types.
+// StreamMirror VR - core: the little geometry the mirror needs, without DirectXMath or OpenXR types.
 #pragma once
 
 #include <algorithm>

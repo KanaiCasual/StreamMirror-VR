@@ -196,13 +196,13 @@ public static class CoverPattern
 /// </summary>
 public sealed class DesktopCover : IDisposable
 {
-    private const string ProducerChangedName = "GazeMirror2.ProducerChanged";
-    private const string CoverKeyName = "GazeMirror2.CoverKey";
+    private const string ProducerChangedName = "StreamMirror.ProducerChanged";
+    private const string CoverKeyName = "StreamMirror.CoverKey";
     private const string SignalName = "GazeOverlay.SettingsSignal";
     private const uint SignalMagic = 0x53534F47; // 'GOSS'
     private const int SignalCoverKeyOffset = 44, SignalCoverKeyVersion = 6;
     private const long SamePressMs = 400;
-    private const string WindowClass = "GazeMirrorDesktopCover";
+    private const string WindowClass = "StreamMirrorDesktopCover";
     private const int HotKeyId = 1;
     private const int MinimumSide = 120; // Smaller windows of the game (tool tips, splash strips) are left alone.
 
@@ -680,7 +680,7 @@ public sealed class DesktopCover : IDisposable
         {
             // Click-through, never active, on top, in neither Alt+Tab nor the task bar.
             var window = MakeWindow(Native.WS_EX_TOPMOST | Native.WS_EX_NOACTIVATE | Native.WS_EX_TOOLWINDOW | Native.WS_EX_TRANSPARENT | Native.WS_EX_LAYERED,
-                "VR Gaze Mirror - desktop cover");
+                "StreamMirror VR - desktop cover");
             if (window == IntPtr.Zero) break;
             Native.SetLayeredWindowAttributes(window, 0, 255, Native.LWA_ALPHA);
             var piece = new Piece { Window = window };

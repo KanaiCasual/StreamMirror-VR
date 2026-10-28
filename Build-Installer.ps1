@@ -1,4 +1,4 @@
-# Builds dist\VR-Gaze-Mirror-<version>.msi: the gaze mirror layer, the SteamVR helper, the OBS plugin, the mirror
+# Builds dist\StreamMirror-VR-<version>.msi: the gaze mirror layer, the SteamVR helper, the OBS plugin, the mirror
 # window and the settings app (all from v2\), plus the official Quad-Views-Foveated installer as an optional extra.
 # Prerequisites: Visual Studio 2022 (C++), the .NET 10 SDK, the GitHub CLI for v2\Get-External.ps1 (first time only),
 # and internet access the first time (the WiX toolset comes from nuget.org as part of the build).
@@ -26,7 +26,10 @@ param(
     # The RFC 3161 timestamp server. '' = Certum's with -SignThumbprint, DigiCert's with -SignCertificate.
     [string]$TimestampUrl = '',
     # Lists the code-signing certificates Windows holds for this user (thumbprint, name, expiry), and builds nothing.
-    [switch]$ListSigningCertificates
+    [switch]$ListSigningCertificates,
+    # Also writes the same MSI as VR-Gaze-Mirror-<version>.msi (with its .sha256): the name the update button of the 2.x
+    # versions looks for, so they can update to 3.x in one click. Upload both to the release.
+    [switch]$AlsoOldName
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,10 +73,10 @@ if ($LASTEXITCODE -ne 0) { throw "Publishing the settings app failed." }
 
 # 3b) The mirror window and the SteamVR helper, next to the settings app (the app finds them there).
 Copy-Item (Join-Path $root 'v2\bin\mirror-window\MirrorWindow.exe') $appOut -Force
-Copy-Item (Join-Path $root 'v2\bin\helper\GazeMirrorHelper.exe') $appOut -Force
+Copy-Item (Join-Path $root 'v2\bin\helper\StreamMirrorHelper.exe') $appOut -Force
 Copy-Item (Join-Path $root 'v2\bin\helper\openvr_api.dll') $appOut -Force
 # The helper's SteamVR manifest (relative binary path): shipped next to the exe, so an uninstall takes it away too.
-Copy-Item (Join-Path $root 'v2\openvr-helper\GazeMirrorHelper.vrmanifest') $appOut -Force
+Copy-Item (Join-Path $root 'v2\openvr-helper\StreamMirrorHelper.vrmanifest') $appOut -Force
 
 # 3c) Signing: every program file with no signature yet - ours - with SHA-256 and a timestamp. Files that come signed
 # (.NET, Microsoft, Valve, the Quad-Views-Foveated installer) keep their own signature.
@@ -82,7 +85,7 @@ $timestamp = if ($TimestampUrl) { $TimestampUrl } elseif ($SignThumbprint) { 'ht
 function Sign([string[]]$files) {
     # /d and /du: the name and link Windows' permission prompt shows. Without them it shows the file's name, and for an
     # installer that is the random name of Windows Installer's own copy (ec5b44.msi).
-    & $signtool sign /q /fd SHA256 @signWith /tr $timestamp /td SHA256 /d 'VR Gaze Mirror' /du 'https://github.com/KanaiCasual/VR-Gaze-Mirror' $files
+    & $signtool sign /q /fd SHA256 @signWith /tr $timestamp /td SHA256 /d 'StreamMirror VR' /du 'https://github.com/KanaiCasual/VR-Gaze-Mirror' $files
     if ($LASTEXITCODE -ne 0) { throw "Signing failed: $files" }
     # What Windows makes of each: Valid with a certificate it trusts; signed but untrusted (a test certificate) warns.
     foreach ($file in $files) {
@@ -106,9 +109,9 @@ dotnet build (Join-Path $root 'Installer\GazeOverlay.Installer.wixproj') -c Rele
     "-p:ProductVersion=$Version" "-p:PayloadDir=$payload" "-p:AppDir=$appOut"
 if ($LASTEXITCODE -ne 0) { throw "Building the MSI failed." }
 
-$msi = Get-ChildItem (Join-Path $root 'Installer\bin') -Recurse -Filter 'VR-Gaze-Mirror.msi' |
+$msi = Get-ChildItem (Join-Path $root 'Installer\bin') -Recurse -Filter 'StreamMirror-VR.msi' |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1
-$target = Join-Path $dist "VR-Gaze-Mirror-$appVersion.msi"
+$target = Join-Path $dist "StreamMirror-VR-$appVersion.msi"
 Copy-Item $msi.FullName $target -Force
 if ($signWith) { Sign $target }
 # The checksum file the app's updater checks a download against. Upload it with the .msi to every release
@@ -116,3 +119,9 @@ if ($signWith) { Sign $target }
 $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText("$target.sha256", "$hash  $(Split-Path $target -Leaf)`n")
 '{0}  ({1:N1} MB)  SHA-256 {2}' -f $target, ((Get-Item $target).Length / 1MB), $hash
+if ($AlsoOldName) {
+    $oldName = Join-Path $dist "VR-Gaze-Mirror-$appVersion.msi"
+    Copy-Item $target $oldName -Force
+    [IO.File]::WriteAllText("$oldName.sha256", "$hash  $(Split-Path $oldName -Leaf)`n")
+    '{0}  (the same file, for the 2.x update button)' -f $oldName
+}

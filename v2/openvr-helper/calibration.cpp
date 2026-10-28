@@ -159,7 +159,7 @@ namespace gaze_mirror {
         vr::IVROverlay* overlay = vr::VROverlay();
         if (!overlay) return fail("SteamVR's overlay interface is not available to this program");
         vr::VROverlayHandle_t handle = vr::k_ulOverlayHandleInvalid;
-        vr::EVROverlayError error = overlay->CreateOverlay("kanaicasual.gazemirror.calibration", "Gaze Mirror calibration", &handle);
+        vr::EVROverlayError error = overlay->CreateOverlay("kanaicasual.gazemirror.calibration", "StreamMirror VR calibration", &handle);
         if (error != vr::VROverlayError_None) {
             char text[96];
             snprintf(text, sizeof(text), "the target overlay could not be made (%d)", int(error));

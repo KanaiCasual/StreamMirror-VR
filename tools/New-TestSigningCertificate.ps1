@@ -12,7 +12,7 @@ $pfx = Join-Path $folder 'test-signing.pfx'
 if (Test-Path $pfx) { throw "$pfx exists already. Delete dist\signing first to make a new one (and untrust the old one)." }
 New-Item -ItemType Directory -Force $folder | Out-Null
 
-$certificate = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=VR Gaze Mirror test signing (self-signed)' `
+$certificate = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=StreamMirror VR test signing (self-signed)' `
     -KeyAlgorithm RSA -KeyLength 3072 -HashAlgorithm SHA256 -KeyExportPolicy Exportable `
     -NotAfter (Get-Date).AddYears($Years) -CertStoreLocation Cert:\CurrentUser\My
 try {

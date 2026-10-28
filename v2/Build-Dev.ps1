@@ -6,7 +6,7 @@ $root = $PSScriptRoot
 $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
 if (-not $msbuild) { throw 'MSBuild was not found (Visual Studio 2022 with the C++ workload is required).' }
 
-foreach ($project in 'core\GazeMirrorCore.vcxproj', 'layer\GazeMirrorLayer.vcxproj', 'openvr-helper\GazeMirrorHelper.vcxproj', 'obs-plugin\GazeMirrorCapture.vcxproj', 'mirror-window\MirrorWindow.vcxproj', 'viewer\GazeMirrorViewer.vcxproj', 'test\LayerTest.vcxproj', 'quad-views\layer\QuadViewsLayer.vcxproj') {
+foreach ($project in 'core\StreamMirrorCore.vcxproj', 'layer\StreamMirrorLayer.vcxproj', 'openvr-helper\StreamMirrorHelper.vcxproj', 'obs-plugin\StreamMirrorCapture.vcxproj', 'mirror-window\MirrorWindow.vcxproj', 'viewer\StreamMirrorViewer.vcxproj', 'test\LayerTest.vcxproj', 'quad-views\layer\QuadViewsLayer.vcxproj') {
     $log = Join-Path $env:TEMP ('gaze-build-v2-' + [IO.Path]::GetFileNameWithoutExtension($project) + '.log')
     & $msbuild (Join-Path $root $project) /p:Configuration=Release /p:Platform=x64 /m /v:m /nologo *> $log
     if ($LASTEXITCODE -ne 0) { Get-Content $log | Select-String ' error |warning C' | Select-Object -First 15; throw "$project failed to build (full log: $log)" }
@@ -16,7 +16,7 @@ Get-ChildItem (Join-Path $root 'bin\layer\*.dll'), (Join-Path $root 'bin\helper\
 
 # The offline test: plays game and runtime for the layer and saves what comes out as PNGs.
 $testFolder = Join-Path $root 'bin\test'
-& (Join-Path $testFolder 'layer_test.exe') (Join-Path $root 'bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror.dll') (Join-Path $testFolder 'out')
+& (Join-Path $testFolder 'layer_test.exe') (Join-Path $root 'bin\layer\XR_APILAYER_KANAICASUAL_StreamMirror.dll') (Join-Path $testFolder 'out')
 if ($LASTEXITCODE -ne 0) { throw 'The offline layer test failed.' }
 
 # The quad views layer's own offline test (D3D11, D3D12, when it stands aside, the gaze filter).

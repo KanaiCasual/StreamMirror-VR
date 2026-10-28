@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OBS source "Gaze Mirror".
+// StreamMirror VR - the OBS source "StreamMirror VR".
 //
 // A reader of the 2.0 format (protocol/gaze_mirror_protocol.h): it takes a reader place in the shared block while the
 // source is shown, sleeps on its event until a producer - the OpenXR layer inside a game, or the OpenVR helper next to
@@ -19,7 +19,7 @@
 using namespace gaze_mirror;
 
 OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE("gaze-mirror-capture", "en-US")
+OBS_MODULE_USE_DEFAULT_LOCALE("streammirror-capture", "en-US")
 
 namespace {
 
@@ -50,7 +50,7 @@ namespace {
         va_start(arguments, format);
         vsnprintf(text, sizeof(text), format, arguments);
         va_end(arguments);
-        blog(LOG_INFO, "[gaze-mirror] %s", text);
+        blog(LOG_INFO, "[streammirror] %s", text);
     }
 
     bool OpenBlock(Source& s) {

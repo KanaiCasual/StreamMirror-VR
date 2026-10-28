@@ -1,15 +1,16 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <!--
-    VR Gaze Mirror 2.0: the gaze mirror layer (OpenXR games), the SteamVR helper (OpenVR games), the OBS plugin,
+    StreamMirror VR: the gaze mirror layer (OpenXR games), the SteamVR helper (OpenVR games), the OBS plugin,
     the mirror window, the settings app and the quad views layer (built on Matthieu Bucchianeri's Quad-Views-Foveated,
     MIT) - installed switched off; the app's Quad Views page switches it on.
 
     Everything is declarative - files and registry values that Windows Installer (msiexec) puts in place and removes
-    again. No code of ours runs during setup; the only custom actions are WiX's stock ones ("print the licence", and on
-    uninstall Windows' reg.exe taking out the app's Start with Windows entry). This package never edits another product's registry entries.
+      again. The custom actions are WiX's stock ones ("print the licence", and on uninstall Windows' reg.exe taking out the
+      app's Start with Windows entry) and two runs of the app after an install: --order-layers (the OpenXR layer order)
+      and --fix-startup (Start with Windows after the rename). This package never edits another product's registry entries.
   -->
-  <Package Name="VR Gaze Mirror" Manufacturer="Unofficial community build" Version="$(var.ProductVersion)"
+  <Package Name="StreamMirror VR" Manufacturer="Unofficial community build" Version="$(var.ProductVersion)"
            UpgradeCode="DF6B5D59-1894-4633-8E5E-713CC3B92910" Scope="perMachine" Compressed="yes">
 
     <SummaryInformation Description="Mirrors your VR view for OBS and window capture and shows where you look. For OpenXR and SteamVR games." />
@@ -35,14 +36,18 @@
 
     <!--
       Desktop shortcut: ticked by default on a first install. The choice is written to the registry and read back by later
-      versions (the key keeps the product's first name on purpose: nobody sees it, and the choice carries over).
-      Silent installs: DESKTOPSHORTCUT=0 (or DESKTOPSHORTCUT="") switches it off.
+      versions. Before 3.0 the key had the product's first name (OpenXRGazeOverlay): its choice counts until 3.0 has
+      written its own. Silent installs: DESKTOPSHORTCUT=0 (or DESKTOPSHORTCUT="") switches it off.
     -->
     <Property Id="DESKTOPSHORTCUT" Value="1" Secure="yes" />
     <Property Id="SAVEDDESKTOPSHORTCUT" Secure="yes">
-      <RegistrySearch Id="FindSavedDesktopShortcut" Root="HKLM" Key="SOFTWARE\OpenXRGazeOverlay" Name="DesktopShortcut" Type="raw" Bitness="always64" />
+      <RegistrySearch Id="FindSavedDesktopShortcut" Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="DesktopShortcut" Type="raw" Bitness="always64" />
     </Property>
-    <SetProperty Id="DESKTOPSHORTCUT" Action="RestoreNoDesktopShortcut" Value="" After="AppSearch" Sequence="first" Condition="SAVEDDESKTOPSHORTCUT = &quot;no&quot;" />
+    <Property Id="OLDSAVEDDESKTOPSHORTCUT" Secure="yes">
+      <RegistrySearch Id="FindOldSavedDesktopShortcut" Root="HKLM" Key="SOFTWARE\OpenXRGazeOverlay" Name="DesktopShortcut" Type="raw" Bitness="always64" />
+    </Property>
+    <SetProperty Id="DESKTOPSHORTCUT" Action="RestoreNoDesktopShortcut" Value="" After="AppSearch" Sequence="first"
+                 Condition="SAVEDDESKTOPSHORTCUT = &quot;no&quot; OR (NOT SAVEDDESKTOPSHORTCUT AND OLDSAVEDDESKTOPSHORTCUT = &quot;no&quot;)" />
     <SetProperty Id="DESKTOPSHORTCUTCHOICE" Action="DesktopShortcutChosen" Value="yes" Before="InstallInitialize" Sequence="execute" Condition="DESKTOPSHORTCUT = &quot;1&quot;" />
     <SetProperty Id="DESKTOPSHORTCUTCHOICE" Action="DesktopShortcutDeclined" Value="no" Before="InstallInitialize" Sequence="execute" Condition="DESKTOPSHORTCUT &lt;&gt; &quot;1&quot;" />
 
@@ -56,11 +61,11 @@
     -->
     <Property Id="DESKTOPLNKFOUND" Secure="yes">
       <DirectorySearch Id="FindDesktop" Path="[DesktopFolder]" Depth="0">
-        <FileSearch Id="FindDesktopShortcut" Name="VR Gaze Mirror.lnk" />
+        <FileSearch Id="FindDesktopShortcut" Name="StreamMirror VR.lnk" />
       </DirectorySearch>
     </Property>
     <Property Id="SHORTCUTSKEPT" Secure="yes">
-      <RegistrySearch Id="FindShortcutsKept" Root="HKLM" Key="SOFTWARE\OpenXRGazeOverlay" Name="ShortcutsKept" Type="raw" Bitness="always64" />
+      <RegistrySearch Id="FindShortcutsKept" Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="ShortcutsKept" Type="raw" Bitness="always64" />
     </Property>
 
     <!--
@@ -87,13 +92,18 @@
     -->
     <Property Id="OWNQUADVIEWSSTATE">
       <RegistrySearch Id="FindOwnQuadViews" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
+                      Name="[ProgramFiles64Folder]StreamMirror-VR\QuadViews\XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.json" Type="raw" Bitness="always64" />
+    </Property>
+    <!-- The same switch as installed before 3.0, under its old folder and name. -->
+    <Property Id="OLDQUADVIEWSSTATE">
+      <RegistrySearch Id="FindOldQuadViews" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
                       Name="[ProgramFiles64Folder]VR-Gaze-Mirror\QuadViews\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" Type="raw" Bitness="always64" />
     </Property>
     <Property Id="OWNQUADVIEWSOFF" Value="1" />
-    <SetProperty Id="OWNQUADVIEWSOFF" Value="0" After="AppSearch" Sequence="both" Condition="OWNQUADVIEWSSTATE = &quot;#0&quot;" />
+    <SetProperty Id="OWNQUADVIEWSOFF" Value="0" After="AppSearch" Sequence="both" Condition="OWNQUADVIEWSSTATE = &quot;#0&quot; OR OLDQUADVIEWSSTATE = &quot;#0&quot;" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="INSTALLFOLDER" Name="VR-Gaze-Mirror">
+      <Directory Id="INSTALLFOLDER" Name="StreamMirror-VR">
         <Directory Id="LayerDir" Name="Layer" />
         <Directory Id="OwnQuadViewsDir" Name="QuadViews" />
         <Directory Id="LicencesDir" Name="Licences" />
@@ -107,7 +117,7 @@
       </Directory>
       <Directory Id="ObsDataDir" Name="data">
         <Directory Id="ObsDataPluginsDir" Name="obs-plugins">
-          <Directory Id="ObsDataGazeMirrorDir" Name="gaze-mirror-capture">
+          <Directory Id="ObsDataStreamMirrorDir" Name="streammirror-capture">
             <Directory Id="ObsDataLocaleDir" Name="locale" />
           </Directory>
           <Directory Id="ObsDataOldPluginDir" Name="win-openxr">
@@ -117,7 +127,7 @@
       </Directory>
     </Directory>
 
-    <Feature Id="Main" Title="VR Gaze Mirror" Level="1">
+    <Feature Id="Main" Title="StreamMirror VR" Level="1">
       <ComponentGroupRef Id="LayerFiles" />
       <ComponentRef Id="LayerRegistration" />
       <ComponentRef Id="GameLayersRegistration" />
@@ -129,6 +139,7 @@
       <ComponentRef Id="DesktopShortcut" />
       <ComponentRef Id="RemoveDesktopShortcut" />
       <ComponentRef Id="NoDesktopShortcut" />
+      <ComponentRef Id="OldDesktopShortcutRemoval" />
       <ComponentRef Id="RememberChoices" />
       <ComponentGroupRef Id="ObsPlugin" />
       <ComponentRef Id="OldObsPluginRemoval" />
@@ -141,38 +152,46 @@
       the PC that ticked it keep their entry until they untick it in the app.
     -->
     <SetProperty Id="ForgetStartWithWindows" Before="ForgetStartWithWindows" Sequence="execute"
-                 Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v &quot;VR Gaze Mirror&quot; /f" />
+                 Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v &quot;StreamMirror VR&quot; /f" />
     <CustomAction Id="ForgetStartWithWindows" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="yes" Return="ignore" />
     <!--
       After every install, repair and update: the app puts the OpenXR layer list in the order its Fix order button would
       (the game-layers watcher at the top, the mirror below whatever draws into the picture), backing up the old order.
       It runs elevated, with no window; its result is in the app's log. It never fails the install.
     -->
-    <SetProperty Id="OrderLayers" Before="OrderLayers" Sequence="execute" Value="&quot;[INSTALLFOLDER]GazeMirror.exe&quot; --order-layers" />
+    <SetProperty Id="OrderLayers" Before="OrderLayers" Sequence="execute" Value="&quot;[INSTALLFOLDER]StreamMirror.exe&quot; --order-layers" />
     <CustomAction Id="OrderLayers" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="no" Return="ignore" />
+    <!--
+      After every install and update, as the user who runs it: a Start with Windows entry of before 3.0 names the old
+      exe, which the update removes; the app replaces it with one for the new exe, and copies the old data folder over.
+      No window; it never fails the install.
+    -->
+    <SetProperty Id="FixStartup" Before="FixStartup" Sequence="execute" Value="&quot;[INSTALLFOLDER]StreamMirror.exe&quot; --fix-startup" />
+    <CustomAction Id="FixStartup" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec" Execute="deferred" Impersonate="yes" Return="ignore" />
     <InstallExecuteSequence>
       <Custom Action="ForgetStartWithWindows" Before="InstallFinalize" Condition="REMOVE = &quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="OrderLayers" After="WriteRegistryValues" Condition="NOT REMOVE = &quot;ALL&quot;" />
+      <Custom Action="FixStartup" After="OrderLayers" Condition="NOT REMOVE = &quot;ALL&quot;" />
     </InstallExecuteSequence>
 
     <!-- Pages: GazeUI.wxs. Pictures: tools\make_installer_art.py draws them from the app logo. -->
     <UIRef Id="GazeOverlayUI" />
     <WixVariable Id="WixUIDialogBmp" Value="Assets\dialog.bmp" />
     <WixVariable Id="WixUIBannerBmp" Value="Assets\banner.bmp" />
-    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="Open &quot;VR Gaze Mirror&quot; from the Start menu to set it up. In OBS, add a &quot;Gaze Mirror&quot; source to your scene. If the Status page reports the layer order, press its Fix order button. Run this installer again for Repair and Uninstall." />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="Open &quot;StreamMirror VR&quot; from the Start menu to set it up. In OBS, add a &quot;StreamMirror VR&quot; source to your scene. If the Status page reports the layer order, press its Fix order button. Run this installer again for Repair and Uninstall." />
   </Package>
 
   <Fragment>
     <!-- The gaze mirror layer: loaded by OpenXR games. -->
     <ComponentGroup Id="LayerFiles" Directory="LayerDir">
       <Component>
-        <File Id="LayerDll" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_GazeMirror.dll" />
+        <File Id="LayerDll" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_StreamMirror.dll" />
       </Component>
       <Component>
-        <File Id="LayerJson" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_GazeMirror.json" />
+        <File Id="LayerJson" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_StreamMirror.json" />
       </Component>
       <Component>
-        <File Id="GameLayersJson" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json" />
+        <File Id="GameLayersJson" Source="$(var.PayloadDir)\Layer\XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers.json" />
       </Component>
     </ComponentGroup>
 
@@ -180,12 +199,13 @@
       OpenXR loads implicit layers in the order their registry values were created. This layer must sit below
       Quad-Views-Foveated; when that is installed later (for example from the offer on the last page), the settings
       app's Status tab notices and its "Fix order" button puts it right.
-      The component's ID changed with the layer's name (XR_APILAYER_NOVENDOR_gaze_mirror before 2.3.2), so an update takes
-      the old entry out with the old version instead of leaving it behind.
+      The component's ID changes with the layer's name (XR_APILAYER_NOVENDOR_gaze_mirror before 2.3.2,
+      XR_APILAYER_KANAICASUAL_GazeMirror before 3.0), so an update takes the old entry out with the old version instead
+      of leaving it behind. The same goes for every component below whose registry value or file was renamed in 3.0.
     -->
-    <Component Id="LayerRegistration" Directory="INSTALLFOLDER" Guid="2BF5E720-C196-4C2C-9E81-AFBFCB3407BC">
-      <RegistryValue Id="LayerGazeMirror" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
-                     Name="[LayerDir]XR_APILAYER_KANAICASUAL_GazeMirror.json" Type="integer" Value="0" KeyPath="yes" />
+    <Component Id="LayerRegistration" Directory="INSTALLFOLDER" Guid="271F36C1-59AA-40F0-A8A9-A6CCE705CBE9">
+      <RegistryValue Id="LayerStreamMirror" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
+                     Name="[LayerDir]XR_APILAYER_KANAICASUAL_StreamMirror.json" Type="integer" Value="0" KeyPath="yes" />
     </Component>
 
     <!--
@@ -193,9 +213,9 @@
       tool, so it sees what the game itself sends. A new value lands at the bottom, so the install's last step puts the
       list in order (OrderLayers below).
     -->
-    <Component Id="GameLayersRegistration" Directory="INSTALLFOLDER" Guid="8E3B6F14-2C7A-4D95-B1E8-63A0C5D7F249">
+    <Component Id="GameLayersRegistration" Directory="INSTALLFOLDER" Guid="F956BA33-49ED-4C91-88D1-005594EDEE52">
       <RegistryValue Id="LayerGameLayers" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
-                     Name="[LayerDir]XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json" Type="integer" Value="0" KeyPath="yes" />
+                     Name="[LayerDir]XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers.json" Type="integer" Value="0" KeyPath="yes" />
     </Component>
 
     <!-- The settings app, the mirror window and the SteamVR helper (with Valve's OpenVR library), harvested as published. -->
@@ -203,13 +223,13 @@
       <Files Include="$(var.AppDir)\**" />
     </ComponentGroup>
 
-    <!-- VR Gaze Mirror's quad views layer (built on Quad-Views-Foveated, MIT), with the settings it ships. -->
+    <!-- StreamMirror VR's quad views layer (built on Quad-Views-Foveated, MIT), with the settings it ships. -->
     <ComponentGroup Id="OwnQuadViewsFiles" Directory="OwnQuadViewsDir">
       <Component>
-        <File Id="OwnQuadViewsDll" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll" />
+        <File Id="OwnQuadViewsDll" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.dll" />
       </Component>
       <Component>
-        <File Id="OwnQuadViewsJson" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" />
+        <File Id="OwnQuadViewsJson" Source="$(var.PayloadDir)\QuadViews\XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.json" />
       </Component>
       <Component>
         <File Id="OwnQuadViewsSettings" Source="$(var.PayloadDir)\QuadViews\settings.cfg" />
@@ -217,14 +237,14 @@
     </ComponentGroup>
 
     <!-- Off unless the user switched it on (see OWNQUADVIEWSOFF); it belongs above the gaze mirror layer: Fix order. -->
-    <Component Id="OwnQuadViewsRegistration" Directory="OwnQuadViewsDir" Guid="5AB33D7F-E44B-4E5D-8C5F-8A6FCCF04C6E">
+    <Component Id="OwnQuadViewsRegistration" Directory="OwnQuadViewsDir" Guid="2610BDE7-BD34-41F6-B491-348F4142BD8F">
       <RegistryValue Id="LayerOwnQuadViews" Root="HKLM" Key="SOFTWARE\Khronos\OpenXR\1\ApiLayers\Implicit"
-                     Name="[OwnQuadViewsDir]XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" Type="integer" Value="[OWNQUADVIEWSOFF]" KeyPath="yes" />
+                     Name="[OwnQuadViewsDir]XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.json" Type="integer" Value="[OWNQUADVIEWSOFF]" KeyPath="yes" />
     </Component>
 
     <ComponentGroup Id="Licences" Directory="LicencesDir">
       <Component>
-        <File Id="LicenceOwn" Source="$(var.PayloadDir)\Licences\LICENSE-VR-Gaze-Mirror.txt" />
+        <File Id="LicenceOwn" Source="$(var.PayloadDir)\Licences\LICENSE-StreamMirror-VR.txt" />
       </Component>
       <Component>
         <File Id="LicenceObsPlugin" Source="$(var.PayloadDir)\Licences\LICENSE-OBS-plugin-GPL-2.txt" />
@@ -241,42 +261,48 @@
     </ComponentGroup>
 
     <StandardDirectory Id="ProgramMenuFolder">
-      <Component Id="StartMenuShortcut" Guid="4E1B7C36-0A92-4D8F-B5E7-9F3A6C2D1B48">
-        <Shortcut Id="SettingsShortcut" Name="VR Gaze Mirror" Description="Mirror, crop, gaze ring and quad views settings"
-                  Target="[INSTALLFOLDER]GazeMirror.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon.ico" />
-        <RegistryValue Root="HKCU" Key="Software\OpenXRGazeOverlay" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      <Component Id="StartMenuShortcut" Guid="3BDEA063-B027-4019-B9AB-4D84D1E0297B">
+        <Shortcut Id="SettingsShortcut" Name="StreamMirror VR" Description="Mirror, crop, gaze ring and quad views settings"
+                  Target="[INSTALLFOLDER]StreamMirror.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon.ico" />
+        <RegistryValue Root="HKCU" Key="Software\StreamMirrorVR" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
 
     <StandardDirectory Id="DesktopFolder">
-      <Component Id="DesktopShortcut" Guid="7D3A9E14-52C8-4B6F-91E0-A4C7F2D85B63" Permanent="yes"
+      <Component Id="DesktopShortcut" Guid="571D5CD9-95B9-43F3-B6A0-4F9181A39721" Permanent="yes"
                  Condition="DESKTOPSHORTCUT = &quot;1&quot; AND (NOT SHORTCUTSKEPT OR NOT DESKTOPLNKFOUND)">
-        <Shortcut Id="SettingsDesktopShortcut" Name="VR Gaze Mirror" Description="Mirror, crop, gaze ring and quad views settings"
-                  Target="[INSTALLFOLDER]GazeMirror.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon.ico" />
-        <RegistryValue Root="HKCU" Key="Software\OpenXRGazeOverlay" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+        <Shortcut Id="SettingsDesktopShortcut" Name="StreamMirror VR" Description="Mirror, crop, gaze ring and quad views settings"
+                  Target="[INSTALLFOLDER]StreamMirror.exe" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon.ico" />
+        <RegistryValue Root="HKCU" Key="Software\StreamMirrorVR" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
 
-    <Component Id="RemoveDesktopShortcut" Directory="INSTALLFOLDER" Guid="3F24C9E4-3984-4140-86DE-65BA86A680DA">
-      <RemoveFile Id="RemoveDesktopShortcutOnUninstall" Directory="DesktopFolder" Name="VR Gaze Mirror.lnk" On="uninstall" />
-      <RegistryValue Root="HKLM" Key="SOFTWARE\OpenXRGazeOverlay" Name="ShortcutsKept" Type="integer" Value="1" KeyPath="yes" />
+    <Component Id="RemoveDesktopShortcut" Directory="INSTALLFOLDER" Guid="4C00C717-8EF2-4F3A-AFE0-EDE03F6689D1">
+      <RemoveFile Id="RemoveDesktopShortcutOnUninstall" Directory="DesktopFolder" Name="StreamMirror VR.lnk" On="uninstall" />
+      <RegistryValue Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="ShortcutsKept" Type="integer" Value="1" KeyPath="yes" />
     </Component>
-    <Component Id="NoDesktopShortcut" Directory="INSTALLFOLDER" Guid="87B8A9A8-6531-41CD-9C6A-872957DE77FC" Condition="DESKTOPSHORTCUT &lt;&gt; &quot;1&quot;">
-      <RemoveFile Id="RemoveDesktopShortcutUnticked" Directory="DesktopFolder" Name="VR Gaze Mirror.lnk" On="install" />
-      <RegistryValue Root="HKLM" Key="SOFTWARE\OpenXRGazeOverlay" Name="DesktopShortcutUnticked" Type="integer" Value="1" KeyPath="yes" />
+    <Component Id="NoDesktopShortcut" Directory="INSTALLFOLDER" Guid="8578AF5E-0631-473A-B8E8-64B1FFC72F59" Condition="DESKTOPSHORTCUT &lt;&gt; &quot;1&quot;">
+      <RemoveFile Id="RemoveDesktopShortcutUnticked" Directory="DesktopFolder" Name="StreamMirror VR.lnk" On="install" />
+      <RegistryValue Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="DesktopShortcutUnticked" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 
-    <Component Id="RememberChoices" Directory="INSTALLFOLDER" Guid="C5E08B27-4F91-4D3A-8A66-1B9D7E3F0C42">
-      <RegistryValue Root="HKLM" Key="SOFTWARE\OpenXRGazeOverlay" Name="DesktopShortcut" Type="string" Value="[DESKTOPSHORTCUTCHOICE]" KeyPath="yes" />
+    <!-- The desktop shortcut of before 3.0 ("VR Gaze Mirror") was permanent: its version's removal leaves it, so it goes here. -->
+    <Component Id="OldDesktopShortcutRemoval" Directory="INSTALLFOLDER" Guid="05805FF0-490E-468D-A40E-7E76D5ADE25A">
+      <RemoveFile Id="RemoveOldDesktopShortcut" Directory="DesktopFolder" Name="VR Gaze Mirror.lnk" On="install" />
+      <RegistryValue Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="OldDesktopShortcutRemoved" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <Component Id="RememberChoices" Directory="INSTALLFOLDER" Guid="80EC7541-E70E-4D0B-AA7A-2B6102FEC60D">
+      <RegistryValue Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="DesktopShortcut" Type="string" Value="[DESKTOPSHORTCUTCHOICE]" KeyPath="yes" />
     </Component>
 
     <!-- The OBS plugin is this project's own: replaced by every version, removed on uninstall. -->
     <ComponentGroup Id="ObsPlugin">
-      <Component Id="ObsPluginDll" Directory="ObsPlugins64Dir" Guid="B2D94F10-7C3E-4A68-9E51-3F8A0D6C7E25" Condition="OBSDIR">
-        <File Id="ObsPluginDllFile" Source="$(var.PayloadDir)\OBSPlugin\obs-plugins\64bit\gaze-mirror-capture.dll" KeyPath="yes" />
+      <Component Id="ObsPluginDll" Directory="ObsPlugins64Dir" Guid="D242C25C-67F4-49FA-918C-D24BCDD8A882" Condition="OBSDIR">
+        <File Id="ObsPluginDllFile" Source="$(var.PayloadDir)\OBSPlugin\obs-plugins\64bit\streammirror-capture.dll" KeyPath="yes" />
       </Component>
-      <Component Id="ObsPluginLocaleEn" Directory="ObsDataLocaleDir" Guid="D7C21B95-3E4A-4F06-A8D2-5B9E0C1F7A64" Condition="OBSDIR">
-        <File Id="ObsPluginLocaleEnFile" Source="$(var.PayloadDir)\OBSPlugin\data\obs-plugins\gaze-mirror-capture\locale\en-US.ini" KeyPath="yes" />
+      <Component Id="ObsPluginLocaleEn" Directory="ObsDataLocaleDir" Guid="A3864008-9CFF-4006-972C-18184A74B0AB" Condition="OBSDIR">
+        <File Id="ObsPluginLocaleEnFile" Source="$(var.PayloadDir)\OBSPlugin\data\obs-plugins\streammirror-capture\locale\en-US.ini" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
@@ -286,11 +312,11 @@
       Installer's own RemoveFile table - but only when this install IS the upgrade from our 1.x (WIX_UPGRADE_DETECTED)
       and the original OpenXR-Layer-OBSMirror is not on the PC: then the plugin can only have come from us. Somebody
       who installed Jabbah's product themselves keeps their plugin. An OBS scene that still uses the old source shows
-      it as missing; add a "Gaze Mirror" source instead.
+      it as missing; add a "StreamMirror VR" source instead.
     -->
-    <Component Id="OldObsPluginRemoval" Directory="ObsPlugins64Dir" Guid="3E9A1C74-5B2D-4F86-A0E1-7C4D9B2F6A58"
+    <Component Id="OldObsPluginRemoval" Directory="ObsPlugins64Dir" Guid="0FBDC7E0-4EBD-4C7D-BC91-ED46C0333893"
                Condition="OBSDIR AND WIX_UPGRADE_DETECTED AND NOT ORIGINALOBSMIRROR AND NOT ORIGINALOBSMIRRORDIR">
-      <RegistryValue Root="HKLM" Key="SOFTWARE\OpenXRGazeOverlay" Name="OldObsPluginRemoved" Type="integer" Value="1" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="OldObsPluginRemoved" Type="integer" Value="1" KeyPath="yes" />
       <RemoveFile Id="RemoveOldPluginDll" Directory="ObsPlugins64Dir" Name="win-openxr.dll" On="install" />
       <RemoveFile Id="RemoveOldPluginPdb" Directory="ObsPlugins64Dir" Name="win-openxr.pdb" On="install" />
       <RemoveFile Id="RemoveOldPluginPresets" Directory="ObsDataOldPluginDir" Name="win_openxrmirror-presets.ini" On="install" />

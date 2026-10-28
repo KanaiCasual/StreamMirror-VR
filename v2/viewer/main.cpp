@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - dev viewer.
+// StreamMirror VR - dev viewer.
 //
 // The smallest possible reader of the 2.0 format (v2\protocol\gaze_mirror_protocol.h): registers as a reader, sleeps
 // until the producer signals a frame, shows it. No timer anywhere - while no game runs it waits without waking up.
@@ -144,7 +144,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     HANDLE mapping = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(Frames), FramesMappingName);
     Frames* frames = mapping ? static_cast<Frames*>(MapViewOfFile(mapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(Frames))) : nullptr;
     if (!frames) {
-        MessageBoxW(nullptr, L"The shared block could not be opened.", L"Gaze Mirror 2.0 dev viewer", MB_OK | MB_ICONWARNING);
+        MessageBoxW(nullptr, L"The shared block could not be opened.", L"StreamMirror VR dev viewer", MB_OK | MB_ICONWARNING);
         return 1;
     }
     if (frames->magic == 0) { // We are first: stamp it, the producer fills in the rest.
@@ -154,7 +154,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         frames->latestSlot = NoSlot;
     }
     if (frames->version != FramesVersion) {
-        MessageBoxW(nullptr, L"A component with a different format version is running.", L"Gaze Mirror 2.0 dev viewer", MB_OK | MB_ICONWARNING);
+        MessageBoxW(nullptr, L"A component with a different format version is running.", L"StreamMirror VR dev viewer", MB_OK | MB_ICONWARNING);
         return 1;
     }
 
@@ -165,7 +165,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         if (InterlockedCompareExchange(&frames->readers[i].pid, myPid, 0) == 0) mySlot = static_cast<int>(i);
     }
     if (mySlot < 0) {
-        MessageBoxW(nullptr, L"All reader places are taken.", L"Gaze Mirror 2.0 dev viewer", MB_OK | MB_ICONWARNING);
+        MessageBoxW(nullptr, L"All reader places are taken.", L"StreamMirror VR dev viewer", MB_OK | MB_ICONWARNING);
         return 1;
     }
     Reader& me = frames->readers[mySlot];
@@ -183,11 +183,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     windowClass.lpfnWndProc = WindowProcedure;
     windowClass.hInstance = instance;
     windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    windowClass.lpszClassName = L"GazeMirror2DevViewer";
+    windowClass.lpszClassName = L"StreamMirrorDevViewer";
     RegisterClassW(&windowClass);
     RECT rect{0, 0, 1280, 720};
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
-    g_window = CreateWindowW(windowClass.lpszClassName, L"Gaze Mirror 2.0 dev viewer - waiting for a game", WS_OVERLAPPEDWINDOW,
+    g_window = CreateWindowW(windowClass.lpszClassName, L"StreamMirror VR dev viewer - waiting for a game", WS_OVERLAPPEDWINDOW,
                              CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, instance, nullptr);
     ShowWindow(g_window, SW_SHOWNOACTIVATE);
 
@@ -221,7 +221,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
                 const LUID luid{frames->adapterLuidLow, frames->adapterLuidHigh};
                 if (!graphics.device || graphics.luid.LowPart != luid.LowPart || graphics.luid.HighPart != luid.HighPart) CreateGraphics(graphics, luid);
             } else {
-                SetWindowTextW(g_window, L"Gaze Mirror 2.0 dev viewer - waiting for a game");
+                SetWindowTextW(g_window, L"StreamMirror VR dev viewer - waiting for a game");
             }
             g_repaint = true;
         }
@@ -270,7 +270,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
                 rateStart = now;
                 rateFrames = 0;
                 wchar_t title[256];
-                swprintf_s(title, L"Gaze Mirror 2.0 dev viewer - %hs - %u x %u - %s eye - gaze %s - %.0f fps shown", frames->producerProgram,
+                swprintf_s(title, L"StreamMirror VR dev viewer - %hs - %u x %u - %s eye - gaze %s - %.0f fps shown", frames->producerProgram,
                            frames->width, frames->height, frames->eye == 0 ? L"left" : L"right", frames->gazeValid ? L"yes" : L"no", rate);
                 SetWindowTextW(g_window, title);
             }

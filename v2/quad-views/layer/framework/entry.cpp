@@ -40,7 +40,7 @@ namespace openxr_api_layer {
         std::ofstream logStream;
     } // namespace log
 
-    // VR Gaze Mirror's build of Quad-Views-Foveated: the version it is made from, and a label of its own.
+    // StreamMirror VR's build of Quad-Views-Foveated: the version it is made from, and a label of its own.
     const std::string VersionString =
         fmt::format("v{}.{}.{}-gazemirror.dev", LayerVersionMajor, LayerVersionMinor, LayerVersionPatch);
 
@@ -70,8 +70,16 @@ XrResult __declspec(dllexport) XRAPI_CALL
         }
     }
 
-    localAppData = std::filesystem::path(getenv("LOCALAPPDATA")) / "GazeMirror" / LayerPrettyName;
+    const auto local = std::filesystem::path(getenv("LOCALAPPDATA"));
+    localAppData = local / "StreamMirror" / LayerPrettyName;
     std::error_code error;
+    // Before 3.0 the folder was %LocalAppData%\GazeMirror\QuadViews: whatever the new one lacks comes over once.
+    const auto previous = local / "GazeMirror" / LayerPrettyName; // LEGACY-NAME
+    if (!std::filesystem::exists(localAppData, error) && std::filesystem::exists(previous, error)) {
+        std::filesystem::create_directories(localAppData, error);
+        std::filesystem::copy(previous, localAppData,
+                              std::filesystem::copy_options::recursive | std::filesystem::copy_options::skip_existing, error);
+    }
     std::filesystem::create_directories(localAppData, error);
 
     // Start logging to file.
@@ -110,8 +118,8 @@ XrResult __declspec(dllexport) XRAPI_CALL
     DebugLog("<-- xrNegotiateLoaderApiLayerInterface\n");
 
     Log(fmt::format("{} layer ({}) is active\n", LayerName, VersionString));
-    Log("VR Gaze Mirror's quad views layer, built on Quad-Views-Foveated by Matthieu Bucchianeri (MIT licence). He "
-        "does not make or support this build: report its problems to VR Gaze Mirror, not to the official project.\n");
+    Log("StreamMirror VR's quad views layer, built on Quad-Views-Foveated by Matthieu Bucchianeri (MIT licence). He "
+        "does not make or support this build: report its problems to StreamMirror VR, not to the official project.\n");
 
     TraceLoggingWrite(g_traceProvider, "xrNegotiateLoaderApiLayerInterface_Complete");
 

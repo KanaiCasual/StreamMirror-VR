@@ -108,7 +108,7 @@ namespace gaze_mirror {
             return;
         }
         if (_edges == vr::k_ulOverlayHandleInvalid) {
-            if (overlay->CreateOverlay("kanaicasual.gazemirror.edges", "Gaze Mirror edge finder", &_edges) != vr::VROverlayError_None) {
+            if (overlay->CreateOverlay("kanaicasual.gazemirror.edges", "StreamMirror VR edge finder", &_edges) != vr::VROverlayError_None) {
                 _edges = vr::k_ulOverlayHandleInvalid;
                 return;
             }
@@ -116,7 +116,7 @@ namespace gaze_mirror {
             overlay->SetOverlaySortOrder(_edges, 100);
         }
         if (_edgesActive == vr::k_ulOverlayHandleInvalid) {
-            if (overlay->CreateOverlay("kanaicasual.gazemirror.edges.active", "Gaze Mirror edge finder, the edge being set", &_edgesActive) != vr::VROverlayError_None) {
+            if (overlay->CreateOverlay("kanaicasual.gazemirror.edges.active", "StreamMirror VR edge finder, the edge being set", &_edgesActive) != vr::VROverlayError_None) {
                 _edgesActive = vr::k_ulOverlayHandleInvalid;
                 return;
             }
@@ -220,7 +220,7 @@ namespace gaze_mirror {
             return;
         }
         if (_countdown == vr::k_ulOverlayHandleInvalid) {
-            if (overlay->CreateOverlay("kanaicasual.gazemirror.countdown", "Gaze Mirror capture countdown", &_countdown) != vr::VROverlayError_None) {
+            if (overlay->CreateOverlay("kanaicasual.gazemirror.countdown", "StreamMirror VR capture countdown", &_countdown) != vr::VROverlayError_None) {
                 _countdown = vr::k_ulOverlayHandleInvalid;
                 return;
             }
@@ -240,7 +240,7 @@ namespace gaze_mirror {
         vr::IVROverlay* overlay = vr::VROverlay();
         if (!overlay) return false;
         if (_handle == vr::k_ulOverlayHandleInvalid) {
-            const vr::EVROverlayError error = overlay->CreateOverlay("kanaicasual.gazemirror.marker", "Gaze Mirror calibration marker", &_handle);
+            const vr::EVROverlayError error = overlay->CreateOverlay("kanaicasual.gazemirror.marker", "StreamMirror VR calibration marker", &_handle);
             if (error != vr::VROverlayError_None) {
                 _handle = vr::k_ulOverlayHandleInvalid;
                 if (_logProblem++ == 0) Log("marker: the overlay could not be made (%d)", int(error));

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- VR Gaze Mirror's quad views layer, built on mbucchia's Quad-Views-Foveated (MIT). Release x64 only; static C
+  <!-- StreamMirror VR's quad views layer, built on mbucchia's Quad-Views-Foveated (MIT). Release x64 only; static C
        runtime. Built against v2\external\qvf-deps (fmt, OpenXR SDK headers, XrUtility, WIL), which Get-External.ps1
        fetches. framework\dispatch.gen.* are upstream's generated dispatch code, kept as files. -->
   <ItemGroup Label="ProjectConfigurations">
@@ -25,7 +25,7 @@
   <PropertyGroup>
     <OutDir>$(ProjectDir)..\..\bin\quad-views\</OutDir>
     <IntDir>$(ProjectDir)..\..\obj\quad-views\</IntDir>
-    <TargetName>XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews</TargetName>
+    <TargetName>XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews</TargetName>
     <Deps>$(ProjectDir)..\..\external\qvf-deps\</Deps>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -37,7 +37,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>LAYER_NAME="XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews";NDEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>LAYER_NAME="XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews";NDEBUG;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(IntDir);$(ProjectDir);$(ProjectDir)framework;$(Deps)fmt\include;$(Deps)openxr-sdk\include;$(Deps)openxr-sdk\src\common;$(Deps)xr-utility\shared\XrUtility;$(Deps)xr-utility\shared\SampleShared;$(Deps)wil\include;$(ProjectDir)..\..\external\vulkan-headers\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -57,7 +57,7 @@
       <ObjectFileOutput />
     </FxCompile>
     <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" "$(OutDir)" &gt; nul
+      <Command>copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.json" "$(OutDir)" &gt; nul
 copy /y "$(ProjectDir)..\settings.cfg" "$(OutDir)" &gt; nul</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -109,7 +109,7 @@ copy /y "$(ProjectDir)..\settings.cfg" "$(OutDir)" &gt; nul</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include="module.def" />
-    <None Include="XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json" />
+    <None Include="XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

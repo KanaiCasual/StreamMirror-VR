@@ -3,15 +3,15 @@ param([switch]$Remove)
 $ErrorActionPreference = 'Stop'
 $source = Join-Path $PSScriptRoot '..\bin\obs-plugin'
 $obs = 'C:\Program Files\obs-studio'
-$dll = Join-Path $obs 'obs-plugins\64bit\gaze-mirror-capture.dll'
-$data = Join-Path $obs 'data\obs-plugins\gaze-mirror-capture'
+$dll = Join-Path $obs 'obs-plugins\64bit\streammirror-capture.dll'
+$data = Join-Path $obs 'data\obs-plugins\streammirror-capture'
 if ($Remove) {
     if (Test-Path $dll) { Remove-Item $dll -Force }
     if (Test-Path $data) { Remove-Item $data -Recurse -Force }
     'Removed.'
 } else {
-    Copy-Item (Join-Path $source 'gaze-mirror-capture.dll') $dll -Force
+    Copy-Item (Join-Path $source 'streammirror-capture.dll') $dll -Force
     New-Item -ItemType Directory -Force (Join-Path $data 'locale') | Out-Null
-    Copy-Item (Join-Path $source 'data\obs-plugins\gaze-mirror-capture\locale\*') (Join-Path $data 'locale') -Force
+    Copy-Item (Join-Path $source 'data\obs-plugins\streammirror-capture\locale\*') (Join-Path $data 'locale') -Force
     'Installed.'
 }

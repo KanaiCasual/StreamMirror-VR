@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - OpenXR layer: what the headset shows for the settings app - the calibration marker (only while
+// StreamMirror VR - OpenXR layer: what the headset shows for the settings app - the calibration marker (only while
 // headset_marker=1 in the settings file, which only the settings app sets - nothing pressed in a game can switch it on),
 // the capture countdown and the edge finder. Drawn into the layer's own see-through images (premultiplied alpha), which
 // go over the game's frame as a layer of their own; never into the game's images.

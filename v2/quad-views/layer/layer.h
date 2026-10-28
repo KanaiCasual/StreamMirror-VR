@@ -27,7 +27,7 @@
 namespace openxr_api_layer {
 
     const std::string LayerName = LAYER_NAME;
-    // Its folder under %LOCALAPPDATA%\GazeMirror (settings and log), and the log's name.
+    // Its folder under %LOCALAPPDATA%\StreamMirror (settings and log), and the log's name.
     const std::string LayerPrettyName = "QuadViews";
     extern const std::string VersionString;
 

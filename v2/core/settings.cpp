@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "settings.h"
+#include "log.h"
 
 namespace gaze_mirror {
 
@@ -73,22 +74,27 @@ namespace gaze_mirror {
 
     std::wstring SettingsFilePath() {
         wchar_t overridden[MAX_PATH];
-        const DWORD overriddenLength = GetEnvironmentVariableW(L"GAZE_MIRROR_SETTINGS_FILE", overridden, MAX_PATH);
+        const DWORD overriddenLength = GetEnvironmentVariableW(L"STREAMMIRROR_SETTINGS_FILE", overridden, MAX_PATH);
         if (overriddenLength > 0 && overriddenLength < MAX_PATH) return overridden;
-        wchar_t folder[MAX_PATH];
-        const DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", folder, MAX_PATH);
-        if (length == 0 || length >= MAX_PATH) return {};
-        return std::wstring(folder) + L"\\XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg";
+        const std::wstring folder = DataFolder();
+        if (folder.empty()) return {};
+        // Before 3.0 the file sat at the top of %LocalAppData% under its 1.x name: it is copied in on first use.
+        const std::wstring path = folder + L"\\settings.cfg";
+        wchar_t local[MAX_PATH];
+        const DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", local, MAX_PATH);
+        if (length > 0 && length < MAX_PATH && GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            const std::wstring previous = std::wstring(local) + L"\\XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg"; // LEGACY-NAME
+            if (GetFileAttributesW(previous.c_str()) != INVALID_FILE_ATTRIBUTES && !CopyFileW(previous.c_str(), path.c_str(), TRUE)) return previous;
+        }
+        return path;
     }
 
     std::wstring ProfilesFilePath() {
         wchar_t overridden[MAX_PATH];
-        const DWORD overriddenLength = GetEnvironmentVariableW(L"GAZE_MIRROR_PROFILES_FILE", overridden, MAX_PATH);
+        const DWORD overriddenLength = GetEnvironmentVariableW(L"STREAMMIRROR_PROFILES_FILE", overridden, MAX_PATH);
         if (overriddenLength > 0 && overriddenLength < MAX_PATH) return overridden;
-        wchar_t folder[MAX_PATH];
-        const DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", folder, MAX_PATH);
-        if (length == 0 || length >= MAX_PATH) return {};
-        return std::wstring(folder) + L"\\GazeMirror\\crop-profiles.ini";
+        const std::wstring folder = DataFolder();
+        return folder.empty() ? std::wstring() : folder + L"\\crop-profiles.ini";
     }
 
     void SettingsSource::setGame(const char* program, const char* application) {

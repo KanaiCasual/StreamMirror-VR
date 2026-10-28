@@ -15,12 +15,12 @@ public sealed class CropProfile
 /// Crop profiles: as many framings as the user likes, each optionally tied to a game. The mirror layer and the SteamVR
 /// helper read the same file when a game starts and apply the profile made for it on top of the settings file - so the
 /// switch happens in the game's own start-up, and nothing in this app has to watch for games.
-/// File: %LocalAppData%\GazeMirror\crop-profiles.ini - "[name]" sections with "game=" and the crop keys.
+/// File: %LocalAppData%\StreamMirror\crop-profiles.ini - "[name]" sections with "game=" and the crop keys.
 /// </summary>
 public static class CropProfiles
 {
     /// <summary>The environment variable is for tests (the mirror honours the same one).</summary>
-    public static string FilePath => Environment.GetEnvironmentVariable("GAZE_MIRROR_PROFILES_FILE") is { Length: > 0 } overridden
+    public static string FilePath => Environment.GetEnvironmentVariable("STREAMMIRROR_PROFILES_FILE") is { Length: > 0 } overridden
         ? overridden : Path.Combine(AppSettings.Folder, "crop-profiles.ini");
 
     /// <summary>The keys a profile holds: the framing (crop, follow, steadying) - not the eye or the output size.</summary>
@@ -54,7 +54,7 @@ public static class CropProfiles
 
     public static void Save(IReadOnlyList<CropProfile> profiles)
     {
-        var text = new StringBuilder("# Crop profiles of VR Gaze Mirror. The mirror applies a profile at the start of the game whose program file\n# the profile names. Edit them on the app's Mirror page.\n");
+        var text = new StringBuilder("# Crop profiles of StreamMirror VR. The mirror applies a profile at the start of the game whose program file\n# the profile names. Edit them on the app's Mirror page.\n");
         foreach (var profile in profiles)
         {
             text.Append('\n').Append('[').Append(profile.Name.Replace("]", "")).Append("]\n");

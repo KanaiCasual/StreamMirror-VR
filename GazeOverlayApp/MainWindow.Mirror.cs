@@ -113,7 +113,7 @@ public partial class MainWindow
         if (running) MirrorWindowControl.WatchExit(() => Dispatcher.InvokeAsync(() => RefreshMirrorState()));
         MirrorWindowExpander.Header = "Mirror window: " + (running ? "open" : "closed");
         MirrorStatus.Text = note ?? (program == null ? "MirrorWindow.exe is missing next to this app."
-            : running ? "The mirror window is open. Capture \"VR Gaze Mirror - Mirror\" with OBS Window Capture or Discord."
+            : running ? "The mirror window is open. Capture \"StreamMirror VR - Mirror\" with OBS Window Capture or Discord."
             : "The mirror window is closed.");
     }
 

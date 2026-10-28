@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the one format every producer and every reader speaks.
+// StreamMirror VR - the one format every producer and every reader speaks.
 //
 // Producers make the finished mirror picture (cropped, steadied, ring drawn) and publish it here:
 //   - the OpenXR layer, inside an OpenXR game;
@@ -28,19 +28,19 @@
 
 namespace gaze_mirror {
 
-    constexpr wchar_t FramesMappingName[] = L"GazeMirror2.Frames";
-    constexpr wchar_t ReaderEventFormat[] = L"GazeMirror2.FrameReady.%u"; // One auto-reset event per reader slot.
+    constexpr wchar_t FramesMappingName[] = L"StreamMirror.Frames";
+    constexpr wchar_t ReaderEventFormat[] = L"StreamMirror.FrameReady.%u"; // One auto-reset event per reader slot.
     // Set by a reader that takes a place and by a producer that stops: a producer with nothing to do sleeps on it
     // instead of looking at the block on a timer (auto-reset).
-    constexpr wchar_t ProducerWakeName[] = L"GazeMirror2.ProducerWake";
+    constexpr wchar_t ProducerWakeName[] = L"StreamMirror.ProducerWake";
     // Set by a producer when it starts, stops or names another game: whoever wants to know which game is in VR (the
     // settings app's desktop cover) sleeps on it and then reads producerKind / producerPid / producerProgram, instead
     // of looking at the block on a timer (auto-reset).
-    constexpr wchar_t ProducerChangedName[] = L"GazeMirror2.ProducerChanged";
+    constexpr wchar_t ProducerChangedName[] = L"StreamMirror.ProducerChanged";
     // Set by the publishing producer when the desktop cover's hotkey (Ctrl + Alt + the key the settings app wrote into
     // its signal block) goes down: a game that has the keyboard keeps Windows' own hotkeys from firing, so the key is
     // seen from where the game is, and the app is told (auto-reset).
-    constexpr wchar_t CoverKeyName[] = L"GazeMirror2.CoverKey";
+    constexpr wchar_t CoverKeyName[] = L"StreamMirror.CoverKey";
 
     constexpr uint32_t FramesMagic = 0x46324D47; // 'GM2F'
     constexpr uint32_t FramesVersion = 1;
@@ -123,17 +123,17 @@ namespace gaze_mirror {
     // The gaze values are the avatar's: per eye, x right and y up, -1..1, whose reach depends on the software that
     // drives the avatar (hence the vrchat_scale setting).
 
-    constexpr wchar_t ExternalGazeMappingName[] = L"GazeMirror2.ExternalGaze";
+    constexpr wchar_t ExternalGazeMappingName[] = L"StreamMirror.ExternalGaze";
     constexpr uint32_t ExternalGazeMagic = 0x58324D47; // 'GM2X'
     constexpr uint32_t ExternalGazeVersion = 1;
     constexpr LONG ExternalGazeSourceVrchatOsc = 2;
-    // A second block of the same layout, "GazeMirror2.RawGaze": the eye tracker's raw direction per eye (unit vector,
+    // A second block of the same layout, "StreamMirror.RawGaze": the eye tracker's raw direction per eye (unit vector,
     // x right, y up, forward -z - the z fields below), as SRanibro sends it over OSC. Exact, full range, no calibration.
-    constexpr wchar_t RawGazeMappingName[] = L"GazeMirror2.RawGaze";
+    constexpr wchar_t RawGazeMappingName[] = L"StreamMirror.RawGaze";
     constexpr LONG ExternalGazeSourceSranibroRaw = 3;
     // The headset's own gaze, read by the helper from the headset's OpenXR runtime (a dormant session) and handed to an
     // OpenXR game's layer whose own runtime gives none: the same layout, a unit direction in head space for both eyes.
-    constexpr wchar_t RuntimeGazeMappingName[] = L"GazeMirror2.RuntimeGaze";
+    constexpr wchar_t RuntimeGazeMappingName[] = L"StreamMirror.RuntimeGaze";
     constexpr LONG ExternalGazeSourceOpenXrRuntime = 4;
     constexpr ULONGLONG ExternalGazeFreshMs = 250; // Older than this = the writer stopped; the gaze counts as lost.
 

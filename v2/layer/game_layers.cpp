@@ -110,12 +110,12 @@ namespace gaze_mirror::layer {
 
 } // namespace gaze_mirror::layer
 
-// The manifest XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json names this function in place of the usual one.
+// The manifest XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers.json names this function in place of the usual one.
 extern "C" __declspec(dllexport) XrResult XRAPI_CALL xrNegotiateLoaderApiLayerInterface_GameLayers(const XrNegotiateLoaderInfo* loaderInfo,
                                                                                                     const char* layerName,
                                                                                                     XrNegotiateApiLayerRequest* request) {
     using namespace gaze_mirror::layer;
-    gaze_mirror::SetLogName(L"gaze-mirror-layer");
+    gaze_mirror::SetLogName(L"streammirror-layer");
     if (!loaderInfo || !layerName || !request || loaderInfo->structType != XR_LOADER_INTERFACE_STRUCT_LOADER_INFO ||
         loaderInfo->structVersion != XR_LOADER_INFO_STRUCT_VERSION || loaderInfo->structSize != sizeof(XrNegotiateLoaderInfo) ||
         request->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_REQUEST || request->structVersion != XR_API_LAYER_INFO_STRUCT_VERSION ||

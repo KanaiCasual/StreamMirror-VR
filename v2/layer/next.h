@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - OpenXR layer: the functions of whatever comes after us (the next layer or the runtime).
+// StreamMirror VR - OpenXR layer: the functions of whatever comes after us (the next layer or the runtime).
 #pragma once
 
 namespace gaze_mirror::layer {

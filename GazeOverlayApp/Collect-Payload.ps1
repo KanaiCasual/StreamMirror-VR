@@ -5,13 +5,13 @@ $payload = Join-Path $PSScriptRoot 'Payload'
 $v2 = Join-Path $root 'v2'
 
 $files = @(
-    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror.dll", 'Layer'),
-    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror.json", 'Layer'),
-    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json", 'Layer'),
-    @("$v2\bin\obs-plugin\gaze-mirror-capture.dll", 'OBSPlugin\obs-plugins\64bit'),
-    @("$v2\bin\obs-plugin\data\obs-plugins\gaze-mirror-capture\locale\en-US.ini", 'OBSPlugin\data\obs-plugins\gaze-mirror-capture\locale'),
-    @("$v2\bin\quad-views\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.dll", 'QuadViews'),
-    @("$v2\bin\quad-views\XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews.json", 'QuadViews'),
+    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_StreamMirror.dll", 'Layer'),
+    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_StreamMirror.json", 'Layer'),
+    @("$v2\bin\layer\XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers.json", 'Layer'),
+    @("$v2\bin\obs-plugin\streammirror-capture.dll", 'OBSPlugin\obs-plugins\64bit'),
+    @("$v2\bin\obs-plugin\data\obs-plugins\streammirror-capture\locale\en-US.ini", 'OBSPlugin\data\obs-plugins\streammirror-capture\locale'),
+    @("$v2\bin\quad-views\XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.dll", 'QuadViews'),
+    @("$v2\bin\quad-views\XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews.json", 'QuadViews'),
     @("$v2\bin\quad-views\settings.cfg", 'QuadViews')
 )
 
@@ -25,7 +25,7 @@ foreach ($f in $files) {
 # Licence texts, named for what they belong to.
 $licences = Join-Path $payload 'Licences'
 New-Item -ItemType Directory -Force $licences | Out-Null
-Copy-Item (Join-Path $root 'LICENSE') (Join-Path $licences 'LICENSE-VR-Gaze-Mirror.txt') -Force
+Copy-Item (Join-Path $root 'LICENSE') (Join-Path $licences 'LICENSE-StreamMirror-VR.txt') -Force
 Copy-Item (Join-Path $v2 'external\libobs\COPYING') (Join-Path $licences 'LICENSE-OBS-plugin-GPL-2.txt') -Force
 Copy-Item (Join-Path $v2 'external\openvr\LICENSE') (Join-Path $licences 'LICENSE-OpenVR.txt') -Force
 # The quad views layer: mbucchia's licence for the code it is built on, and the notices of what that code uses.

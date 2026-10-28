@@ -130,7 +130,7 @@ public sealed class AppSettings
     public List<string> OpenSections { get; set; } = [];
 
     /// <summary>This app's own folder: preferences, crop profiles, crop pictures, the saved layer orders and the logs.</summary>
-    public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GazeMirror");
+    public static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StreamMirror");
 
     private static string FilePath => Path.Combine(Folder, "app.json");
 
@@ -161,12 +161,62 @@ public sealed class AppSettings
             }
             if (File.Exists(FilePath)) return;
             Directory.CreateDirectory(Folder);
-            var oldest = Path.Combine(data, "OpenXRGazeOverlay", "app.json");
+            var oldest = Path.Combine(data, "OpenXRGazeOverlay", "app.json"); // LEGACY-NAME
             if (!File.Exists(FilePath) && File.Exists(oldest)) File.Copy(oldest, FilePath);
         }
         catch
         {
             // Starting with default preferences is not worth an error.
+        }
+    }
+
+    /// <summary>
+    /// Before 3.0 the folder was %LocalAppData%\GazeMirror and the ring settings sat at the top of %LocalAppData% as
+    /// XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg. The installed 3.0 app copies what the new places lack (the layer, the helper
+    /// or the quad views layer may have copied some already) and then removes the old ones. Not in a test run: those copy
+    /// nothing and leave an older install's files where they are.
+    /// </summary>
+    public static void TakeOverOldName()
+    {
+        var data = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var previous = Path.Combine(data, "GazeMirror"); // LEGACY-NAME
+        var previousConfig = Path.Combine(data, "XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg"); // LEGACY-NAME
+        try
+        {
+            if (Directory.Exists(previous))
+            {
+                CopyMissing(previous, Folder);
+                Directory.Delete(previous, recursive: true);
+            }
+        }
+        catch
+        {
+            // A file still open (an old helper or game): the copy is done, the old folder goes another time.
+        }
+        try
+        {
+            var config = Path.Combine(Folder, "settings.cfg");
+            if (File.Exists(previousConfig))
+            {
+                Directory.CreateDirectory(Folder);
+                if (!File.Exists(config)) File.Copy(previousConfig, config);
+                File.Delete(previousConfig);
+            }
+        }
+        catch
+        {
+            // The same: the copy is what counts.
+        }
+
+        static void CopyMissing(string from, string to)
+        {
+            Directory.CreateDirectory(to);
+            foreach (var file in Directory.GetFiles(from))
+            {
+                var target = Path.Combine(to, Path.GetFileName(file));
+                if (!File.Exists(target)) File.Copy(file, target);
+            }
+            foreach (var folder in Directory.GetDirectories(from)) CopyMissing(folder, Path.Combine(to, Path.GetFileName(folder)));
         }
     }
 
@@ -236,7 +286,7 @@ public static partial class UpdateChecker
     public static async Task<ReleaseInfo?> CheckAsync(string repository, bool includeBetas, CancellationToken cancellation = default)
     {
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("VR-Gaze-Mirror/" + CurrentVersion.ToString(3));
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("StreamMirror-VR/" + CurrentVersion.ToString(3));
         http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         var json = await http.GetStringAsync($"https://api.github.com/repos/{repository}/releases?per_page=30", cancellation);
         return PickUpdate(ParseReleases(json, repository), CurrentVersion, includeBetas, CurrentIsTestBuild);
@@ -266,7 +316,7 @@ public static partial class UpdateChecker
             var title = item.TryGetProperty("name", out var name) ? name.GetString() : null;
             // Only ever offer a link back into this project's own releases on github.com, whatever the API returned.
             var url = item.TryGetProperty("html_url", out var html) ? html.GetString() : null;
-            if (url == null || !url.StartsWith($"https://github.com/{repository}/", StringComparison.OrdinalIgnoreCase))
+            if (url == null || !InRepository(url, repository, ""))
             {
                 url = $"https://github.com/{repository}/releases";
             }
@@ -277,20 +327,31 @@ public static partial class UpdateChecker
     }
 
     /// <summary>
+    /// Whether a link points into this project's repository on github.com (below `tail`). The repository was renamed with
+    /// the product in 3.0 (VR-Gaze-Mirror to StreamMirror-VR) and GitHub answers the old name with the new one, so either
+    /// name counts, whichever this build was given.
+    /// </summary>
+    private static bool InRepository(string url, string repository, string tail)
+    {
+        string[] names = [repository, repository.Replace("VR-Gaze-Mirror", "StreamMirror-VR", StringComparison.OrdinalIgnoreCase),
+                          repository.Replace("StreamMirror-VR", "VR-Gaze-Mirror", StringComparison.OrdinalIgnoreCase)]; // LEGACY-NAME
+        return names.Any(name => url.StartsWith($"https://github.com/{name}/{tail}", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     /// The installer and its checksum file among a release's attachments. Only an .msi named like this project's own
     /// builds, only from this project's own download address, and only with its "name.msi.sha256" next to it.
     /// </summary>
     private static (ReleaseAsset? Installer, ReleaseAsset? Checksum) PickAssets(JsonElement release, string repository)
     {
         if (!release.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) return (null, null);
-        var prefix = $"https://github.com/{repository}/releases/download/";
         var found = new List<ReleaseAsset>();
         foreach (var asset in assets.EnumerateArray())
         {
             var assetName = asset.TryGetProperty("name", out var n) ? n.GetString() : null;
             var assetUrl = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
             var size = asset.TryGetProperty("size", out var s) && s.TryGetInt64(out var bytes) ? bytes : 0;
-            if (assetName == null || assetUrl == null || !assetUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            if (assetName == null || assetUrl == null || !InRepository(assetUrl, repository, "releases/download/")) continue;
             found.Add(new ReleaseAsset(assetName, assetUrl, size));
         }
         var installer = found.FirstOrDefault(a => InstallerNamePattern().IsMatch(a.Name) && a.Size > 0);
@@ -318,7 +379,7 @@ public static partial class UpdateChecker
     {
         if (release.Installer is not { } installer || release.Checksum is not { } checksum) throw new InvalidOperationException("This release has no checked installer to download.");
         using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("VR-Gaze-Mirror/" + CurrentVersion.ToString(3));
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("StreamMirror-VR/" + CurrentVersion.ToString(3));
 
         var expected = ParseChecksum(await http.GetStringAsync(checksum.Url, cancellation), installer.Name)
             ?? throw new InvalidDataException("The release's checksum file does not name this installer.");
@@ -393,7 +454,8 @@ public static partial class UpdateChecker
         }
     }
 
-    [GeneratedRegex(@"^VR-Gaze-Mirror-\d+\.\d+\.\d+(?:-[A-Za-z0-9.]+)?\.msi$")]
+    // Either name: 3.0 releases carry the installer under both (Build-Installer.ps1 -AlsoOldName), for the 2.x updaters.
+    [GeneratedRegex(@"^(?:StreamMirror-VR|VR-Gaze-Mirror)-\d+\.\d+\.\d+(?:-[A-Za-z0-9.]+)?\.msi$")] // LEGACY-NAME
     private static partial Regex InstallerNamePattern();
 
     [GeneratedRegex(@"^([A-Fa-f0-9]{64})(?:\s+(.*))?$")]

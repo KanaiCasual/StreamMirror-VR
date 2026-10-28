@@ -12,7 +12,8 @@ namespace GazeOverlay;
 public partial class MainWindow
 {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string RunValueName = "VR Gaze Mirror";
+    private const string RunValueName = "StreamMirror VR";
+    private const string OldRunValueName = "VR Gaze Mirror"; // LEGACY-NAME: before 3.0
     private System.Windows.Forms.NotifyIcon? _tray;
     private bool _quitting;
 
@@ -58,6 +59,27 @@ public partial class MainWindow
         AppLog.Write($"Start with Windows: {(_appSettings.StartWithWindows ? "on" : "off")}; start in the tray: {(_appSettings.StartInTray ? "on" : "off")}.");
     }
 
+    /// <summary>
+    /// The installer's step after an update (run as the signed-in user): a Start with Windows entry of before 3.0 names the
+    /// old exe, which the update removed. It is replaced by one for this exe, so the app still starts with Windows.
+    /// </summary>
+    public static void FixStartupAfterUpdate()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+            if (key?.GetValue(OldRunValueName) == null) return;
+            key.DeleteValue(OldRunValueName, throwOnMissingValue: false);
+            var exe = Environment.ProcessPath ?? "";
+            if (exe.Length > 0) key.SetValue(RunValueName, $"\"{exe}\"");
+            AppLog.Write("Start with Windows: the entry of before 3.0 now names " + exe);
+        }
+        catch (Exception error)
+        {
+            AppLog.Write("The Run entry could not be moved over", error);
+        }
+    }
+
     private static void ApplyStartWithWindows(bool on)
     {
         try
@@ -66,6 +88,7 @@ public partial class MainWindow
             if (key == null) return;
             if (on && Environment.ProcessPath is { Length: > 0 } exe) key.SetValue(RunValueName, $"\"{exe}\"");
             else key.DeleteValue(RunValueName, throwOnMissingValue: false);
+            key.DeleteValue(OldRunValueName, throwOnMissingValue: false); // it names the exe of before 3.0, gone with the update
         }
         catch (Exception error)
         {
@@ -87,10 +110,10 @@ public partial class MainWindow
             icon = System.Drawing.SystemIcons.Application;
         }
         var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("Open VR Gaze Mirror", null, (_, _) => ShowFromTray());
+        menu.Items.Add("Open StreamMirror VR", null, (_, _) => ShowFromTray());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         menu.Items.Add("Quit", null, (_, _) => QuitFromTray());
-        _tray = new System.Windows.Forms.NotifyIcon { Icon = icon, Text = "VR Gaze Mirror", ContextMenuStrip = menu, Visible = true };
+        _tray = new System.Windows.Forms.NotifyIcon { Icon = icon, Text = "StreamMirror VR", ContextMenuStrip = menu, Visible = true };
         _tray.MouseClick += (_, e) => { if (e.Button == System.Windows.Forms.MouseButtons.Left) ShowFromTray(); };
         _tray.DoubleClick += (_, _) => ShowFromTray();
     }

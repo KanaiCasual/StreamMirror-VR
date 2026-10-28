@@ -1,6 +1,6 @@
-# VR Gaze Mirror's quad views layer
+# StreamMirror VR's quad views layer
 
-`XR_APILAYER_KANAICASUAL_GazeMirror_QuadViews`: quad views and eye-tracked foveated rendering for OpenXR games, built on
+`XR_APILAYER_KANAICASUAL_StreamMirror_QuadViews`: quad views and eye-tracked foveated rendering for OpenXR games, built on
 [Quad-Views-Foveated](https://github.com/mbucchia/Quad-Views-Foveated) 1.1.4 by Matthieu Bucchianeri (MIT, see
 `LICENSE`; the code it uses is listed in `THIRD_PARTY`). He does not make or support this build.
 
@@ -17,7 +17,7 @@ What it changes against upstream 1.1.4:
   Vulkan where the PC cannot share Vulkan images with Direct3D, or
   when another `*quad_views_foveated` layer is below it. Standing aside, it hands the quad views request on where a
   layer or runtime below offers it.
-- **Its own name and folder**: settings and log in `%LOCALAPPDATA%\GazeMirror\QuadViews`; the first start copies the
+- **Its own name and folder**: settings and log in `%LOCALAPPDATA%\StreamMirror\QuadViews`; the first start copies the
   official layer's `settings.cfg`.
 - **Blend** (`ProjectionPS.hlsl`): the focus view fades out to nothing at its edge; sharpening is an unsharp mask on
   the output's pixel grid, held within the local contrast, inside the blend (the CAS pass is gone).

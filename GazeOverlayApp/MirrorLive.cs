@@ -13,21 +13,21 @@ public sealed record MirrorState(bool Producing, bool OpenXR, string Program, st
 public sealed record ExternalGazeState(bool Fresh, long AgeMs, string Writer, float LeftX, float LeftY, float RightX, float RightY);
 
 /// <summary>
-/// Read-only look at the 2.0 shared block ("GazeMirror2.Frames", v2\protocol\gaze_mirror_protocol.h): which producer is
+/// Read-only look at the 2.0 shared block ("StreamMirror.Frames", v2\protocol\gaze_mirror_protocol.h): which producer is
 /// live - the OpenXR layer inside a game, or the SteamVR helper - for which game, at what size, and whether gaze arrives.
 /// Plus where the helper and the bundled Quad-Views-Foveated installer are. Nothing here polls: it is read when a tab
 /// is shown or a button pressed.
 /// </summary>
 public static class MirrorLive
 {
-    private const string FramesName = "GazeMirror2.Frames";
+    private const string FramesName = "StreamMirror.Frames";
     private const uint FramesMagic = 0x46324D47; // 'GM2F'
     // Offsets in Frames (all fields are 4- or 8-byte aligned integers/floats, see the header).
     private const int ProducerKindOffset = 12, ProducerPidOffset = 16, WidthOffset = 24, HeightOffset = 28;
     private const int EyeOffset = 84, GazeValidOffset = 96, GazeSupportOffset = 108, ProgramOffset = 112, ApplicationOffset = 176;
     public const int ProducerOpenXR = 1;
-    public const string HelperRunningMutex = "GazeMirror2.HelperRunning";
-    public const string HelperStopEvent = "GazeMirror2.HelperStop";
+    public const string HelperRunningMutex = "StreamMirror.HelperRunning";
+    public const string HelperStopEvent = "StreamMirror.HelperStop";
 
     public static MirrorState? Read()
     {
@@ -112,7 +112,7 @@ public static class MirrorLive
     // ------------------------------------------------------------------ the SteamVR helper
 
     /// <summary>Next to this app when installed; in the repository's 2.0 build folder when run from there.</summary>
-    public static string? FindHelper() => FindBeside("GazeMirrorHelper.exe", Path.Combine("v2", "bin", "helper"));
+    public static string? FindHelper() => FindBeside("StreamMirrorHelper.exe", Path.Combine("v2", "bin", "helper"));
 
     /// <summary>
     /// Whether SteamVR is installed: OpenVR's own record of its runtime (%LOCALAPPDATA%\openvr\openvrpaths.vrpath, what
@@ -188,7 +188,7 @@ public static class MirrorLive
 
     // ------------------------------------------------------------------ eye gaze from VRChat (received by the helper)
 
-    private const string ExternalGazeName = "GazeMirror2.ExternalGaze";
+    private const string ExternalGazeName = "StreamMirror.ExternalGaze";
     private const uint ExternalGazeMagic = 0x58324D47; // 'GM2X'
     private const int ExternalGazeSize = 400, ExternalGazeFreshMs = 250;
 
@@ -198,8 +198,8 @@ public static class MirrorLive
     /// </summary>
     public static ExternalGazeState? ReadExternalGaze() => ReadGazeBlock(ExternalGazeName);
 
-    /// <summary>The block the helper fills with raw gaze from the gaze input port (same layout, "GazeMirror2.RawGaze"), or null.</summary>
-    public static ExternalGazeState? ReadRawGaze() => ReadGazeBlock("GazeMirror2.RawGaze");
+    /// <summary>The block the helper fills with raw gaze from the gaze input port (same layout, "StreamMirror.RawGaze"), or null.</summary>
+    public static ExternalGazeState? ReadRawGaze() => ReadGazeBlock("StreamMirror.RawGaze");
 
     private static ExternalGazeState? ReadGazeBlock(string name)
     {

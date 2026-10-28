@@ -658,7 +658,7 @@ public partial class MainWindow
     /// <summary>The SteamVR helper's state in one line (the Mirror page's Picture card and the Status page share it).</summary>
     private (string Text, System.Windows.Media.Color Color) HelperState()
     {
-        if (MirrorLive.FindHelper() == null) return ("GazeMirrorHelper.exe is missing next to this app.", System.Windows.Media.Colors.Firebrick);
+        if (MirrorLive.FindHelper() == null) return ("StreamMirrorHelper.exe is missing next to this app.", System.Windows.Media.Colors.Firebrick);
         if (MirrorLive.IsHelperRunning()) return ("The helper is running next to SteamVR.", System.Windows.Media.Colors.SeaGreen);
         // No SteamVR, nothing for the helper to do: not a fault, so grey, not orange.
         if (!MirrorLive.SteamVrInstalled()) return ("SteamVR is not installed, so the helper has nothing to do. Not needed for OpenXR games.", System.Windows.Media.Colors.Gray);
@@ -746,7 +746,7 @@ public partial class MainWindow
     private async Task EnsureHelperAsync()
     {
         var helper = MirrorLive.FindHelper();
-        if (helper == null) { AppLog.Write("SteamVR helper: GazeMirrorHelper.exe not found next to the app."); return; }
+        if (helper == null) { AppLog.Write("SteamVR helper: StreamMirrorHelper.exe not found next to the app."); return; }
         if (!MirrorLive.SteamVrInstalled())
         {
             AppLog.Write("SteamVR helper: SteamVR is not installed - not registered, not started.");
@@ -757,8 +757,10 @@ public partial class MainWindow
         // helper removes it while registering, so register again as long as it is there.
         // The 1.9.x builds' manifest in our own data folder is the same story: the manifest now sits next to the exe.
         var legacyManifest = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "QuadViewsGazeMirror", "GazeMirrorHelper.vrmanifest");
-        var dataManifest = Path.Combine(AppSettings.Folder, "GazeMirrorHelper.vrmanifest");
-        if (!string.Equals(_appSettings.HelperRegisteredPath, helper, StringComparison.OrdinalIgnoreCase) || File.Exists(legacyManifest) || File.Exists(dataManifest))
+        var dataManifest = Path.Combine(AppSettings.Folder, "StreamMirrorHelper.vrmanifest");
+        var copiedManifest = Path.Combine(AppSettings.Folder, "GazeMirrorHelper.vrmanifest"); // LEGACY-NAME: before 3.0, copied over with the data
+        if (!string.Equals(_appSettings.HelperRegisteredPath, helper, StringComparison.OrdinalIgnoreCase) || File.Exists(legacyManifest) || File.Exists(dataManifest)
+            || File.Exists(copiedManifest))
         {
             var result = await MirrorLive.SetHelperAutostartAsync(true);
             AppLog.Write($"SteamVR helper: registration of {helper} with SteamVR {(result == 0 ? "done" : $"not done (exit code {result?.ToString() ?? "none"}); tried again next start")}.");

@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - core: the grid map behind the thorough VRChat calibration, and the sums that make one.
+// StreamMirror VR - core: the grid map behind the thorough VRChat calibration, and the sums that make one.
 //
 // The quick calibration fits a curve per axis from twenty looks. The thorough one has the user follow a moving target
 // and records everything that arrives: a few thousand pairs of "the target was here" and "the eyes said this". From

@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - offline test of the OpenXR layer.
+// StreamMirror VR - offline test of the OpenXR layer.
 //
 // Plays both the game and the runtime: loads the layer DLL the way the OpenXR loader does, hands it a fake runtime
 // (stub functions), submits frames whose eye image is a test pattern with a BLACK SQUARE exactly where the fake eye
@@ -47,8 +47,8 @@ using namespace gaze_mirror;
 
 namespace {
 
-    constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_GazeMirror";
-    constexpr char GameLayersName[] = "XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers";
+    constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_StreamMirror";
+    constexpr char GameLayersName[] = "XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers";
     constexpr uint32_t ImageWidth = 2000, ImageHeight = 2100;
     constexpr float HalfFov = 0.7853982f;                   // 45 degrees each way.
     constexpr float GazeYaw = 0.1745329f, GazePitch = 0.0872665f; // Looking 10 degrees right, 5 degrees up.
@@ -740,7 +740,7 @@ int wmain(int argc, wchar_t** argv) {
         frames->version = FramesVersion;
         frames->producerPid = static_cast<LONG>(GetCurrentProcessId());
         frames->producerKind = ProducerOpenVR;
-        HANDLE stop = CreateEventW(nullptr, TRUE, FALSE, L"GazeMirrorLayerTest.FakeHelperStop");
+        HANDLE stop = CreateEventW(nullptr, TRUE, FALSE, L"StreamMirrorLayerTest.FakeHelperStop");
         WaitForSingleObject(stop, 60000);
         if (frames->producerPid == static_cast<LONG>(GetCurrentProcessId())) {
             frames->producerKind = ProducerNone;
@@ -756,8 +756,8 @@ int wmain(int argc, wchar_t** argv) {
     CreateDirectoryW(folder.c_str(), nullptr);
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     const std::wstring settingsFile = folder + L"\\test-settings.cfg";
-    SetEnvironmentVariableW(L"GAZE_MIRROR_SETTINGS_FILE", settingsFile.c_str());
-    SetEnvironmentVariableW(L"GAZE_MIRROR_LOG_FILE", (folder + L"\\layer.log").c_str());
+    SetEnvironmentVariableW(L"STREAMMIRROR_SETTINGS_FILE", settingsFile.c_str());
+    SetEnvironmentVariableW(L"STREAMMIRROR_LOG_FILE", (folder + L"\\layer.log").c_str());
 
     // The thorough VRChat calibration's sums, on made-up eyes: a tracker that reports sines with some cross-talk and
     // trails the target by 120 ms, a little noise, VRChat sending at 50 Hz, two blinks.
@@ -921,7 +921,7 @@ int wmain(int argc, wchar_t** argv) {
         HANDLE fakeHelperStop = nullptr;
         if (test.steamVrHelper) {
             g_runtimeName = "SteamVR/OpenXR";
-            fakeHelperStop = CreateEventW(nullptr, TRUE, FALSE, L"GazeMirrorLayerTest.FakeHelperStop");
+            fakeHelperStop = CreateEventW(nullptr, TRUE, FALSE, L"StreamMirrorLayerTest.FakeHelperStop");
             ResetEvent(fakeHelperStop);
             wchar_t self[MAX_PATH];
             GetModuleFileNameW(nullptr, self, MAX_PATH);

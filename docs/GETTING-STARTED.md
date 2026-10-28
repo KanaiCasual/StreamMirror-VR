@@ -1,4 +1,4 @@
-# Getting started with VR Gaze Mirror
+# Getting started with StreamMirror VR
 
 This guide takes you from the download to a framed, steady picture of your headset view in OBS, with the gaze ring if
 your headset tracks your eyes. It follows the order you set things up in. Every option is explained in full in the
@@ -27,7 +27,7 @@ Plan about 15 minutes, with your game installed and the headset at hand.
 1. **Close your VR game and OBS.** The installer replaces files they keep open.
 2. Download `VR-Gaze-Mirror-<version>.msi` from the [Releases page](https://github.com/KanaiCasual/VR-Gaze-Mirror/releases/latest) and run it. Windows
    SmartScreen may warn, because the files carry no code signature yet: **More info > Run anyway**.
-3. Start **VR Gaze Mirror** from the Start menu.
+3. Start **StreamMirror VR** from the Start menu.
 
 Quad views (foveated rendering: sharp where you look, cheaper elsewhere) come with it, switched off. The **Quad Views**
 page switches them on; the mirror works without them.
@@ -41,7 +41,7 @@ The **Status** page lists the mirror's parts, each with a coloured dot:
 | Part | What it does | You need it for |
 |---|---|---|
 | **Mirror layer** | takes the picture inside OpenXR games | DCS World, Assetto Corsa EVO, VAIL and other OpenXR games |
-| **OBS plugin** | the "Gaze Mirror" source in OBS | recording or streaming with OBS |
+| **OBS plugin** | the "StreamMirror VR" source in OBS | recording or streaming with OBS |
 | **SteamVR helper** | takes the picture from SteamVR | VRChat, Half-Life: Alyx and other SteamVR games |
 
 Green means ready. Grey means not needed on your PC: the helper, for example, is grey when SteamVR is not installed.
@@ -56,14 +56,14 @@ Pick one way. You can use both at once.
 
 **OBS (recommended).** It reads the picture straight from the graphics card and costs the least.
 
-1. In OBS: **Sources > + > Gaze Mirror**.
+1. In OBS: **Sources > + > StreamMirror VR**.
 2. Start your VR game. The picture appears once the game is in VR.
 3. Select the source and press **Ctrl+F** (Transform > Fit to screen) once. It keeps fitting from then on, whatever you
    do with the crop box.
 
 **Discord or another program that captures windows.** On the app's **Mirror** page, press **Open mirror window** in
 the row above the picture. The window sits behind your other windows, where capture still sees it. In Discord:
-**Share Your Screen > Applications > VR Gaze Mirror - Mirror**.
+**Share Your Screen > Applications > StreamMirror VR - Mirror**.
 
 At this point the picture is one eye's full view, uncropped. The next steps frame it.
 

@@ -28,6 +28,16 @@ public partial class App : Application
             Shutdown(0);
             return;
         }
+        if (args.Length >= 1 && args[0] == "--fix-startup")
+        {
+            // The installer's step as the signed-in user: the data of before 3.0 comes over, and Start with Windows names
+            // this exe. No window and no single-instance check.
+            AppSettings.TakeOverOldName();
+            AppLog.Start(false);
+            GazeOverlay.MainWindow.FixStartupAfterUpdate();
+            Shutdown(0);
+            return;
+        }
         Headless = args.Length >= 1 && args[0] is "--selftest" or "--screenshots" or "--cover-dummy";
         // Before the log starts: a second copy must not touch the running one's log.
         if (!Headless && !TakeSingleInstance())
@@ -35,8 +45,9 @@ public partial class App : Application
             Shutdown(0);
             return;
         }
+        if (!Headless) AppSettings.TakeOverOldName();
         AppLog.Start(Headless);
-        AppLog.Write($"VR Gaze Mirror {UpdateChecker.CurrentVersionText} starting" + (args.Length > 0 ? " with " + string.Join(" ", args) : "") +
+        AppLog.Write($"StreamMirror VR {UpdateChecker.CurrentVersionText} starting" + (args.Length > 0 ? " with " + string.Join(" ", args) : "") +
                      $"; app folder {AppContext.BaseDirectory}; settings folder {AppSettings.Folder}");
         // Anything that would otherwise close the app silently is written down first; Windows' own crash handling still follows.
         DispatcherUnhandledException += (_, error) => AppLog.Write("Unhandled error on the UI thread", error.Exception);
@@ -95,8 +106,8 @@ public partial class App : Application
                 {
                     window.Tabs.SelectedIndex = i;
                     window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-                    // Sections that open do so with a short animation: with them open (GAZE_SCREENSHOT_EXPANDED=1), wait for it to end.
-                    if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_EXPANDED") == "1")
+                    // Sections that open do so with a short animation: with them open (STREAMMIRROR_SCREENSHOT_EXPANDED=1), wait for it to end.
+                    if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_EXPANDED") == "1")
                     {
                         var frame = new System.Windows.Threading.DispatcherFrame();
                         var wait = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
@@ -109,8 +120,8 @@ public partial class App : Application
                         $"tab{i}: window {window.ActualWidth:0}x{window.ActualHeight:0}, root {root.ActualWidth:0}, tabs {window.Tabs.ActualWidth:0}, preview {window.RingPanel.Visibility} {window.RingPanel.ActualWidth:0}, column {window.PreviewColumn.ActualWidth:0} ({window.PreviewColumn.Width}), inner grid {((FrameworkElement)window.Tabs.Parent).ActualWidth:0}, tabs margin {window.Tabs.Margin}\n");
                     Snapshot($"tab{i}");
                 }
-                // GAZE_SCREENSHOT_TOUR=1: the guided tour, one picture per step.
-                if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_TOUR") == "1")
+                // STREAMMIRROR_SCREENSHOT_TOUR=1: the guided tour, one picture per step.
+                if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_TOUR") == "1")
                 {
                     window.StartTour();
                     for (var step = 0; step < window.TourStepCount; step++)
@@ -126,8 +137,8 @@ public partial class App : Application
                         window.TourNext();
                     }
                 }
-                // GAZE_SCREENSHOT_PROFILES=1 (with GAZE_MIRROR_PROFILES_FILE pointing at a scratch file): exercise the crop profiles on the Mirror tab.
-                if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_PROFILES") == "1")
+                // STREAMMIRROR_SCREENSHOT_PROFILES=1 (with STREAMMIRROR_PROFILES_FILE pointing at a scratch file): exercise the crop profiles on the Mirror tab.
+                if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_PROFILES") == "1")
                 {
                     window.Tabs.SelectedItem = window.CropTab;
                     window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
@@ -147,7 +158,7 @@ public partial class App : Application
         }) { IsBackground = true, Name = "Show request" }.Start();
     }
 
-    private const string SingleInstanceName = "GazeMirror.App.Single", ShowRequestName = "GazeMirror.App.Show";
+    private const string SingleInstanceName = "StreamMirror.App.Single", ShowRequestName = "StreamMirror.App.Show";
     private static Mutex? _singleInstance;
     private static EventWaitHandle? _showRequest;
 
@@ -319,7 +330,7 @@ public partial class App : Application
     private static bool SelfTestLayerOrder(string outputDir, StreamWriter report)
     {
         LayerEntry Layer(string name, params string[] extensions) => new($@"C:\Layers\{name}.json", true, name, null) { Extensions = extensions };
-        var mirror = Layer(LayerStatus.GazeMirrorLayer);
+        var mirror = Layer(LayerStatus.StreamMirrorLayer);
         var toolkit = Layer("XR_APILAYER_MBUCCHIA_toolkit");
         var quadViews = Layer(LayerStatus.QuadViewsLayer, "XR_VARJO_quad_views", "XR_VARJO_foveated_rendering");
         var eyeTracking = Layer("XR_APILAYER_EXAMPLE_eye_tracker", "XR_EXT_eye_gaze_interaction");
@@ -334,7 +345,7 @@ public partial class App : Application
         var mirrorOff = new List<LayerEntry> { mirror with { Enabled = false }, quadViews };
 
         // The mechanism: values are re-created in the wanted order by one import.
-        const string scratch = @"Software\OpenXRGazeOverlay\SelfTestLayerOrder";
+        const string scratch = @"Software\StreamMirrorVR\SelfTestLayerOrder";
         var names = new[] { @"C:\Program Files\A\a.json", @"C:\B ""quoted""\b.json", @"C:\C\c.json" };
         var wanted = new[] { names[2], names[0], names[1] };
         List<string> after = [];
@@ -378,7 +389,7 @@ public partial class App : Application
         var checks = new (string Name, bool Ok)[]
         {
             ("a bad order is reported (mirror under quad views and under the overlay layer, toolkit under quad views, quad views and toolkit above the eye tracker)",
-                problems.Count == 5 && problems.Any(p => p.StartsWith("MBUCCHIA_quad_views_foveated must be above KANAICASUAL_GazeMirror")) &&
+                problems.Count == 5 && problems.Any(p => p.StartsWith("MBUCCHIA_quad_views_foveated must be above KANAICASUAL_StreamMirror")) &&
                 problems.Any(p => p.StartsWith("MBUCCHIA_quad_views_foveated must be above EXAMPLE_eye_tracker"))),
             ("the suggested order satisfies every rule and leaves unrelated layers where they were",
                 suggested != null && LayerOrder.Problems(suggested).Count == 0 && suggested.IndexOf(unknown) < suggested.IndexOf(eyeTracking)),
@@ -463,7 +474,7 @@ public partial class App : Application
         }
         bool OwnOrderOk()
         {
-            var mirror = new LayerEntry("mirror.json", true, LayerStatus.GazeMirrorLayer, null);
+            var mirror = new LayerEntry("mirror.json", true, LayerStatus.StreamMirrorLayer, null);
             var quad = new LayerEntry("quad.json", true, LayerStatus.OwnQuadViewsLayer, null) { Extensions = ["XR_VARJO_quad_views", "XR_VARJO_foveated_rendering"] };
             return LayerOrder.Problems([mirror, quad]).Count > 0 && LayerOrder.Suggest([mirror, quad]) is [var first, _] && ReferenceEquals(first, quad)
                 && LayerOrder.Problems([quad, mirror]).Count == 0;
@@ -509,12 +520,12 @@ public partial class App : Application
             ("the lines under the sliders give the sizes the layer logged (sharp 3042 x 3178, surround 2270 x 2372) and its total (29 %)",
                 QuadViewsReadout.Focus(1.225, Logged()).Contains("3042 x 3178") && QuadViewsReadout.Peripheral(0.32, Logged(), 7096, 7412).Contains("2270 x 2372")
                 && QuadViewsReadout.Total(0.32, 1.225, 0.35, 0.35, Logged(), session!.StereoPixels).StartsWith("In all: 29 %")),
-            ("VR Gaze Mirror's layer: its own settings are written (gaze smoothing, deadzone 0.7 as typed, diagnostics), the official debug switch is not",
+            ("StreamMirror VR's layer: its own settings are written (gaze smoothing, deadzone 0.7 as typed, diagnostics), the official debug switch is not",
                 OwnPlan().InCommon("gaze_smoothing_ms") == "8" && OwnPlan().InCommon("gaze_deadzone_degrees") == "0.7" && OwnPlan().InCommon("show_diagnostics") == "0"
                 && OwnPlan().InCommon("debug_eye_gaze") == null),
             ("...and the official layer's file gets none of them", untouched.InCommon("gaze_smoothing_ms") == null && untouched.InCommon("show_diagnostics") == null
                 && untouched.InCommon("debug_eye_gaze") != null),
-            ("VR Gaze Mirror's quad views layer must sit above the mirror, and Fix order puts it there", OwnOrderOk()),
+            ("StreamMirror VR's quad views layer must sit above the mirror, and Fix order puts it there", OwnOrderOk()),
             ("...and say the sharpness against the headset's", QuadViewsReadout.Sharpness(1.0) == "As sharp as the headset." && QuadViewsReadout.Sharpness(1.414).StartsWith("1.41x")
                 && QuadViewsReadout.Sharpness(0.5) == "0.5x the headset's sharpness on each side."),
         };
@@ -584,7 +595,7 @@ public partial class App : Application
         {
             var status = LayerStatus.Get();
             report.WriteLine($"quad views: {status.QuadViews.Health} - {status.QuadViews.Detail}");
-            report.WriteLine($"gaze mirror: {status.GazeMirror.Health} - {status.GazeMirror.Detail}");
+            report.WriteLine($"gaze mirror: {status.StreamMirror.Health} - {status.StreamMirror.Detail}");
             report.WriteLine($"obs: {status.ObsPath ?? "(not found)"} plugin present={status.ObsPluginPresent}");
             report.WriteLine($"order correct: {status.OrderCorrect?.ToString() ?? "n/a"}");
             foreach (var layer in status.Layers) report.WriteLine($"  [{(layer.Enabled ? "on " : "off")}] {layer.LayerName ?? "?"}  {layer.JsonPath}");
@@ -646,7 +657,7 @@ public partial class App : Application
             // The VRChat gaze block: written here the way the helper writes it (by offset), read back through the app's reader.
             try
             {
-                using var block = System.IO.MemoryMappedFiles.MemoryMappedFile.CreateOrOpen("GazeMirror2.ExternalGaze", 400);
+                using var block = System.IO.MemoryMappedFiles.MemoryMappedFile.CreateOrOpen("StreamMirror.ExternalGaze", 400);
                 using var view = block.CreateViewAccessor(0, 400);
                 view.Write(4, 1u); view.Write(8, 400u); view.Write(0, 0x58324D47u);
                 view.Write(32, Environment.ProcessId); view.Write(36, 2);
@@ -674,7 +685,7 @@ public partial class App : Application
             // The SRanibro raw-gaze block: the same layout under its own name, per-eye validity, z fields at 112/116.
             try
             {
-                using var block = System.IO.MemoryMappedFiles.MemoryMappedFile.CreateOrOpen("GazeMirror2.RawGaze", 400);
+                using var block = System.IO.MemoryMappedFiles.MemoryMappedFile.CreateOrOpen("StreamMirror.RawGaze", 400);
                 using var view = block.CreateViewAccessor(0, 400);
                 view.Write(4, 1u); view.Write(8, 400u); view.Write(0, 0x58324D47u);
                 view.Write(32, Environment.ProcessId); view.Write(36, 3);
@@ -723,19 +734,29 @@ public partial class App : Application
             const string canned = """
                 [
                   {"tag_name":"v0.9.0-beta.1","name":"0.9 beta","prerelease":true,"draft":false,"html_url":"https://github.com/someone/project/releases/tag/v0.9.0-beta.1",
-                   "assets":[{"name":"VR-Gaze-Mirror-0.9.0.msi","size":1234,"browser_download_url":"https://github.com/someone/project/releases/download/v0.9.0-beta.1/VR-Gaze-Mirror-0.9.0.msi"},
-                             {"name":"VR-Gaze-Mirror-0.9.0.msi.sha256","size":100,"browser_download_url":"https://github.com/someone/project/releases/download/v0.9.0-beta.1/VR-Gaze-Mirror-0.9.0.msi.sha256"}]},
+                   "assets":[{"name":"StreamMirror-VR-0.9.0.msi","size":1234,"browser_download_url":"https://github.com/someone/project/releases/download/v0.9.0-beta.1/StreamMirror-VR-0.9.0.msi"},
+                             {"name":"StreamMirror-VR-0.9.0.msi.sha256","size":100,"browser_download_url":"https://github.com/someone/project/releases/download/v0.9.0-beta.1/StreamMirror-VR-0.9.0.msi.sha256"}]},
                   {"tag_name":"v0.5.2","name":"0.5.2","prerelease":false,"draft":false,"html_url":"https://github.com/someone/project/releases/tag/v0.5.2",
-                   "assets":[{"name":"VR-Gaze-Mirror-0.5.2.msi","size":1234,"browser_download_url":"https://evil.example/VR-Gaze-Mirror-0.5.2.msi"},
-                             {"name":"VR-Gaze-Mirror-0.5.2.msi.sha256","size":100,"browser_download_url":"https://github.com/someone/project/releases/download/v0.5.2/VR-Gaze-Mirror-0.5.2.msi.sha256"}]},
+                   "assets":[{"name":"StreamMirror-VR-0.5.2.msi","size":1234,"browser_download_url":"https://evil.example/StreamMirror-VR-0.5.2.msi"},
+                             {"name":"StreamMirror-VR-0.5.2.msi.sha256","size":100,"browser_download_url":"https://github.com/someone/project/releases/download/v0.5.2/StreamMirror-VR-0.5.2.msi.sha256"}]},
                   {"tag_name":"v0.6.0","name":"unfinished","prerelease":false,"draft":true,"html_url":"https://github.com/someone/project/releases/tag/v0.6.0"},
                   {"tag_name":"v0.5.10","name":"0.5.10","prerelease":false,"draft":false,"html_url":"https://evil.example/not-github",
-                   "assets":[{"name":"VR-Gaze-Mirror-0.5.10.msi","size":1234,"browser_download_url":"https://github.com/someone/project/releases/download/v0.5.10/VR-Gaze-Mirror-0.5.10.msi"},
+                   "assets":[{"name":"StreamMirror-VR-0.5.10.msi","size":1234,"browser_download_url":"https://github.com/someone/project/releases/download/v0.5.10/StreamMirror-VR-0.5.10.msi"},
                              {"name":"setup.exe","size":9999,"browser_download_url":"https://github.com/someone/project/releases/download/v0.5.10/setup.exe"}]},
                   {"tag_name":"nightly","name":"no version in tag","prerelease":false,"draft":false,"html_url":"https://github.com/someone/project/releases/tag/nightly"}
                 ]
                 """;
             var releases = UpdateChecker.ParseReleases(canned, "someone/project");
+            // The rename: a build that knows the repository by its old name gets the release from the renamed one (GitHub
+            // answers the old name with the new), and the installer under its old name is taken too (the 2.x updaters' name).
+            const string renamed = """
+                [
+                  {"tag_name":"v3.0.0","name":"3.0.0","prerelease":false,"draft":false,"html_url":"https://github.com/someone/StreamMirror-VR/releases/tag/v3.0.0",
+                   "assets":[{"name":"VR-Gaze-Mirror-3.0.0.msi","size":1234,"browser_download_url":"https://github.com/someone/StreamMirror-VR/releases/download/v3.0.0/VR-Gaze-Mirror-3.0.0.msi"},
+                             {"name":"VR-Gaze-Mirror-3.0.0.msi.sha256","size":100,"browser_download_url":"https://github.com/someone/StreamMirror-VR/releases/download/v3.0.0/VR-Gaze-Mirror-3.0.0.msi.sha256"}]}
+                ]
+                """;
+            var afterRename = UpdateChecker.ParseReleases(renamed, "someone/VR-Gaze-Mirror").FirstOrDefault();
             var stable = UpdateChecker.PickUpdate(releases, new Version(0, 5, 2), includeBetas: false);
             var beta = UpdateChecker.PickUpdate(releases, new Version(0, 5, 2), includeBetas: true);
             var none = UpdateChecker.PickUpdate(releases, new Version(1, 0, 0), includeBetas: true);
@@ -752,11 +773,13 @@ public partial class App : Application
                 ("a test build is offered the release of its own number (0.5.10-dev.rev3 -> 0.5.10)", fromTestBuild?.Version == new Version(0, 5, 10)),
                 ("but not a beta of its own number", testBuildOfBeta == null),
                 ("foreign links are replaced by the project's releases page", stable?.Url == "https://github.com/someone/project/releases"),
-                ("an installer with its checksum from the project's own address can be installed", beta is { CanInstall: true, Installer.Name: "VR-Gaze-Mirror-0.9.0.msi", Checksum.Size: 100 }),
+                ("an installer with its checksum from the project's own address can be installed", beta is { CanInstall: true, Installer.Name: "StreamMirror-VR-0.9.0.msi", Checksum.Size: 100 }),
+                ("the renamed repository's release and its old-named installer are offered to a build with the old name",
+                    afterRename is { CanInstall: true, Url: "https://github.com/someone/StreamMirror-VR/releases/tag/v3.0.0" }),
                 ("an installer from a foreign address is not offered", releases.First(r => r.Tag == "v0.5.2") is { Installer: null, CanInstall: false }),
                 ("an installer without a checksum, and an .exe, are not offered", stable is { Installer: not null, Checksum: null, CanInstall: false }),
                 ("a sha256sum-style checksum file is read for the right name",
-                    UpdateChecker.ParseChecksum("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef *Other.msi\nABCDEF0123456789abcdef0123456789abcdef0123456789abcdef0123456789  VR-Gaze-Mirror-0.9.0.msi\n", "VR-Gaze-Mirror-0.9.0.msi")
+                    UpdateChecker.ParseChecksum("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef *Other.msi\nABCDEF0123456789abcdef0123456789abcdef0123456789abcdef0123456789  StreamMirror-VR-0.9.0.msi\n", "StreamMirror-VR-0.9.0.msi")
                         == "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
                     && UpdateChecker.ParseChecksum("not a hash", "x.msi") == null),
                 ("a file's SHA-256 is computed as sha256sum would", ChecksumOfEmptyFile(outputDir) == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),

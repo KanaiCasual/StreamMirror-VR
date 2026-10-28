@@ -6,10 +6,10 @@ namespace GazeOverlay;
 /// <summary>Reads and writes the gaze overlay config that the OBSMirror layer reads at start, and again whenever LiveLink tells it to.</summary>
 public static class ConfigFile
 {
-    /// <summary>The ring settings file; GAZE_MIRROR_CONFIG_FILE points a test run at a scratch file instead.</summary>
-    public static string DefaultPath => Environment.GetEnvironmentVariable("GAZE_MIRROR_CONFIG_FILE") is { Length: > 0 } overridden
+    /// <summary>The ring settings file; STREAMMIRROR_CONFIG_FILE points a test run at a scratch file instead.</summary>
+    public static string DefaultPath => Environment.GetEnvironmentVariable("STREAMMIRROR_CONFIG_FILE") is { Length: > 0 } overridden
         ? overridden
-        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg");
+        : Path.Combine(AppSettings.Folder, "settings.cfg");
 
     /// <summary>Keys the app fills in by itself (no row of their own): the sharp area for Gaze from = Fixed centre.</summary>
     public static readonly string[] Managed = ["fixed_focus_width", "fixed_focus_height", "fixed_focus_offset_x", "fixed_focus_offset_y"];
@@ -37,8 +37,8 @@ public static class ConfigFile
     public static void Save(string path, IReadOnlyDictionary<string, string> values)
     {
         var text = new StringBuilder();
-        text.AppendLine("# The gaze ring of VR Gaze Mirror. The mirror draws it for OBS; the headset does not show it.");
-        text.AppendLine("# VR Gaze Mirror (GazeMirror.exe) writes this file. You can edit it by hand too:");
+        text.AppendLine("# The gaze ring of StreamMirror VR. The mirror draws it for OBS; the headset does not show it.");
+        text.AppendLine("# StreamMirror VR (StreamMirror.exe) writes this file. You can edit it by hand too:");
         text.AppendLine("# the game reads it at its start. A running game does not watch this file: an edit goes live through the");
         text.AppendLine("# settings app, and a hand edit goes live while the settings app is open.");
 

@@ -1,6 +1,6 @@
-<p align="center"><img src="docs/logo.png" width="96" alt="VR Gaze Mirror logo"></p>
+<p align="center"><img src="docs/logo.png" width="96" alt="StreamMirror VR logo"></p>
 
-# VR Gaze Mirror
+# StreamMirror VR
 
 [![Latest release](https://img.shields.io/github/v/release/KanaiCasual/VR-Gaze-Mirror?label=latest%20release&color=4DB2FF)](../../releases/latest)
 [![Released](https://img.shields.io/github/release-date/KanaiCasual/VR-Gaze-Mirror?label=released)](../../releases/latest)
@@ -34,7 +34,7 @@ One installer sets up all of it:
   in a single pass.
 - **The SteamVR helper**: the same for games that use SteamVR directly (VRChat, Half-Life: Alyx, Pavlov and the like).
   It starts and stops with SteamVR by itself.
-- **The "Gaze Mirror" OBS source**: reads the picture from the graphics card, with no window capture in between. Or use
+- **The "StreamMirror VR" OBS source**: reads the picture from the graphics card, with no window capture in between. Or use
   the **mirror window** with any program that captures windows (OBS, Discord).
 - **A settings app**: the framing tools. A crop box you set on a picture of your own view, taken from inside the
   headset; **View edges**, which marks the part your eye can see; gaze-following, steadying and a level horizon;
@@ -42,16 +42,16 @@ One installer sets up all of it:
 - **The gaze ring**: with any eye-tracked headset that feeds the standard interfaces, or through VRChat's avatar eyes
   as a fallback. The mirror shows it and the headset does not. It is optional: the mirror works without it.
 - **Quad views, optional**: eye-tracked foveated rendering in OpenXR games that support quad views (DCS, VAIL and the
-  like). VR Gaze Mirror installs its own quad views layer, built on Matthieu Bucchianeri's Quad-Views-Foveated: off until
+  like). StreamMirror VR installs its own quad views layer, built on Matthieu Bucchianeri's Quad-Views-Foveated: off until
   you switch it on on the Quad Views page, for Direct3D 11, Direct3D 12 and Vulkan games, with changes that reach a
   running game at once.
   The mirror and the ring work without it.
 
-*Up to version 1.2.2 the project was "QuadViews Gaze Mirror", and the ring sat on modified Quad-Views-Foveated and
+*Up to version 1.2.2 the project was "QuadViews StreamMirror VR", and the ring sat on modified Quad-Views-Foveated and
 OpenXR-Layer-OBSMirror layers. Since 2.0 this project's own code makes the whole picture, and Quad-Views-Foveated is an
 optional extra.*
 
-**Download:** the latest `VR-Gaze-Mirror-<version>.msi` is on the
+**Download:** the latest `StreamMirror-VR-<version>.msi` is on the
 [Releases page](../../releases/latest); the release notes list the changes.
 
 **New here?** The [getting-started guide](docs/GETTING-STARTED.md) takes you from the download to a framed, steady
@@ -92,12 +92,12 @@ World, VRChat, Assetto Corsa EVO, VAIL and Half-Life: Alyx.
 
 1. Close your game and OBS, then run the `.msi`. Windows SmartScreen warns, because the files carry no code signature:
    "More info" > "Run anyway". A first install offers a desktop shortcut.
-2. Start **VR Gaze Mirror** from the Start menu. The **Status** page should say that all parts work: the layer, the
+2. Start **StreamMirror VR** from the Start menu. The **Status** page should say that all parts work: the layer, the
    OBS plugin and the SteamVR helper.
 
 **Coming from 1.x:** run the installer over it. It removes the two modified layers and the old "OpenXR Mirror Capture"
 OBS plugin that 1.x put into OBS, carries over your settings, presets and crop pictures, and cleans up the old
-"QuadViews Gaze Mirror" data folder. Replace the old source in your OBS scenes with the new **Gaze Mirror** source (the
+"QuadViews StreamMirror VR" data folder. Replace the old source in your OBS scenes with the new **StreamMirror VR** source (the
 old one shows black).
 
 **Updating:** the app tells you about a newer release. **Download and install** saves the new installer into your
@@ -111,11 +111,11 @@ files in place, and SteamVR forgets the helper.
 Both show the same picture: the eye you chose, cropped, framed and steadied as you set it on the **Mirror** page, with
 the gaze ring on it if your headset gives gaze. You can use both at once.
 
-### 1. OBS with the Gaze Mirror source: cheapest, best for recording
+### 1. OBS with the StreamMirror VR source: cheapest, best for recording
 
 The installer puts the plugin into OBS.
 
-1. In OBS: **Sources > + > Gaze Mirror**. Its framing settings live on the app's Mirror page.
+1. In OBS: **Sources > + > StreamMirror VR**. Its framing settings live on the app's Mirror page.
 2. Start your game. The picture appears with the VR session.
 3. Select the source and press **Ctrl+F** (Transform > Fit to screen) once. From then on it keeps fitting your canvas
    at any crop box size.
@@ -129,7 +129,7 @@ window with the mirror picture appears on the
 monitor you chose, **behind the other windows** (behind a borderless game too), and it leaves the focus alone. Window
 capture still sees it there.
 
-- **Discord:** Share Your Screen > Applications > *VR Gaze Mirror - Mirror*.
+- **Discord:** Share Your Screen > Applications > *StreamMirror VR - Mirror*.
 - **OBS without the plugin:** Sources > + > **Window Capture** > that window.
 - **Size** and **Rate** decide what the capturing program gets (for example 1920 x 1080 at 30 fps for Discord). Smaller
   and slower is cheaper. This way costs more graphics card time than the plugin: the window redraws the picture and the
@@ -260,7 +260,7 @@ own 3D layer. A tool's layer has to come before the mirror layer in the OpenXR l
 Layers page sees to that. Off keeps the tools' panels off the stream.
 
 The game's own panels (a screen of text in VAIL's start-up room, a floating menu) show either way. The mirror tells
-them apart through its second, small layer, `XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers`, which sits first in the
+them apart through its second, small layer, `XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers`, which sits first in the
 list, right under the game, and notes what the game itself sends. The installer puts it first after every install and
 update; Fix order on the Layers page puts it back if another tool moves above it. Without it, Off hides the game's
 panels too. A menu or loading screen with no world behind it is mirrored either way. What the headset's runtime adds itself (its own menus, the play-area boundary)
@@ -456,7 +456,7 @@ you tick it**, and the page states this reason at its top.
   picture and twice a second otherwise (hold the key a moment).
 - **Screen capture sees the cover:** unticked, the black is on your monitor alone: OBS Display Capture, Discord screen
   sharing and screenshots still get the game underneath. Ticked, they get the black too. Window and game capture of
-  the game, and the Gaze Mirror source, get the game either way.
+  the game, and the StreamMirror VR source, get the game either way.
 - **Tracking pattern (may help):** marks on the black that stay put, fixed to the monitor and the same each time, as
   something steady for the headset to hold on to. A slider sets their **size** (50 to 300 %), a list their brightness.
   It may help and it may make no difference; that depends on the headset, and this project promises nothing. Keep it
@@ -468,7 +468,7 @@ you tick it**, and the page states this reason at its top.
 
 ![Quad Views page](docs/page-quadviews.png)
 
-VR Gaze Mirror's quad views layer, built on Matthieu Bucchianeri's Quad-Views-Foveated, for Direct3D 11, 12 and Vulkan games
+StreamMirror VR's quad views layer, built on Matthieu Bucchianeri's Quad-Views-Foveated, for Direct3D 11, 12 and Vulkan games
 that offer quad views (DCS, VAIL and the like). The installer puts it in place switched off. **Quad views** at the top
 switches it on or off (Windows asks for permission once; a game picks it up at its next start). Switched on, it also
 switches off the official Quad-Views-Foveated, if that is installed, and puts the layers in order.
@@ -516,11 +516,11 @@ The desktop cover's hotkey and the mirror window work from the tray.
 
 One core, two producers, any number of readers:
 
-- **The mirror layer** (`XR_APILAYER_KANAICASUAL_GazeMirror`) sits in OpenXR games. Each frame it reads the game's eye
+- **The mirror layer** (`XR_APILAYER_KANAICASUAL_StreamMirror`) sits in OpenXR games. Each frame it reads the game's eye
   images, the head pose and (if the runtime gives it) the eye gaze, and makes the mirror picture. The same DLL is a
-  second layer too, `XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers`, at the top of the list: it notes which panels the
+  second layer too, `XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers`, at the top of the list: it notes which panels the
   game itself sends, so the mirror can keep other tools' panels off the stream and the game's on it.
-- **The SteamVR helper** (`GazeMirrorHelper.exe`) does the same for SteamVR games from SteamVR's own mirror texture,
+- **The SteamVR helper** (`StreamMirrorHelper.exe`) does the same for SteamVR games from SteamVR's own mirror texture,
   eye tracking and poses. SteamVR starts it with itself, and it leaves as SteamVR closes.
 - **The core** they share does its work in a single pass on the game's image: crop, gaze-following, picture steadying,
   scaling and the ring. The result goes into a shared texture that the **OBS plugin** and the **mirror window** read,
@@ -543,16 +543,16 @@ File locations:
 
 | What | Where |
 |---|---|
-| Program, layer, helper, mirror window | `C:\Program Files\VR-Gaze-Mirror` |
+| Program, layer, helper, mirror window | `C:\Program Files\StreamMirror-VR` |
 | Ring, crop, follow, steadying, gaze settings | `%LocalAppData%\XR_APILAYER_NOVENDOR_OBSMirror_gaze.cfg` |
-| App preferences, saved slots, crop profiles and pictures, layer-order backups | `%LocalAppData%\GazeMirror\` |
-| Logs: `app.log`, `gaze-mirror-layer.log`, `gaze-mirror-helper.log` | `%LocalAppData%\GazeMirror\` |
-| VR Gaze Mirror's quad views layer: `settings.cfg`, `QuadViews.log` | `%LocalAppData%\GazeMirror\QuadViews\` |
+| App preferences, saved slots, crop profiles and pictures, layer-order backups | `%LocalAppData%\StreamMirror\` |
+| Logs: `app.log`, `streammirror-layer.log`, `streammirror-helper.log` | `%LocalAppData%\StreamMirror\` |
+| StreamMirror VR's quad views layer: `settings.cfg`, `QuadViews.log` | `%LocalAppData%\StreamMirror\QuadViews\` |
 | Quad-Views-Foveated settings and log (if installed) | `%LocalAppData%\Quad-Views-Foveated\` |
 
 ## Troubleshooting
 
-- **Black Gaze Mirror source in OBS**: no VR session is running yet, or the layer cannot mirror the game (an OpenXR
+- **Black StreamMirror VR source in OBS**: no VR session is running yet, or the layer cannot mirror the game (an OpenXR
   game on OpenGL). The Status page's top line names the game the mirror shows.
 - **No ring**: eye tracking is off in the headset software, the software does not feed the standard interface (see
   Gaze source above), or the ring is off on the Ring page. The Status page says whether gaze arrives.
@@ -582,7 +582,7 @@ first time).
 ```powershell
 git clone <this repo>
 .\v2\Get-External.ps1              # once: OpenVR SDK, OBS headers, the quad views layer's dependencies (git keeps their licences alone)
-.\Build-Installer.ps1 -Version 2.3.0   # all parts, the offline layer test, and dist\VR-Gaze-Mirror-2.3.0.msi with its .sha256
+.\Build-Installer.ps1 -Version 2.3.0   # all parts, the offline layer test, and dist\StreamMirror-VR-2.3.0.msi with its .sha256
 ```
 
 | Path | What |
@@ -590,7 +590,7 @@ git clone <this repo>
 | `v2/core/` | The shared core: settings, crop and framing, steadying, ring, renderer, publisher |
 | `v2/layer/` | The OpenXR API layer |
 | `v2/openvr-helper/` | The SteamVR helper: OpenVR mirror, VRChat OSC, the calibration, the in-headset marker |
-| `v2/obs-plugin/` | The "Gaze Mirror" OBS source |
+| `v2/obs-plugin/` | The "StreamMirror VR" OBS source |
 | `v2/mirror-window/` | The capturable mirror window |
 | `v2/viewer/` | A small viewer of the shared picture, for development |
 | `v2/test/` | The offline layer test: plays game and runtime, checks the picture, the crop tool and the marker |
@@ -599,7 +599,7 @@ git clone <this repo>
 | `Installer/` | WiX 5 project for the MSI |
 | `tools/` | The logo and installer-artwork generators, an offline ring preview, an MSI inspector, a clip reviewer |
 
-The app has two headless checks: `GazeMirror.exe --selftest <folder>` and `--screenshots <folder> [width height]`.
+The app has two headless checks: `StreamMirror.exe --selftest <folder>` and `--screenshots <folder> [width height]`.
 
 **Each release, beta or not, must have its own `x.y.z` number** (tag `v2.0.0`, `v2.0.1-beta`, ...). Windows Installer
 upgrades to a higher number and to no other, and the update check compares the numbers, so a beta and its final release
@@ -613,22 +613,22 @@ the checksum.
   refuse to load the layer.
 - Setup is a plain MSI on purpose: antivirus heuristics quarantined an earlier self-installing `.exe` half-way through
   an install.
-- Silent install without the desktop shortcut: `msiexec /i VR-Gaze-Mirror-x.y.z.msi /qn DESKTOPSHORTCUT=0`.
+- Silent install without the desktop shortcut: `msiexec /i StreamMirror-VR-x.y.z.msi /qn DESKTOPSHORTCUT=0`.
 - The mirror shows OpenXR games that render with Direct3D 11, Direct3D 12 or Vulkan. In Vulkan games the in-headset
   aids (the capture countdown, the View edges blocks, the calibration marker) are not drawn yet. OpenGL games have no mirror
   yet.
 - The mirror shows quad views, the four-view foveated mode (Varjo headsets; Pimax Play's own setting), as the headset
-  shows them: the sharp inner image over the wide one. VR Gaze Mirror's quad views layer handles Direct3D 11, 12 and
+  shows them: the sharp inner image over the wide one. StreamMirror VR's quad views layer handles Direct3D 11, 12 and
   Vulkan games; the official Quad-Views-Foveated handles Direct3D 11 alone. The helper mirrors SteamVR
   games through SteamVR's own mirror, with any renderer.
 - The SteamVR helper needs SteamVR and OBS on the same graphics card.
 - TallyMouse's QuadViews Companion edits the official Quad-Views-Foveated's settings file, not this layer's
-  (`%LocalAppData%\GazeMirror\QuadViews\settings.cfg`).
+  (`%LocalAppData%\StreamMirror\QuadViews\settings.cfg`).
 
 ## Credits and licence
 
 - [Quad-Views-Foveated](https://github.com/mbucchia/Quad-Views-Foveated) by Matthieu Bucchianeri (MIT): VR Gaze
-  Mirror's quad views layer (`v2\quad-views`) is built on its code. He does not make or support VR Gaze Mirror's
+  Mirror's quad views layer (`v2\quad-views`) is built on its code. He does not make or support StreamMirror VR's
   layer: report its problems here.
 - [OpenXR-Layer-OBSMirror](https://github.com/Jabbah/OpenXR-Layer-OBSMirror) by Jabbah (MIT): the 1.x versions of this
   project built on it, and the 2.0 layer keeps its settings file name so upgrades carry over.

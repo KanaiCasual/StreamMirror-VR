@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - OpenXR layer: the flat panels other OpenXR tools lay over the game - quad layers, such as
+// StreamMirror VR - OpenXR layer: the flat panels other OpenXR tools lay over the game - quad layers, such as
 // OpenKneeboard's kneeboards - drawn into the mirror's copy of an eye, where the headset shows them. The runtime's
 // compositor lays them over the world in the headset; the mirror, which takes the world's images, does the same.
 #pragma once

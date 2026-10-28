@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OpenVR helper: eye gaze from VRChat over OSC.
+// StreamMirror VR - the OpenVR helper: eye gaze from VRChat over OSC.
 //
 // Headsets whose software feeds neither SteamVR's eye tracking nor OpenXR's eye-gaze extension often still feed
 // VRChat - through VRCFaceTracking, EyeTrackVR, Babble, ALVR and the like - as the avatar's eye parameters. VRChat
@@ -61,7 +61,7 @@ namespace gaze_mirror {
         void handleOscMessage(const uint8_t* data, int length);
         void publish();
 
-        std::string _instance;  // "GazeMirror-1234": the service instance name VRChat shows.
+        std::string _instance;  // "StreamMirror-1234": the service instance name VRChat shows.
         uint16_t _httpPort = 0;
         uint16_t _oscPort = 0;
         SOCKET _mdns = INVALID_SOCKET;

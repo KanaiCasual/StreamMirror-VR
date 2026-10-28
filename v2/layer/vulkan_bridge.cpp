@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OpenXR layer: Vulkan games (see vulkan_bridge.h).
+// StreamMirror VR - the OpenXR layer: Vulkan games (see vulkan_bridge.h).
 
 #include "pch.h"
 

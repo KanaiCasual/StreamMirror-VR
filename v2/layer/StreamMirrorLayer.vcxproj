@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- VR Gaze Mirror 2.0 - the OpenXR layer. Release x64 only; static C runtime, so a game needs no redistributable for it.
+  <!-- StreamMirror VR - the OpenXR layer. Release x64 only; static C runtime, so a game needs no redistributable for it.
        The only thing it is built against are the Khronos OpenXR headers. -->
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Release|x64">
@@ -10,7 +10,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8C4D2B7E-51A9-4F63-B0C7-6E9D1F3A5B20}</ProjectGuid>
-    <RootNamespace>GazeMirrorLayer</RootNamespace>
+    <RootNamespace>StreamMirrorLayer</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -24,7 +24,7 @@
   <PropertyGroup>
     <OutDir>$(ProjectDir)..\bin\layer\</OutDir>
     <IntDir>$(ProjectDir)..\obj\layer\</IntDir>
-    <TargetName>XR_APILAYER_KANAICASUAL_GazeMirror</TargetName>
+    <TargetName>XR_APILAYER_KANAICASUAL_StreamMirror</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -39,11 +39,11 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>$(ProjectDir)..\bin\core\GazeMirrorCore.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(ProjectDir)..\bin\core\StreamMirrorCore.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_GazeMirror.json" "$(OutDir)" &gt; nul &amp;&amp; copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_GazeMirror_GameLayers.json" "$(OutDir)" &gt; nul</Command>
+      <Command>copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_StreamMirror.json" "$(OutDir)" &gt; nul &amp;&amp; copy /y "$(ProjectDir)XR_APILAYER_KANAICASUAL_StreamMirror_GameLayers.json" "$(OutDir)" &gt; nul</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -67,7 +67,7 @@
     <ClInclude Include="vulkan_bridge.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\core\GazeMirrorCore.vcxproj">
+    <ProjectReference Include="..\core\StreamMirrorCore.vcxproj">
       <Project>{5D0A7F21-6B3C-4E8D-9A45-1C2B3D4E5F60}</Project>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>

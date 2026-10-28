@@ -424,16 +424,16 @@ public partial class MainWindow
         // Show the gaze-following parts too. Nothing here goes through OnValueChanged, so nothing is saved.
         CropEnabled.IsChecked = true;
         _values["crop_follow"] = "vertical";
-        // GAZE_SCREENSHOT_EXPANDED=1 shows the folded sections open, to look at their rows.
+        // STREAMMIRROR_SCREENSHOT_EXPANDED=1 shows the folded sections open, to look at their rows.
         CropFollowExpander.IsExpanded = StabilizeExpander.IsExpanded = MirrorWindowExpander.IsExpanded =
-            Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_EXPANDED") == "1";
+            Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_EXPANDED") == "1";
         _values["stabilize"] = "1";
         _crop.MoveTo(0, _crop.CenterY); // against the left wall: the steadying room has to hold it off
-        // GAZE_SCREENSHOT_FREE=1: the box in the free shape, to look at its side handles.
-        if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_FREE") == "1") { _crop.Aspect = 0; _crop.FreeWidth = 0.5; _crop.Height = 0.35; _crop.MoveTo(0.5, 0.5); }
+        // STREAMMIRROR_SCREENSHOT_FREE=1: the box in the free shape, to look at its side handles.
+        if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_FREE") == "1") { _crop.Aspect = 0; _crop.FreeWidth = 0.5; _crop.Height = 0.35; _crop.MoveTo(0.5, 0.5); }
         ApplyCropMargin(moveBox: false);
         ShowSelectedPicture();
-        if (Environment.GetEnvironmentVariable("GAZE_SCREENSHOT_ARMED") == "1")
+        if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_ARMED") == "1")
         {
             _captureArmed = true; // only the look of it: nothing is armed anywhere
             UpdateCaptureUi();

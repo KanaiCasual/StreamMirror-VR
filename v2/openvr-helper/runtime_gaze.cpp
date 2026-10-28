@@ -238,7 +238,7 @@ namespace gaze_mirror {
         }
 
         XrInstanceCreateInfo instanceInfo{XR_TYPE_INSTANCE_CREATE_INFO};
-        strcpy_s(instanceInfo.applicationInfo.applicationName, "VR Gaze Mirror (gaze only)");
+        strcpy_s(instanceInfo.applicationInfo.applicationName, "StreamMirror VR (gaze only)");
         strcpy_s(instanceInfo.applicationInfo.engineName, "none");
         instanceInfo.applicationInfo.apiVersion = XR_MAKE_VERSION(1, 0, 0);
         instanceInfo.enabledExtensionCount = 3;
@@ -319,7 +319,7 @@ namespace gaze_mirror {
 
         XrActionSetCreateInfo setInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
         strcpy_s(setInfo.actionSetName, "gaze_mirror");
-        strcpy_s(setInfo.localizedActionSetName, "VR Gaze Mirror");
+        strcpy_s(setInfo.localizedActionSetName, "StreamMirror VR");
         XrActionSet actionSet = XR_NULL_HANDLE;
         XrAction action = XR_NULL_HANDLE;
         XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};

@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OpenVR helper (GazeMirrorHelper.exe).
+// StreamMirror VR - the OpenVR helper (StreamMirrorHelper.exe).
 //
 // The producer for games that use OpenVR instead of OpenXR (they never load an OpenXR layer). It sits next to
 // SteamVR as a background program and, whenever a reader wants pictures, reads SteamVR's own mirror of one eye,
@@ -124,7 +124,9 @@ namespace {
         return mirror.texture != nullptr;
     }
 
-    constexpr char AppKey[] = "kanaicasual.quadviewsgazemirror.helper";
+    constexpr char AppKey[] = "kanaicasual.streammirror.helper";
+    // The key before 3.0. Its manifest went with the old install; registering switches its auto-launch off.
+    constexpr char OldAppKey[] = "kanaicasual.quadviewsgazemirror.helper"; // LEGACY-NAME
 
     // Tells SteamVR about this program (an application manifest) and asks it to start it with SteamVR, or takes that
     // back. Works without a headset (utility connection). Exit code 0 = done.
@@ -140,8 +142,14 @@ namespace {
         wchar_t dataFolder[MAX_PATH];
         const DWORD dataLength = GetEnvironmentVariableW(L"LOCALAPPDATA", dataFolder, MAX_PATH);
         if (dataLength == 0 || dataLength >= MAX_PATH) return 2;
-        const std::wstring dataManifest = std::wstring(dataFolder) + L"\\GazeMirror\\GazeMirrorHelper.vrmanifest";
+        const std::wstring dataManifest = std::wstring(dataFolder) + L"\\StreamMirror\\StreamMirrorHelper.vrmanifest";
         const std::wstring legacyManifest = std::wstring(dataFolder) + L"\\QuadViewsGazeMirror\\GazeMirrorHelper.vrmanifest";
+        // Before 3.0: the data folder's manifest (and its copy in the new data folder), and the old install's own.
+        const std::wstring oldDataManifest = std::wstring(dataFolder) + L"\\GazeMirror\\GazeMirrorHelper.vrmanifest"; // LEGACY-NAME
+        const std::wstring copiedManifest = std::wstring(dataFolder) + L"\\StreamMirror\\GazeMirrorHelper.vrmanifest"; // LEGACY-NAME
+        wchar_t programFiles[MAX_PATH] = {};
+        GetEnvironmentVariableW(L"ProgramW6432", programFiles, MAX_PATH);
+        const std::wstring oldInstallManifest = std::wstring(programFiles) + L"\\VR-Gaze-Mirror\\GazeMirrorHelper.vrmanifest"; // LEGACY-NAME
         const auto exists = [](const std::wstring& path) { return GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES; };
         const auto utf8 = [](const std::wstring& wide) {
             char text[MAX_PATH * 3] = {};
@@ -157,21 +165,21 @@ namespace {
                     "    \"app_key\": \"%s\",\n    \"launch_type\": \"binary\",\n"
                     "    \"binary_path_windows\": \"%s\",\n    \"arguments\": \"--steamvr\",\n"
                     "    \"is_dashboard_overlay\": true,\n"
-                    "    \"strings\": { \"en_us\": { \"name\": \"VR Gaze Mirror helper\", "
+                    "    \"strings\": { \"en_us\": { \"name\": \"StreamMirror VR helper\", "
                     "\"description\": \"Mirror picture with gaze ring for SteamVR games (OBS, mirror window)\" } }\n  } ]\n}\n",
                     AppKey, binary.c_str());
             fclose(file);
             return true;
         };
 
-        std::wstring manifestPath = exeFolder + L"\\GazeMirrorHelper.vrmanifest";
-        if (on && !exists(manifestPath) && !writeManifest(manifestPath, "GazeMirrorHelper.exe")) {
+        std::wstring manifestPath = exeFolder + L"\\StreamMirrorHelper.vrmanifest";
+        if (on && !exists(manifestPath) && !writeManifest(manifestPath, "StreamMirrorHelper.exe")) {
             std::string exePath; // JSON: backslashes and quotes escaped.
             for (const char c : utf8(modulePath)) {
                 if (c == '\\' || c == '"') exePath += '\\';
                 exePath += c;
             }
-            CreateDirectoryW((std::wstring(dataFolder) + L"\\GazeMirror").c_str(), nullptr);
+            CreateDirectoryW((std::wstring(dataFolder) + L"\\StreamMirror").c_str(), nullptr);
             manifestPath = dataManifest;
             if (!writeManifest(manifestPath, exePath)) {
                 Log("register: the manifest could not be written");
@@ -190,7 +198,14 @@ namespace {
             // Manifests earlier builds left elsewhere carry the same key, and SteamVR starts the binary of the FIRST
             // manifest it has for a key: the 1.x and 1.9 dev builds' one under the old data folder name, the 1.9.x
             // builds' one in the data folder. They go first, so that the one next to the exe is what SteamVR starts.
-            for (const std::wstring& old : {legacyManifest, dataManifest}) {
+            if (programFiles[0] && !exists(oldInstallManifest)) {
+                // Gone with the update, but SteamVR still lists it under the old key. (While it is there - an older
+                // install beside a test build - it is left alone.)
+                vr::VRApplications()->SetApplicationAutoLaunch(OldAppKey, false);
+                const vr::EVRApplicationError removed = vr::VRApplications()->RemoveApplicationManifest(utf8(oldInstallManifest).c_str());
+                Log("register: the manifest of before 3.0 dropped from SteamVR's list (%d)", int(removed));
+            }
+            for (const std::wstring& old : {legacyManifest, dataManifest, oldDataManifest, copiedManifest}) {
                 if (old == manifestPath || !exists(old)) continue;
                 const vr::EVRApplicationError removed = vr::VRApplications()->RemoveApplicationManifest(utf8(old).c_str());
                 Log("register: an earlier build's manifest removed (%d)", int(removed));
@@ -222,7 +237,7 @@ namespace {
 } // namespace
 
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR commandLine, int) {
-    SetLogName(L"gaze-mirror-helper");
+    SetLogName(L"streammirror-helper");
     if (wcsstr(commandLine, L"--register")) return Register(true);
     if (wcsstr(commandLine, L"--unregister")) return Register(false);
     if (wcsstr(commandLine, L"--vrchat-test")) {
@@ -237,12 +252,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR commandLine, int) {
         return 0;
     }
     const bool bySteamVR = wcsstr(commandLine, L"--steamvr") != nullptr;
-    HANDLE running = CreateMutexW(nullptr, TRUE, L"GazeMirror2.HelperRunning");
+    HANDLE running = CreateMutexW(nullptr, TRUE, L"StreamMirror.HelperRunning");
     if (running && GetLastError() == ERROR_ALREADY_EXISTS) {
         Log("helper: already running - leaving");
         return 0;
     }
-    g_stop = CreateEventW(nullptr, TRUE, FALSE, L"GazeMirror2.HelperStop"); // The app can ask it to leave.
+    g_stop = CreateEventW(nullptr, TRUE, FALSE, L"StreamMirror.HelperStop"); // The app can ask it to leave.
     ResetEvent(g_stop);
     SetConsoleCtrlHandler(OnConsoleClose, TRUE);
 

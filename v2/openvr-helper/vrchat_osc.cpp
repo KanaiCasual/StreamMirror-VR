@@ -198,7 +198,7 @@ namespace gaze_mirror {
         }
 
         char instance[64];
-        snprintf(instance, sizeof(instance), "GazeMirror-%lu", GetCurrentProcessId());
+        snprintf(instance, sizeof(instance), "StreamMirror-%lu", GetCurrentProcessId());
         _instance = instance;
         _running = true;
         _mdnsThread = std::thread([this] { runMdns(); });

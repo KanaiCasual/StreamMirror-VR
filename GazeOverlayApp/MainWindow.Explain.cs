@@ -29,7 +29,7 @@ public partial class MainWindow
         AddExplanation(StatusTab, ExplainStatus, "status", HowThisPageWorks,
             new("The line at the top", "names the game the mirror shows right now and says whether eye gaze arrives. A grey dot means no VR game is running; the mirror starts with the game."),
             new("Three steps", "take a new install to a picture in OBS. Each step ticks itself off once the app has seen it happen, and the card goes away after the third."),
-            new("Parts.", "The mirror has three. The mirror layer makes the picture inside OpenXR games. The SteamVR helper does the same for games that use SteamVR directly; it starts and stops with SteamVR. The OBS plugin is the \"Gaze Mirror\" source that shows the picture in OBS.\n\nQuad views are optional and have no part in the mirror.\n\nWhile all is well the card says so on its top line. A part with a fault says what to do about it."),
+            new("Parts.", "The mirror has three. The mirror layer makes the picture inside OpenXR games. The SteamVR helper does the same for games that use SteamVR directly; it starts and stops with SteamVR. The OBS plugin is the \"StreamMirror VR\" source that shows the picture in OBS.\n\nQuad views are optional and have no part in the mirror.\n\nWhile all is well the card says so on its top line. A part with a fault says what to do about it."),
             new("OpenXR API layers.", "A game loads its layers in a fixed order, and the mirror layer has to sit below any layer that draws into the picture, so that it sees the finished picture.\n\nThe line under the card sums up that order and turns orange on a problem. Click it for the Layers page, where you switch a layer on or off, move one, or press Fix order. Games use a change from their next start."));
 
         AddExplanation(CropTab, ExplainMirror, "mirror", HowThisPageWorks,
@@ -40,7 +40,7 @@ public partial class MainWindow
             new("Crop box and Picture.", "Crop the picture switches the box on, and the shape next to it locks the box's proportions.\n\nPicture chooses the eye and caps the size and the rate of the picture that goes out, for OBS and the mirror window alike."),
             new("Follow my gaze.", "A 16:9 box covers about half the height of the eye image, so a look down at your knees leaves the frame. With this on, the box glides up or down to keep your target in it."),
             new("Steady the picture.", "The box moves against small head movement and tracking jitter, and turns against a sideways tilt of your head, which takes them out of the picture. It holds back no frames, so it adds no delay."),
-            new("Mirror window.", "A window with the same picture for programs that capture windows, such as Discord. With the Gaze Mirror source in OBS you do not need it."),
+            new("Mirror window.", "A window with the same picture for programs that capture windows, such as Discord. With the StreamMirror VR source in OBS you do not need it."),
             new("Profile.", "A profile keeps a framing under a name. Give it a game's program file and the mirror applies it at that game's start. New starts one from the default framing, Save as copies the current one.\n\nChanges reach the stream at once and go into the profile at Save; Revert goes back. Save edits automatically saves every change as you make it, and Revert then goes back to how the profile was when you opened it.\n\nCtrl+Z undoes the last change on this page, Ctrl+Y redoes it."),
             AboutSliders);
 
@@ -69,7 +69,7 @@ public partial class MainWindow
             new("", "A headset tracked by base stations (Lighthouse) does not look at the room and has no use for the cover."));
 
         AddExplanation(QuadViewsTab, ExplainQuadViews, "quadviews", HowThisPageWorks,
-            new("", "Quad views make a game render a small sharp region where you look and the rest of the view at a low resolution, which saves graphics card time.\n\nVR Gaze Mirror's quad views layer (built on mbucchia's Quad-Views-Foveated) does it for Direct3D 11, Direct3D 12 and Vulkan games. The switch at the top turns it on or off; on, it also turns the official Quad-Views-Foveated off, if that is installed."),
+            new("", "Quad views make a game render a small sharp region where you look and the rest of the view at a low resolution, which saves graphics card time.\n\nStreamMirror VR's quad views layer (built on mbucchia's Quad-Views-Foveated) does it for Direct3D 11, Direct3D 12 and Vulkan games. The switch at the top turns it on or off; on, it also turns the official Quad-Views-Foveated off, if that is installed."),
             new("Live and Next start.", "Every change is saved as you make it. Settings under Live show in a running game at once. Settings under Next start (resolution, Turbo) wait for the game to start again.\n\nThe lines at the top give the pixels per frame."),
             new("Checking.", "Show diagnostics in the headset tints the zones and marks your gaze while you play.\n\nThe layer stays out of games it cannot help (OpenGL); its log says why."),
             new("Focus", "sets the size of the sharp region as a share of the field of view, moves it up or down, and sets the width of the blend into the surround. Without eye tracking the region stays in the middle of the view."),

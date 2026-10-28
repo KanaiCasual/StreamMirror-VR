@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - core: the shader of the one draw. The indicator looks are those of 1.x, drawn into
+// StreamMirror VR - core: the shader of the one draw. The indicator looks are those of 1.x, drawn into
 // the same pass that crops and scales the picture.
 #pragma once
 

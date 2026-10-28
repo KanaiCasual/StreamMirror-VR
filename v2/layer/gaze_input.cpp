@@ -62,7 +62,7 @@ namespace gaze_mirror::layer {
 
         XrActionSetCreateInfo setInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
         strcpy_s(setInfo.actionSetName, "gaze_mirror");
-        strcpy_s(setInfo.localizedActionSetName, "Gaze Mirror");
+        strcpy_s(setInfo.localizedActionSetName, "StreamMirror VR");
         XrResult result = _next->xrCreateActionSet(_next->instance, &setInfo, &_actionSet);
         if (XR_FAILED(result)) {
             Log("gaze: action set could not be created (%d)", result);

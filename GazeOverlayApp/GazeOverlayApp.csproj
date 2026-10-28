@@ -9,12 +9,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>GazeMirror</AssemblyName>
+    <AssemblyName>StreamMirror</AssemblyName>
     <RootNamespace>GazeOverlay</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <Version>1.9.3</Version>
-    <Product>VR Gaze Mirror</Product>
+    <Product>StreamMirror VR</Product>
     <Description>Settings for quad views foveated rendering, the OBS mirror and its eye-gaze ring. Installing is done by the MSI, not by this app.</Description>
 
     <!-- Self-contained so no .NET install is needed, but as a plain folder of files that the MSI installs. Deliberately NOT

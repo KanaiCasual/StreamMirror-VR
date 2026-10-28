@@ -1,4 +1,4 @@
-// VR Gaze Mirror 2.0 - the OpenXR API layer.
+// StreamMirror VR - the OpenXR API layer.
 //
 // Written from nothing but the OpenXR headers: the loader hands us the chain, we put ourselves in front of a dozen
 // functions and pass everything else straight through. The layer itself only
@@ -35,7 +35,7 @@
 namespace gaze_mirror::layer {
 
     namespace {
-        constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_GazeMirror";
+        constexpr char LayerName[] = "XR_APILAYER_KANAICASUAL_StreamMirror";
 
         struct SwapchainState {
             DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
@@ -1610,7 +1610,7 @@ extern "C" __declspec(dllexport) XrResult XRAPI_CALL xrNegotiateLoaderApiLayerIn
                                                                                          const char* layerName,
                                                                                          XrNegotiateApiLayerRequest* request) {
     using namespace gaze_mirror::layer;
-    gaze_mirror::SetLogName(L"gaze-mirror-layer");
+    gaze_mirror::SetLogName(L"streammirror-layer");
     if (!loaderInfo || !layerName || !request || loaderInfo->structType != XR_LOADER_INTERFACE_STRUCT_LOADER_INFO ||
         loaderInfo->structVersion != XR_LOADER_INFO_STRUCT_VERSION || loaderInfo->structSize != sizeof(XrNegotiateLoaderInfo) ||
         request->structType != XR_LOADER_INTERFACE_STRUCT_API_LAYER_REQUEST || request->structVersion != XR_API_LAYER_INFO_STRUCT_VERSION ||

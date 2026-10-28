@@ -47,7 +47,7 @@ public partial class MainWindow
     {
         var steps = new List<TourStep>
         {
-            new(null, () => null, "VR Gaze Mirror in two minutes",
+            new(null, () => null, "StreamMirror VR in two minutes",
                 "This tour shows each page and what its main controls do.\n\nNext steps through it; Skip ends it. You can start it again any time from the About page."),
             new(StatusTab, () => Ancestor<Border>(StatusRows), "The mirror's parts",
                 "The mirror layer takes the picture inside OpenXR games, the SteamVR helper inside SteamVR games, and the OBS plugin brings it into OBS.\n\nCyan is ready, grey is not needed on this PC. An amber or red part says what to do about it."),
@@ -71,7 +71,7 @@ public partial class MainWindow
             new(CropTab, () => Ancestor<DockPanel>(CropProfileAutoSave), "Saving a profile",
                 "Changes show on the stream at once, but go into the profile only when you press Save, so trying something out never spoils it. This line turns orange while something is unsaved, and Revert goes back.\n\nSwitch on Save edits automatically to save every change as you make it; Revert then goes back to how the profile was when you opened it.\n\nOn any page, Ctrl+Z undoes one change and Ctrl+Y redoes it."),
             new(CropTab, () => MirrorToggle, "The mirror window",
-                "For Discord and other programs that capture windows: a window with the same picture, behind your other windows. This button opens and closes it.\n\nWith the Gaze Mirror source in OBS you do not need it."),
+                "For Discord and other programs that capture windows: a window with the same picture, behind your other windows. This button opens and closes it.\n\nWith the StreamMirror VR source in OBS you do not need it."),
             new(CropTab, () => MirrorWindowExpander, "Mirror window settings",
                 "At the foot of this column: the monitor the window fills (or a set size, for Discord 1920 x 1080 say) and the most pictures a second it draws.\n\nA title bar is there for capture tools that only list windows with one.",
                 MirrorWindowExpander),
