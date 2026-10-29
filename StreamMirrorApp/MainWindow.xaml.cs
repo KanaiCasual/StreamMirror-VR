@@ -646,6 +646,14 @@ public partial class MainWindow : Window
         var bar = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
         bar.Children.Add(new TextBlock { Text = "My presets", Style = (Style)FindResource("Hint"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
         foreach (var element in new UIElement[] { picker, save, reload, saveAs, namePanel, more, note }) bar.Children.Add(element);
+        // Each preset in the open list shows its settings on hover, as the picked one does on the closed box.
+        var itemStyle = new Style(typeof(ComboBoxItem), (Style)FindResource(typeof(ComboBoxItem)));
+        itemStyle.Setters.Add(new EventSetter(LoadedEvent, new RoutedEventHandler((sender, _) =>
+        {
+            if (sender is ComboBoxItem { DataContext: SavedPreset preset } item)
+                item.ToolTip = WrappedToolTip($"{preset.Name}, saved {preset.SavedAt:g}\n\n{describe(preset.Values)}");
+        })));
+        picker.ItemContainerStyle = itemStyle;
         ToolTipService.SetShowOnDisabled(picker, true);
         ToolTipService.SetShowOnDisabled(save, true);
         ToolTipService.SetShowOnDisabled(reload, true);
@@ -871,6 +879,16 @@ public partial class MainWindow : Window
         Click(Named(namePanel, "OK"));
         Check(Names() == "Renamed, Second" && (picker.SelectedItem as SavedPreset)?.Name == "Renamed", $"renamed: {Names()}");
         Check(BoxText() == "Renamed", $"the list's box shows the new name: {BoxText()}");
+        picker.IsDropDownOpen = true;
+        picker.UpdateLayout();
+        picker.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+        var listed = Enumerable.Range(0, picker.Items.Count).Select(i => picker.ItemContainerGenerator.ContainerFromIndex(i) as ComboBoxItem).ToList();
+        static string Said(ComboBoxItem? item) => item?.ToolTip is ToolTip { Content: TextBlock block }
+            ? string.Concat(block.Inlines.OfType<System.Windows.Documents.Run>().Select(run => run.Text)) : "";
+        Check(listed.All(item => Said(item).StartsWith(((SavedPreset)item!.DataContext).Name + ", saved") && Said(item).Contains(':')),
+              $"each preset in the open list shows its own settings on hover ({string.Join(" | ", listed.Select(item => Said(item).Split('\n')[0]))})");
+        snapshot("list");
+        picker.IsDropDownOpen = false;
         Click(Named(bar, "Save"));
         Check(presets[0].Values.SequenceEqual(capture()) && !ShowsEdited(bar), "Save keeps the current values in the preset picked, and the edited line goes");
         Check(_appSettings.PickedPresets.GetValueOrDefault(page) == "Renamed", "the remembered pick follows the rename");
