@@ -23,6 +23,8 @@
                     <TextBlock x:Name="SaveMarkIcon" Style="{StaticResource Icon}" FontSize="11" Text="&#xE73E;" Foreground="{StaticResource Muted}" />
                     <TextBlock x:Name="SaveMarkText" Style="{StaticResource Hint}" FontSize="11" Margin="6,0,0,0" TextWrapping="NoWrap" />
                 </StackPanel>
+                <!-- Quick switches: the most used on/off settings at a glance, each working its page's own control (MainWindow.Quick.cs). -->
+                <StackPanel x:Name="QuickSwitches" DockPanel.Dock="Bottom" Margin="10,6,4,2" />
                 <ListBox x:Name="Nav" Background="Transparent" BorderThickness="0" Padding="0" ItemContainerStyle="{StaticResource RailItem}"
                          ItemTemplate="{StaticResource RailFull}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" MinWidth="158" />
             </DockPanel>

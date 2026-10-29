@@ -109,6 +109,7 @@ public partial class MainWindow
         MirrorClose.IsEnabled = running;
         MirrorToggle.Content = running ? "Close mirror window" : "Open mirror window";
         MirrorToggle.IsEnabled = program != null;
+        ShowQuickMirror(running, program != null);
         // Closed from its own close button (or any other way): the buttons and the section follow at once.
         if (running) MirrorWindowControl.WatchExit(() => Dispatcher.InvokeAsync(() => RefreshMirrorState()));
         MirrorWindowExpander.Header = "Mirror window: " + (running ? "open" : "closed");

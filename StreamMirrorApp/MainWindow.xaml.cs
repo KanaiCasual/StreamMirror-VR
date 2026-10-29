@@ -46,6 +46,7 @@ public partial class MainWindow : Window
         BuildCropUi();
         BuildMirrorUi();
         BuildCoverUi();
+        BuildQuickSwitches();
         BuildExplanations();
         BuildTourLayer();
         BuildUndo();
@@ -180,6 +181,7 @@ public partial class MainWindow : Window
         Nav.ItemTemplate = (DataTemplate)FindResource(compact ? "RailShort" : "RailFull");
         Nav.MinWidth = compact ? 0 : 158;
         RailBrand.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        QuickSwitches.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         RailVersion.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         SaveMarkText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         SaveMark.Margin = compact ? new Thickness(13, 6, 0, 0) : new Thickness(10, 6, 0, 0);
@@ -464,6 +466,7 @@ public partial class MainWindow : Window
             {
                 var box = new CheckBox { Content = def.Label, FontWeight = FontWeights.SemiBold, ToolTip = WrappedToolTip(def.Description) };
                 ShowToolTipsPatiently(box);
+                _toggleBoxes[def.Key] = box;
                 box.Checked += (_, _) => OnValueChanged(def.Key, "1");
                 box.Unchecked += (_, _) => OnValueChanged(def.Key, "0");
                 _controlSetters[def.Key] = v => box.IsChecked = v != "0";

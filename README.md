@@ -149,7 +149,9 @@ OBS while you tune, and the keyboard reaches all of it.
 The page list follows the program's purpose: **Status**, **Mirror** and **Desktop cover** first, and most people need
 no more than Status and Mirror. Then come the two pages of the **gaze ring** (Gaze and Ring), the **headset** pages
 (Quad Views and Layers), and About. Each page has an icon, and a narrow window shows the icons alone. A green dot on
-Status means the mirror shows a game right now.
+Status means the mirror shows a game right now. Under the pages, **Quick switches** turn the mirror window, the gaze
+ring, the desktop cover, quad views, the quad views diagnostics and the debug view on or off; each one works the switch
+on its page.
 
 ### Status
 

@@ -153,6 +153,7 @@ public partial class App : Application
                         window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
                         File.WriteAllText(Path.Combine(outputDir, $"presets-{page}.txt"), window.ExercisePresets(page, Snapshot));
                     }
+                    File.WriteAllText(Path.Combine(outputDir, "quick-switches.txt"), window.ExerciseQuickSwitches());
                 }
                 Shutdown(0);
             }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);

@@ -66,6 +66,7 @@ public partial class MainWindow
             {
                 var box = new CheckBox { Content = setting.Label, FontWeight = FontWeights.SemiBold, ToolTip = WrappedToolTip(description) };
                 ShowToolTipsPatiently(box);
+                _quadViewsBoxes[setting.Id] = box;
                 box.Checked += (_, _) => OnQuadViewsChanged(setting.Id, 1);
                 box.Unchecked += (_, _) => OnQuadViewsChanged(setting.Id, 0);
                 _quadViewsSetters[setting.Id] = v => box.IsChecked = v != 0;
