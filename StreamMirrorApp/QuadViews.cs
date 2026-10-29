@@ -305,7 +305,7 @@ public sealed class QuadViewsFile
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temp = path + ".tmp";
         File.WriteAllText(temp, Text, new UTF8Encoding(false));
-        File.Move(temp, path, overwrite: true);
+        ConfigFile.SwapIn(temp, path);
     }
 
     /// <summary>

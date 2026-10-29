@@ -304,13 +304,27 @@ public partial class MainWindow
             planned.Save(_quadViewsPath);
             _quadViewsFile = QuadViewsFile.Parse(planned.Text);
             _quadViewsDirty.Clear();
+            if (_quadViewsSaveFailures > 0) SetQuadViewsStatus($"Saved at {DateTime.Now:T}.");
+            _quadViewsSaveFailures = 0;
         }
         catch (Exception error)
         {
-            SetQuadViewsStatus("Could not save: " + error.Message);
+            // Nothing else would save the last value (the slider has stopped), so try again shortly, a few times.
+            var again = ++_quadViewsSaveFailures <= 5;
+            SetQuadViewsStatus(again
+                ? $"Not saved yet: {error.Message} Trying again."
+                : $"Could not save the settings file: {error.Message} Change a setting to try again.", problem: true);
             AppLog.Write("Quad Views settings could not be saved", error);
+            if (again)
+            {
+                var retry = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+                retry.Tick += (_, _) => { retry.Stop(); RefreshQuadViewsReadout(); };
+                retry.Start();
+            }
         }
     }
+
+    private int _quadViewsSaveFailures;
 
     private QuadViewsEffective EvaluateQuadViews(QuadViewsFile userFile, bool commonOnly = false)
     {
@@ -478,9 +492,11 @@ public partial class MainWindow
         }
     }
 
-    private void SetQuadViewsStatus(string text)
+    private void SetQuadViewsStatus(string text, bool problem = false)
     {
         QuadViewsStatus.Text = text;
+        if (problem) QuadViewsStatus.Foreground = (Brush)FindResource("Warn");
+        else QuadViewsStatus.ClearValue(TextBlock.ForegroundProperty);
         QuadViewsStatus.Visibility = text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 

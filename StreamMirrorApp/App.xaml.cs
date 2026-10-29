@@ -489,6 +489,25 @@ public partial class App : Application
             return LayerOrder.Problems([mirror, quad]).Count > 0 && LayerOrder.Suggest([mirror, quad]) is [var first, _] && ReferenceEquals(first, quad)
                 && LayerOrder.Problems([quad, mirror]).Count == 0;
         }
+        // The layer reads its file without share-delete: a plain move over it is refused while it reads, SwapIn waits it out.
+        bool SwapsInWhileRead()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "streammirror-swap-" + Environment.ProcessId);
+            Directory.CreateDirectory(folder);
+            var path = Path.Combine(folder, "settings.cfg");
+            File.WriteAllText(path, "old");
+            File.WriteAllText(path + ".a", "plain");
+            File.WriteAllText(path + ".b", "new");
+            var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            bool refused;
+            try { File.Move(path + ".a", path, overwrite: true); refused = false; }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { refused = true; }
+            _ = Task.Delay(40).ContinueWith(_ => reader.Dispose());
+            ConfigFile.SwapIn(path + ".b", path);
+            var result = refused && File.ReadAllText(path) == "new";
+            try { Directory.Delete(folder, recursive: true); } catch { /* scratch */ }
+            return result;
+        }
         QuadViewsPixels.Result Logged() => QuadViewsPixels.Compute(session!.StereoWidth, session.StereoHeight, 0.32, 1.225, 0.35, 0.35);
         var before = QuadViewsFile.Evaluate([("test", file)], session);
         var sliders = QuadViewsSetting.All.ToDictionary(s => s.Id, _ => 0.0);
@@ -536,6 +555,7 @@ public partial class App : Application
             ("...and the official layer's file gets none of them", untouched.InCommon("gaze_smoothing_ms") == null && untouched.InCommon("show_diagnostics") == null
                 && untouched.InCommon("debug_eye_gaze") != null),
             ("StreamMirror VR's quad views layer must sit above the mirror, and Fix order puts it there", OwnOrderOk()),
+            ("a settings file the layer is reading is replaced once the read ends", SwapsInWhileRead()),
             ("...and say the sharpness against the headset's", QuadViewsReadout.Sharpness(1.0) == "As sharp as the headset." && QuadViewsReadout.Sharpness(1.414).StartsWith("Draws 200 %")
                 && QuadViewsReadout.Sharpness(0.4) == "Draws 16 % of the headset's pixels: faster, but softer."),
             ("a resolution shows the file's multiplier first", QuadViewsSetting.All.First(s => s.Id == "peripheral_res").Format(16) == "0.4x · 16 %"

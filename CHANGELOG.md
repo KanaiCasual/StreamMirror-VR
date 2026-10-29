@@ -21,6 +21,7 @@
 - **A getting-started guide** on GitHub (docs/GETTING-STARTED.md) walks from the download to a framed, steady picture in OBS. About > **Getting started** opens it.
 
 **Fixed**
+- **A quick Quad Views slider move could end on the wrong value, with "Could not save: Access to the path is denied"** (from a tester). Every move saves the file, and a save that came while the layer was reading it was refused and never tried again, so the file kept an in-between value. Now a save waits for the read to end, a refused one tries again by itself, and the message shows in amber. The ring, Mirror and crop profile files are saved the same careful way.
 - **The Quad Views page could not scroll with "How this page works" open.** Only the sliders scrolled, and the open explanation left them no room. Now the whole page scrolls, like every other page.
 - **The crop box reached the stream late, or not at all, with a profile open since the app's start** (from a tester). The app forgot to tell the mirror which profile was open when it started, so the mirror put the saved profile over the box: one move behind with Save edits automatically on, not at all with it off. Switching profiles once used to clear it up. Now the box reaches OBS and the mirror window as you move it, from the start.
 - **The Layers page called the official Quad-Views-Foveated StreamMirror VR's.** It is mbucchia's layer and shows as another tool's now (older versions shipped a patched copy of it). Switching off a quad views layer no longer warns that the gaze ring needs it.

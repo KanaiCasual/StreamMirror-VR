@@ -90,7 +90,25 @@ public static class ConfigFile
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temp = path + ".tmp";
         File.WriteAllText(temp, text.ToString(), new UTF8Encoding(false));
-        File.Move(temp, path, overwrite: true);
+        SwapIn(temp, path);
+    }
+
+    /// <summary>Moves a freshly written file over the old one. While a layer is reading the old one (it opens it without
+    /// share-delete) Windows refuses with "Access denied"; that read takes a moment, so try again a few times.</summary>
+    public static void SwapIn(string temp, string path)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(temp, path, overwrite: true);
+                return;
+            }
+            catch (Exception e) when (attempt < 8 && e is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(15);
+            }
+        }
     }
 
     private static IEnumerable<string> Wrap(string text, int width)

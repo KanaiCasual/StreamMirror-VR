@@ -686,7 +686,7 @@
                                 <WrapPanel x:Name="QuadViewsPresets" VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <WrapPanel x:Name="QuadViewsSlots" VerticalAlignment="Center" />
                             </WrapPanel>
-                            <TextBlock x:Name="QuadViewsStatus" Style="{StaticResource Hint}" FontSize="12" Margin="0,4,0,0" />
+                            <TextBlock x:Name="QuadViewsStatus" Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
                             <TextBlock Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" Margin="0,12,0,0"
                                        Text="The picture is a guide to where the sharp area sits and how coarse the surround gets. It won't look like this in the headset: the lenses, the panel and the game change what you see. Judge a setting in the headset." />
                         </StackPanel>

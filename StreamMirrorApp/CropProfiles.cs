@@ -64,6 +64,6 @@ public static class CropProfiles
         Directory.CreateDirectory(AppSettings.Folder);
         var temporary = FilePath + ".tmp";
         File.WriteAllText(temporary, text.ToString(), new UTF8Encoding(false));
-        File.Move(temporary, FilePath, overwrite: true);
+        ConfigFile.SwapIn(temporary, FilePath);
     }
 }
