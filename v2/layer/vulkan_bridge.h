@@ -45,6 +45,9 @@ namespace stream_mirror::layer {
         bool copy(const std::vector<std::pair<XrSwapchain, uint32_t>>& released);
         // After the core has read the textures: the next copy may overwrite them.
         void readDone();
+        // The other way, for the in-headset aids: what Direct3D 11 drew into a swapchain's texture goes into the given
+        // runtime image, on the game's queue. Direct3D's next work waits for the copy. False: nothing was copied.
+        bool copyOut(XrSwapchain swapchain, uint32_t index);
 
       private:
         struct Shared {
@@ -62,6 +65,10 @@ namespace stream_mirror::layer {
 
         bool loadFunctions(VkInstance instance);
         void waitIdle();
+        // The next free slot, its command buffer begun; null when an earlier copy is still stuck.
+        Slot* beginCommands();
+        // Ends and submits the slot's commands, after the shared fence reaches waitValue; they set it to signalValue.
+        bool submit(Slot& slot, uint64_t waitValue, uint64_t signalValue);
 
         // The game's Vulkan objects (not ours to destroy) and the functions we call on them.
         VkInstance _instance = VK_NULL_HANDLE;

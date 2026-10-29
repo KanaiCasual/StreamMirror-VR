@@ -18,8 +18,8 @@
 //
 // Vulkan games go through shared memory (VulkanBridge): each colour swapchain gets one Direct3D 11 texture on a device of
 // our own on the game's GPU. At its hand-back the image is copied into that texture on the game's queue, and the copy at
-// hand-back reads it from there like any other image. The in-headset aids (marker, countdown, view edges) are drawn
-// with Direct3D 11 into a layer of our own, which a Vulkan game's runtime cannot take: not drawn in Vulkan games yet.
+// hand-back reads it from there like any other image. The in-headset aids (marker, countdown, view edges) go the other
+// way: drawn with Direct3D 11 into a shared texture, then copied into the overlay's Vulkan images on the game's queue.
 
 #include "pch.h"
 
@@ -134,7 +134,6 @@ namespace stream_mirror::layer {
             uint32_t maxLayerCount = 0;
             Overlay overlay;
             int logOverlay = 0;
-            int logAids = 0;
             int32_t nominalWidth = 0, nominalHeight = 0; // Quad views: the eye image's size at the inner image's sharpness.
             // Frames with flat screens alone (a menu, a loading screen, a game shown on a screen in VR): the screens are
             // drawn onto a black eye image of our own, the size of the eye image last seen (so the crop stays put).
@@ -225,7 +224,6 @@ namespace stream_mirror::layer {
             g->session = *session;
             g->logFrame = 0;
             g->logQuad = 0;
-            g->logAids = 0;
             g->logCopy = 0;
             g->logLayout = 0;
             g->imagesNeeded = false;
@@ -632,6 +630,7 @@ namespace stream_mirror::layer {
                 g->marker.forget(o.views[i].images);
                 o.views[i].images.clear();
                 o.views[i].wrapped.clear();
+                if (o.views[i].swapchain != XR_NULL_HANDLE) g->vulkan.removeSwapchain(o.views[i].swapchain); // (its shared texture)
             }
             if (g->on12 && g->immediate11) { // Let go of the wrapped images for real (see OnDestroySwapchain).
                 g->immediate11->ClearState();
@@ -656,8 +655,12 @@ namespace stream_mirror::layer {
                 if (XR_FAILED(g->next.xrEnumerateSwapchainFormats(g->session, count, &count, offered.data()))) count = 0;
                 offered.resize(std::min<size_t>(count, offered.size()));
             }
-            const int64_t wanted[] = {DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_B8G8R8A8_UNORM,
-                                      DXGI_FORMAT_R16G16B16A16_FLOAT};
+            // A Vulkan session names its formats the Vulkan way: the same ones, drawn through the bridge's shared texture.
+            const int64_t wantedD3D[] = {DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_B8G8R8A8_UNORM,
+                                         DXGI_FORMAT_R16G16B16A16_FLOAT};
+            const int64_t wantedVulkan[] = {VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8A8_UNORM,
+                                            VK_FORMAT_R16G16B16A16_SFLOAT};
+            const auto& wanted = g->vulkan.active() ? wantedVulkan : wantedD3D;
             o.format = -1;
             for (const int64_t format : wanted) {
                 if (std::find(offered.begin(), offered.end(), format) != offered.end()) {
@@ -667,6 +670,12 @@ namespace stream_mirror::layer {
             }
             if (o.format < 0) Log("overlay: none of the runtime's %zu swapchain formats has alpha - nothing can be shown in the headset", offered.size());
             return o.format;
+        }
+
+        // What the aids are drawn in: the overlay's format itself, or for Vulkan the Direct3D one its shared texture has.
+        DXGI_FORMAT OverlayDrawFormat() {
+            const int64_t format = g->overlay.format;
+            return g->vulkan.active() ? VulkanBridge::DxgiFormat(static_cast<VkFormat>(format)) : static_cast<DXGI_FORMAT>(format);
         }
 
         // One swapchain per view of the game's projection, each the size of its view - half of it from 2000 pixels tall up
@@ -690,6 +699,7 @@ namespace stream_mirror::layer {
                 const int32_t divide = extent.height >= 2000 ? 2 : 1;
                 XrSwapchainCreateInfo info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
                 info.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+                if (g->vulkan.active()) info.usageFlags |= XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT; // The bridge copies the aids in.
                 info.format = format;
                 info.sampleCount = info.faceCount = info.arraySize = info.mipCount = 1;
                 info.width = uint32_t(std::max(extent.width / divide, 1));
@@ -707,7 +717,19 @@ namespace stream_mirror::layer {
                 view.height = int32_t(info.height);
                 view.viewWidth = extent.width;
                 view.viewHeight = extent.height;
-                if (g->on12) {
+                if (g->vulkan.active()) {
+                    // Drawn into one shared texture, which the bridge copies into whichever image the runtime hands out.
+                    std::vector<XrSwapchainImageVulkanKHR> images(count, {XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR});
+                    if (XR_SUCCEEDED(g->next.xrEnumerateSwapchainImages(view.swapchain, count, &count, reinterpret_cast<XrSwapchainImageBaseHeader*>(images.data())))) {
+                        std::vector<VkImage> list;
+                        for (uint32_t k = 0; k < count; k++) list.push_back(images[k].image);
+                        VulkanSwapchainInfo shape;
+                        shape.format = static_cast<VkFormat>(format);
+                        shape.width = info.width;
+                        shape.height = info.height;
+                        view.images.assign(list.size(), g->vulkan.addSwapchain(view.swapchain, shape, list));
+                    }
+                } else if (g->on12) {
                     std::vector<XrSwapchainImageD3D12KHR> images(count, {XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
                     if (XR_SUCCEEDED(g->next.xrEnumerateSwapchainImages(view.swapchain, count, &count, reinterpret_cast<XrSwapchainImageBaseHeader*>(images.data())))) {
                         for (uint32_t k = 0; k < count; k++) {
@@ -758,7 +780,7 @@ namespace stream_mirror::layer {
                 }
                 SourceImage image;
                 image.texture = view.images[index];
-                image.viewFormat = static_cast<DXGI_FORMAT>(o.format);
+                image.viewFormat = OverlayDrawFormat();
                 image.linearLight = IsLinearLight(image.viewFormat);
                 image.width = view.width;
                 image.height = view.height;
@@ -774,6 +796,10 @@ namespace stream_mirror::layer {
                 if (g->on12) {
                     g->on12->ReleaseWrappedResources(&wrapped, 1);
                     g->immediate11->Flush(); // Down the game's queue before the runtime gets the image.
+                }
+                // Vulkan: the drawing goes into the runtime's image on the game's queue before the runtime gets it.
+                if (g->vulkan.active() && !g->vulkan.copyOut(view.swapchain, index)) {
+                    LogFewTimes(g->logOverlay, 3, "overlay: view %u's aids could not be copied into the game's Vulkan image this frame", i);
                 }
                 g->next.xrReleaseSwapchainImage(view.swapchain, nullptr);
                 XrCompositionLayerProjectionView& layerView = o.layerViews[i];
@@ -1308,13 +1334,7 @@ namespace stream_mirror::layer {
             input.snapshotLater = snapshotDue && !input.images[1 - mirrored];
             const FrameOutput output = g->pipeline.frame(input);
             if (g->on12) g->immediate11->Flush(); // Our work on the copies goes down the game's queue now.
-            if (output.edgeBar > 0 || output.marker || output.countdownSeconds > 0) {
-                if (g->vulkan.active()) {
-                    LogFewTimes(g->logAids, 1, "frame: the in-headset aids (marker, countdown, view edges) are not drawn in Vulkan games yet");
-                } else {
-                    DrawOverlay(frame, projection, output, windows, haveWindow);
-                }
-            }
+            if (output.edgeBar > 0 || output.marker || output.countdownSeconds > 0) DrawOverlay(frame, projection, output, windows, haveWindow);
         }
 
         XrResult XRAPI_CALL OnEndFrame(XrSession session, const XrFrameEndInfo* frame) {

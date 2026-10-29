@@ -341,7 +341,7 @@ namespace stream_mirror::layer {
         imageInfo.arrayLayers = desc.ArraySize;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // (source: the aids)
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         bool ok = _vk->createImage(_device, &imageInfo, nullptr, &shared.image) == VK_SUCCESS;
@@ -394,17 +394,55 @@ namespace stream_mirror::layer {
         _shared.erase(found);
     }
 
-    bool VulkanBridge::copy(const std::vector<std::pair<XrSwapchain, uint32_t>>& released) {
-        if (!active()) return false;
+    VulkanBridge::Slot* VulkanBridge::beginCommands() {
         Slot& slot = _slots[_nextSlot];
         if (_vk->waitForFences(_device, 1, &slot.done, VK_TRUE, 1'000'000'000ull) != VK_SUCCESS) {
             Log("vulkan: an earlier copy has not finished after a second - frame skipped");
-            return false;
+            return nullptr;
         }
         _vk->resetCommandBuffer(slot.commands, 0);
         VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
         begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         _vk->beginCommandBuffer(slot.commands, &begin);
+        return &slot;
+    }
+
+    bool VulkanBridge::submit(Slot& slot, uint64_t waitValue, uint64_t signalValue) {
+        _vk->endCommandBuffer(slot.commands);
+        VkD3D12FenceSubmitInfoKHR fenceValues{VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHR};
+        fenceValues.waitSemaphoreValuesCount = 1;
+        fenceValues.pWaitSemaphoreValues = &waitValue;
+        fenceValues.signalSemaphoreValuesCount = 1;
+        fenceValues.pSignalSemaphoreValues = &signalValue;
+        const VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        VkSubmitInfo info{VK_STRUCTURE_TYPE_SUBMIT_INFO, &fenceValues};
+        info.waitSemaphoreCount = 1;
+        info.pWaitSemaphores = &_waitForRead;
+        info.pWaitDstStageMask = &waitStage;
+        info.commandBufferCount = 1;
+        info.pCommandBuffers = &slot.commands;
+        info.signalSemaphoreCount = 1;
+        info.pSignalSemaphores = &_signalCopied;
+        _vk->resetFences(_device, 1, &slot.done);
+        const VkResult result = _vk->queueSubmit(_queue, 1, &info, slot.done);
+        if (result != VK_SUCCESS) {
+            Log("vulkan: a copy could not be submitted (%d) - frame skipped", int(result));
+            // Leave the slot usable: a fence that was reset but never submitted would block forever.
+            VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+            _vk->destroyFence(_device, slot.done, nullptr);
+            _vk->createFence(_device, &fenceInfo, nullptr, &slot.done);
+            return false;
+        }
+        _nextSlot = (_nextSlot + 1) % ARRAYSIZE(_slots);
+        return true;
+    }
+
+    bool VulkanBridge::copy(const std::vector<std::pair<XrSwapchain, uint32_t>>& released) {
+        if (!active()) return false;
+        Slot* const begun = beginCommands();
+        if (!begun) return false;
+        Slot& slot = *begun;
 
         int copies = 0;
         std::vector<XrSwapchain> done;
@@ -447,40 +485,61 @@ namespace stream_mirror::layer {
             shared.used = true;
             copies++;
         }
-        _vk->endCommandBuffer(slot.commands);
-        if (copies == 0) return false;
-
-        // Wait until Direct3D has read the last copy, copy, then tell Direct3D.
-        const uint64_t waitValue = _fenceValue;
-        const uint64_t signalValue = _fenceValue + 1;
-        VkD3D12FenceSubmitInfoKHR fenceValues{VK_STRUCTURE_TYPE_D3D12_FENCE_SUBMIT_INFO_KHR};
-        fenceValues.waitSemaphoreValuesCount = 1;
-        fenceValues.pWaitSemaphoreValues = &waitValue;
-        fenceValues.signalSemaphoreValuesCount = 1;
-        fenceValues.pSignalSemaphoreValues = &signalValue;
-        const VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO, &fenceValues};
-        submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = &_waitForRead;
-        submit.pWaitDstStageMask = &waitStage;
-        submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &slot.commands;
-        submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores = &_signalCopied;
-        _vk->resetFences(_device, 1, &slot.done);
-        const VkResult result = _vk->queueSubmit(_queue, 1, &submit, slot.done);
-        if (result != VK_SUCCESS) {
-            Log("vulkan: the copy could not be submitted (%d) - frame skipped", int(result));
-            // Leave the slot usable: a fence that was reset but never submitted would block forever.
-            VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-            _vk->destroyFence(_device, slot.done, nullptr);
-            _vk->createFence(_device, &fenceInfo, nullptr, &slot.done);
+        if (copies == 0) {
+            _vk->endCommandBuffer(slot.commands); // Never submitted: the slot's fence stays signalled.
             return false;
         }
-        _nextSlot = (_nextSlot + 1) % ARRAYSIZE(_slots);
+
+        // Wait until Direct3D has read the last copy, copy, then tell Direct3D.
+        const uint64_t signalValue = _fenceValue + 1;
+        if (!submit(slot, _fenceValue, signalValue)) return false;
         _copiedValue = signalValue;
         _context->Wait(_fence.Get(), signalValue);
+        return true;
+    }
+
+    bool VulkanBridge::copyOut(XrSwapchain swapchain, uint32_t index) {
+        if (!active()) return false;
+        const auto found = _shared.find(swapchain);
+        if (found == _shared.end() || index >= found->second.gameImages.size() || !found->second.gameImages[index]) return false;
+        Shared& shared = found->second;
+        Slot* const begun = beginCommands();
+        if (!begun) return false;
+        Slot& slot = *begun;
+        const VkImage runtime = shared.gameImages[index];
+        const uint32_t layers = std::max(shared.info.arraySize, 1u);
+
+        // Ours comes from Direct3D's side - the first time too: Direct3D drew into it, and keeping what it holds needs a
+        // layout that is not "undefined" (the external family's general one is what Direct3D leaves). The runtime's image
+        // is a colour attachment between its acquire and release.
+        VkImageMemoryBarrier before[2] = {
+            Barrier(shared.image, layers, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, VK_ACCESS_TRANSFER_READ_BIT,
+                    VK_QUEUE_FAMILY_EXTERNAL, _queueFamily),
+            Barrier(runtime, layers, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT),
+        };
+        _vk->cmdPipelineBarrier(slot.commands, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, before);
+        const VkImageSubresourceLayers subresource{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, layers};
+        VkImageCopy region{subresource, {0, 0, 0}, subresource, {0, 0, 0}, {shared.info.width, shared.info.height, 1}};
+        _vk->cmdCopyImage(slot.commands, shared.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, runtime, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        VkImageMemoryBarrier after[2] = {
+            Barrier(shared.image, layers, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, VK_ACCESS_TRANSFER_READ_BIT, 0, _queueFamily,
+                    VK_QUEUE_FAMILY_EXTERNAL),
+            Barrier(runtime, layers, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
+                    VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT),
+        };
+        _vk->cmdPipelineBarrier(slot.commands, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 2, after);
+        shared.used = true;
+
+        // After Direct3D's drawing; Direct3D's next drawing after the copy. One fence for both directions: every value
+        // is a new, higher one, so the mirror's copies (copy/readDone) go on from where this leaves it.
+        const uint64_t drawn = std::max(_fenceValue, _copiedValue) + 1;
+        _context->Signal(_fence.Get(), drawn);
+        _context->Flush();
+        _fenceValue = _copiedValue = drawn;
+        if (!submit(slot, drawn, drawn + 1)) return false;
+        _fenceValue = _copiedValue = drawn + 1;
+        _context->Wait(_fence.Get(), drawn + 1);
+        _context->Flush();
         return true;
     }
 

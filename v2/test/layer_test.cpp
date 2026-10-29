@@ -83,9 +83,15 @@ namespace {
     XrSwapchain g_gameSwapchain = XR_NULL_HANDLE;
     ID3D11Device* g_gameDevice = nullptr;
     ID3D12Device* g_device12 = nullptr;
+    // The Vulkan case: the layer's own swapchains get Vulkan images on the game's device (defined with the Vulkan game).
+    bool MakeOwnVulkanImage(uint32_t width, uint32_t height, VkFormat format, VkImage& image, VkDeviceMemory& memory);
+    void FreeOwnVulkanImage(VkImage image, VkDeviceMemory memory);
     struct OwnSwapchain {
         std::vector<ComPtr<ID3D11Texture2D>> images;
         std::vector<ComPtr<ID3D12Resource>> images12;
+        std::vector<VkImage> imagesVk;
+        std::vector<VkDeviceMemory> memoriesVk;
+        uint32_t width = 0, height = 0;
         uint32_t next = 0;
         std::deque<uint32_t> acquired;
         int lastReleased = -1;
@@ -129,8 +135,18 @@ namespace {
             return XR_SUCCESS;
         }
         OwnSwapchain& own = g_ownSwapchains[*swapchain];
+        own.width = info->width;
+        own.height = info->height;
         for (int i = 0; i < 3; i++) {
-            if (g_d3d12) {
+            if (g_vulkan) {
+                // A runtime only takes the copy in when asked for it.
+                if (!(info->usageFlags & XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT)) return XR_ERROR_RUNTIME_FAILURE;
+                VkImage image = VK_NULL_HANDLE;
+                VkDeviceMemory memory = VK_NULL_HANDLE;
+                if (!MakeOwnVulkanImage(info->width, info->height, static_cast<VkFormat>(info->format), image, memory)) return XR_ERROR_RUNTIME_FAILURE;
+                own.imagesVk.push_back(image);
+                own.memoriesVk.push_back(memory);
+            } else if (g_d3d12) {
                 D3D12_HEAP_PROPERTIES heap{D3D12_HEAP_TYPE_DEFAULT};
                 D3D12_RESOURCE_DESC desc{};
                 desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -162,11 +178,18 @@ namespace {
         return XR_SUCCESS;
     }
     XrResult XRAPI_CALL StubDestroySwapchain(XrSwapchain swapchain) {
+        const auto own = g_ownSwapchains.find(swapchain);
+        if (own != g_ownSwapchains.end()) {
+            for (size_t i = 0; i < own->second.imagesVk.size(); i++) FreeOwnVulkanImage(own->second.imagesVk[i], own->second.memoriesVk[i]);
+        }
         g_ownSwapchains.erase(swapchain);
         return XR_SUCCESS;
     }
     XrResult XRAPI_CALL StubEnumerateSwapchainFormats(XrSession, uint32_t capacity, uint32_t* count, int64_t* formats) {
-        const int64_t offered[] = {DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT};
+        // A Vulkan session names its formats the Vulkan way.
+        const int64_t offeredD3D[] = {DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT};
+        const int64_t offeredVulkan[] = {VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_D32_SFLOAT};
+        const int64_t* offered = g_vulkan ? offeredVulkan : offeredD3D;
         *count = 3;
         for (uint32_t i = 0; formats && i < capacity && i < 3; i++) formats[i] = offered[i];
         return XR_SUCCESS;
@@ -194,9 +217,10 @@ namespace {
     XrResult XRAPI_CALL StubEnumerateSwapchainImages(XrSwapchain swapchain, uint32_t capacity, uint32_t* count, XrSwapchainImageBaseHeader* images) {
         const auto own = g_ownSwapchains.find(swapchain);
         if (own != g_ownSwapchains.end()) {
-            *count = static_cast<uint32_t>(g_d3d12 ? own->second.images12.size() : own->second.images.size());
+            *count = static_cast<uint32_t>(g_vulkan ? own->second.imagesVk.size() : g_d3d12 ? own->second.images12.size() : own->second.images.size());
             for (uint32_t i = 0; images && i < *count && i < capacity; i++) {
-                if (g_d3d12) reinterpret_cast<XrSwapchainImageD3D12KHR*>(images)[i].texture = own->second.images12[i].Get();
+                if (g_vulkan) reinterpret_cast<XrSwapchainImageVulkanKHR*>(images)[i].image = own->second.imagesVk[i];
+                else if (g_d3d12) reinterpret_cast<XrSwapchainImageD3D12KHR*>(images)[i].texture = own->second.images12[i].Get();
                 else reinterpret_cast<XrSwapchainImageD3D11KHR*>(images)[i].texture = own->second.images[i].Get();
             }
             return XR_SUCCESS;
@@ -697,6 +721,105 @@ namespace {
             return images.size() == size_t(imageCount);
         }
 
+        // Records commands and runs them to the end on the queue.
+        template <typename Record> void Run(Record record) {
+            VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+            poolInfo.queueFamilyIndex = family;
+            VkCommandPool pool = VK_NULL_HANDLE;
+            Fn<PFN_vkCreateCommandPool>("vkCreateCommandPool")(device, &poolInfo, nullptr, &pool);
+            VkCommandBufferAllocateInfo allocate{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+            allocate.commandPool = pool;
+            allocate.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocate.commandBufferCount = 1;
+            VkCommandBuffer commands = VK_NULL_HANDLE;
+            Fn<PFN_vkAllocateCommandBuffers>("vkAllocateCommandBuffers")(device, &allocate, &commands);
+            VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+            Fn<PFN_vkBeginCommandBuffer>("vkBeginCommandBuffer")(commands, &begin);
+            record(commands);
+            Fn<PFN_vkEndCommandBuffer>("vkEndCommandBuffer")(commands);
+            VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+            submit.commandBufferCount = 1;
+            submit.pCommandBuffers = &commands;
+            Fn<PFN_vkQueueSubmit>("vkQueueSubmit")(queue, 1, &submit, VK_NULL_HANDLE);
+            Fn<PFN_vkQueueWaitIdle>("vkQueueWaitIdle")(queue);
+            Fn<PFN_vkDestroyCommandPool>("vkDestroyCommandPool")(device, pool, nullptr);
+        }
+
+        void Transition(VkCommandBuffer commands, VkImage image, VkImageLayout from, VkImageLayout to) {
+            VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+            barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image = image;
+            barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            barrier.oldLayout = from;
+            barrier.newLayout = to;
+            barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+            Fn<PFN_vkCmdPipelineBarrier>("vkCmdPipelineBarrier")(commands, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0,
+                                                                 nullptr, 1, &barrier);
+        }
+
+        // A runtime's image for the layer's own swapchain: handed out as a colour attachment, as the runtime does.
+        bool Attachment(uint32_t width, uint32_t height, VkFormat format, VkImage& image, VkDeviceMemory& memory) {
+            VkImageCreateInfo imageInfo{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.format = format;
+            imageInfo.extent = {width, height, 1};
+            imageInfo.mipLevels = imageInfo.arrayLayers = 1;
+            imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+            imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            if (Fn<PFN_vkCreateImage>("vkCreateImage")(device, &imageInfo, nullptr, &image) != VK_SUCCESS) return false;
+            VkMemoryRequirements needs{};
+            Fn<PFN_vkGetImageMemoryRequirements>("vkGetImageMemoryRequirements")(device, image, &needs);
+            VkMemoryAllocateInfo allocate{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+            allocate.allocationSize = needs.size;
+            allocate.memoryTypeIndex = MemoryType(needs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            if (Fn<PFN_vkAllocateMemory>("vkAllocateMemory")(device, &allocate, nullptr, &memory) != VK_SUCCESS) return false;
+            Fn<PFN_vkBindImageMemory>("vkBindImageMemory")(device, image, memory, 0);
+            Run([&](VkCommandBuffer commands) { Transition(commands, image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL); });
+            return true;
+        }
+
+        void Free(VkImage image, VkDeviceMemory memory) {
+            Fn<PFN_vkDeviceWaitIdle>("vkDeviceWaitIdle")(device);
+            Fn<PFN_vkDestroyImage>("vkDestroyImage")(device, image, nullptr);
+            Fn<PFN_vkFreeMemory>("vkFreeMemory")(device, memory, nullptr);
+        }
+
+        // An 8-bit RGBA colour attachment's pixels, rows packed (width * 4 bytes each).
+        bool Read(VkImage image, uint32_t width, uint32_t height, std::vector<uint8_t>& pixels) {
+            VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+            bufferInfo.size = VkDeviceSize(width) * height * 4;
+            bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            VkBuffer buffer = VK_NULL_HANDLE;
+            VkDeviceMemory memory = VK_NULL_HANDLE;
+            if (Fn<PFN_vkCreateBuffer>("vkCreateBuffer")(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) return false;
+            VkMemoryRequirements needs{};
+            Fn<PFN_vkGetBufferMemoryRequirements>("vkGetBufferMemoryRequirements")(device, buffer, &needs);
+            VkMemoryAllocateInfo allocate{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+            allocate.allocationSize = needs.size;
+            allocate.memoryTypeIndex = MemoryType(needs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            const bool ok = Fn<PFN_vkAllocateMemory>("vkAllocateMemory")(device, &allocate, nullptr, &memory) == VK_SUCCESS;
+            if (ok) {
+                Fn<PFN_vkBindBufferMemory>("vkBindBufferMemory")(device, buffer, memory, 0);
+                Run([&](VkCommandBuffer commands) {
+                    Transition(commands, image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                    VkBufferImageCopy region{};
+                    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                    region.imageExtent = {width, height, 1};
+                    Fn<PFN_vkCmdCopyImageToBuffer>("vkCmdCopyImageToBuffer")(commands, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
+                    Transition(commands, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                });
+                void* mapped = nullptr;
+                Fn<PFN_vkMapMemory>("vkMapMemory")(device, memory, 0, VK_WHOLE_SIZE, 0, &mapped);
+                pixels.assign(static_cast<const uint8_t*>(mapped), static_cast<const uint8_t*>(mapped) + size_t(width) * height * 4);
+                Fn<PFN_vkUnmapMemory>("vkUnmapMemory")(device, memory);
+            }
+            Fn<PFN_vkDestroyBuffer>("vkDestroyBuffer")(device, buffer, nullptr);
+            if (memory) Fn<PFN_vkFreeMemory>("vkFreeMemory")(device, memory, nullptr);
+            return ok;
+        }
+
         void destroy() {
             if (device) {
                 Fn<PFN_vkDeviceWaitIdle>("vkDeviceWaitIdle")(device);
@@ -711,6 +834,14 @@ namespace {
             instance = VK_NULL_HANDLE;
         }
     };
+
+    VulkanGame* g_vulkanGame = nullptr; // The Vulkan case's game, while it runs.
+    bool MakeOwnVulkanImage(uint32_t width, uint32_t height, VkFormat format, VkImage& image, VkDeviceMemory& memory) {
+        return g_vulkanGame && g_vulkanGame->Attachment(width, height, format, image, memory);
+    }
+    void FreeOwnVulkanImage(VkImage image, VkDeviceMemory memory) {
+        if (g_vulkanGame) g_vulkanGame->Free(image, memory);
+    }
 
     struct Case {
         const char* name;
@@ -898,7 +1029,7 @@ int wmain(int argc, wchar_t** argv) {
         {"level-horizon", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=1\ncrop_aspect=16:9\ncrop_height=0.5\ncrop_center_x=0.5\ncrop_center_y=0.5\nstabilize=0\nstabilize_tilt=level\nmirror_eye=left\n", 1, true, 0, 1866, 1050},
         {"copy-path", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=1\ncrop_aspect=16:9\ncrop_height=0.5\ncrop_center_x=0.6\ncrop_center_y=0.45\nmirror_eye=left\n", 1, false, 0, 1866, 1050},
         {"array-right-eye", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\noutput_max_side=1000\nheadset_marker=1\n", 2, true, 1, 562, 590},
-        {"vulkan-right-eye", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\noutput_max_side=1000\n", 2, true, 1, 562, 590, false, false, false, false, false, true},
+        {"vulkan-right-eye", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\noutput_max_side=1000\nheadset_marker=1\n", 2, true, 1, 562, 590, false, false, false, false, false, true},
         {"d3d12-right-eye", "enabled=1\nstyle=ring\nblend=normal\nradius=0.05\nthickness=0.006\nfeather=0.001\nopacity=1\nshadow_opacity=0\ncolor=255,128,0\nfilter=simple\nsmoothing_ms=0\nfade_ms=0\ndwell_ms=0\ntail_space=screen\ncrop_enabled=0\noutput_max_side=1000\nheadset_marker=1\n", 2, true, 1, 562, 590, true},
     };
 
@@ -1055,6 +1186,7 @@ int wmain(int argc, wchar_t** argv) {
                 continue;
             }
             g_swapchainImagesVk = vulkanGame.images;
+            g_vulkanGame = &vulkanGame;
         } else if (test.d3d12) {
             image12A = MakePattern12(device12.Get(), queue12.Get(), test.arraySize);
             image12B = MakePattern12(device12.Get(), queue12.Get(), test.arraySize);
@@ -1476,10 +1608,6 @@ int wmain(int argc, wchar_t** argv) {
                 }
                 printf("       the frame went on with %u layer(s); the last one has %u view(s), flags 0x%llx\n", g_lastLayerCount, g_lastOverlay.viewCount,
                        static_cast<unsigned long long>(g_lastOverlay.layerFlags));
-                if (test.vulkan) {
-                    // Not drawn in Vulkan games yet (the aids are drawn with Direct3D 11): the frame goes on as the game made it.
-                    Check(g_lastLayerCount == 1, "a Vulkan game gets no aids layer yet: the frame is the game's layer alone");
-                } else
                 Check(g_lastLayerCount == 2 && sameViews && g_lastOverlay.layerFlags == XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT,
                       "the aids are a see-through layer of their own over the game's, one swapchain per view, with the game's views (half size on big ones)");
                 if (!test.d3d12 && !test.takesBack && !test.vulkan) {
@@ -1511,28 +1639,48 @@ int wmain(int argc, wchar_t** argv) {
         }
 
         // The calibration marker: the overlay's image of the mirrored eye carries the bracket reticle at the gaze point
-        // (read back on the D3D11 game device; the D3D12 case exercises the draw into a wrapped image but is not read back here).
-        ID3D11Texture2D* overlayImage = nullptr;
+        // (read back on the D3D11 game device, or the Vulkan game's for the Vulkan case, where the layer drew with
+        // Direct3D 11 and copied into the runtime's Vulkan image; the D3D12 case exercises the draw into a wrapped image
+        // but is not read back here).
+        std::vector<uint8_t> overlayPixels; // R8G8B8A8, rows packed.
+        uint32_t OverlayWidth = 0, OverlayHeight = 0;
         if (g_lastOverlay.viewCount > uint32_t(test.eye)) {
             const auto own = g_ownSwapchains.find(g_lastOverlay.views[test.eye].subImage.swapchain);
-            if (own != g_ownSwapchains.end() && own->second.lastReleased >= 0 && size_t(own->second.lastReleased) < own->second.images.size()) {
-                overlayImage = own->second.images[own->second.lastReleased].Get();
+            const int last = own != g_ownSwapchains.end() ? own->second.lastReleased : -1;
+            if (last >= 0 && test.vulkan && size_t(last) < own->second.imagesVk.size()) {
+                OverlayWidth = own->second.width;
+                OverlayHeight = own->second.height;
+                if (!g_vulkanGame->Read(own->second.imagesVk[last], OverlayWidth, OverlayHeight, overlayPixels)) overlayPixels.clear();
+            } else if (last >= 0 && !test.d3d12 && size_t(last) < own->second.images.size()) {
+                D3D11_TEXTURE2D_DESC stagingDesc{};
+                own->second.images[last]->GetDesc(&stagingDesc);
+                stagingDesc.Usage = D3D11_USAGE_STAGING;
+                stagingDesc.BindFlags = 0;
+                stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+                stagingDesc.MiscFlags = 0;
+                ComPtr<ID3D11Texture2D> staging;
+                gameDevice->CreateTexture2D(&stagingDesc, nullptr, &staging);
+                gameContext->CopyResource(staging.Get(), own->second.images[last].Get());
+                D3D11_MAPPED_SUBRESOURCE seen{};
+                if (SUCCEEDED(gameContext->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &seen))) {
+                    OverlayWidth = stagingDesc.Width;
+                    OverlayHeight = stagingDesc.Height;
+                    for (uint32_t y = 0; y < OverlayHeight; y++) {
+                        const uint8_t* row = static_cast<const uint8_t*>(seen.pData) + size_t(y) * seen.RowPitch;
+                        overlayPixels.insert(overlayPixels.end(), row, row + size_t(OverlayWidth) * 4);
+                    }
+                    gameContext->Unmap(staging.Get(), 0);
+                }
             }
         }
-        if (strstr(test.settings, "headset_marker=1") && !test.d3d12 && overlayImage) {
-            D3D11_TEXTURE2D_DESC stagingDesc{};
-            overlayImage->GetDesc(&stagingDesc);
-            stagingDesc.Usage = D3D11_USAGE_STAGING;
-            stagingDesc.BindFlags = 0;
-            stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-            stagingDesc.MiscFlags = 0;
-            ComPtr<ID3D11Texture2D> staging;
-            gameDevice->CreateTexture2D(&stagingDesc, nullptr, &staging);
-            gameContext->CopyResource(staging.Get(), overlayImage);
-            D3D11_MAPPED_SUBRESOURCE mapped{};
+        if (strstr(test.settings, "headset_marker=1") && !test.d3d12) {
+            Check(!overlayPixels.empty(), "the overlay's image of the mirrored eye could be read back");
+            struct {
+                const uint8_t* pData;
+                size_t RowPitch;
+            } mapped{overlayPixels.data(), size_t(OverlayWidth) * 4};
             bool orangeFound = false;
-            const uint32_t OverlayWidth = stagingDesc.Width, OverlayHeight = stagingDesc.Height; // Half the view's size here.
-            if (SUCCEEDED(gameContext->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped))) {
+            if (!overlayPixels.empty()) { // Half the view's size here.
                 float gu, gv;
                 ExpectedGaze(gu, gv);
                 const int gx = int(gu * OverlayWidth), gy = int(gv * OverlayHeight);
@@ -1575,7 +1723,6 @@ int wmain(int argc, wchar_t** argv) {
                 }
                 printf("       edge finder: %d light pixels outside the left edge, %d black inside, %d grey outside the right edge\n", lightLeft, blackInside, greyRight);
                 Check(lightLeft > rows && blackInside > rows && greyRight > rows, "the edge finder covers the view in the overlay: a light block outside the edge being set, black inside, grey outside the others");
-                gameContext->Unmap(staging.Get(), 0);
             }
             Check(orangeFound, "the calibration marker was drawn into the overlay");
         }
@@ -2085,6 +2232,12 @@ int wmain(int argc, wchar_t** argv) {
             Check(referencesAfter == referencesBefore, "no reference to the game's images is kept after the session");
         }
         if (test.vulkan) {
+            // The layer's own swapchains went with the session (its overlay); any the runtime still holds go first.
+            for (auto& own : g_ownSwapchains) {
+                for (size_t i = 0; i < own.second.imagesVk.size(); i++) FreeOwnVulkanImage(own.second.imagesVk[i], own.second.memoriesVk[i]);
+            }
+            g_ownSwapchains.clear();
+            g_vulkanGame = nullptr;
             vulkanGame.destroy(); // After the session: the layer has let go of the game's device by now.
             g_swapchainImagesVk.clear();
             g_vulkan = false;

@@ -625,9 +625,8 @@ the checksum.
 - Setup is a plain MSI on purpose: antivirus heuristics quarantined an earlier self-installing `.exe` half-way through
   an install.
 - Silent install without the desktop shortcut: `msiexec /i StreamMirror-VR-x.y.z.msi /qn DESKTOPSHORTCUT=0`.
-- The mirror shows OpenXR games that render with Direct3D 11, Direct3D 12 or Vulkan. In Vulkan games the in-headset
-  aids (the capture countdown, the View edges blocks, the calibration marker) are not drawn yet. OpenGL games have no mirror
-  yet.
+- The mirror shows OpenXR games that render with Direct3D 11, Direct3D 12 or Vulkan, the in-headset aids (the capture
+  countdown, the View edges blocks, the calibration marker) included. OpenGL games have no mirror yet.
 - The mirror shows quad views, the four-view foveated mode (Varjo headsets; Pimax Play's own setting), as the headset
   shows them: the sharp inner image over the wide one. StreamMirror VR's quad views layer handles Direct3D 11, 12 and
   Vulkan games; the official Quad-Views-Foveated handles Direct3D 11 alone. The helper mirrors SteamVR
