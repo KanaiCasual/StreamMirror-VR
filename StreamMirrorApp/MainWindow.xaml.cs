@@ -1104,6 +1104,7 @@ public partial class MainWindow : Window
             _ownWriteUntil = DateTime.UtcNow.AddMilliseconds(600);
             ConfigFile.Save(_configPath, _values);
             _dirtyKeys.Clear();
+            _saveFailures = 0;
             // The game never polls this file; telling it is what makes the change go live.
             SetSaveMark($"Saved {DateTime.Now:t}", LiveLink.NotifySettingsChanged()
                 ? $"Saved at {DateTime.Now:T} and applied to the running game."
@@ -1112,10 +1113,15 @@ public partial class MainWindow : Window
         }
         catch (Exception e)
         {
-            SetSaveMark("Not saved", "Could not save: " + e.Message, problem: true);
+            // The last change would stay unsaved (nothing else saves it): try again shortly, a few times.
+            var again = ++_saveFailures <= 5;
+            SetSaveMark("Not saved", "Could not save: " + e.Message + (again ? " Trying again." : " Change a setting to try again."), problem: true);
             AppLog.Write("Could not save the ring settings", e);
+            if (again) _saveTimer.Start();
         }
     }
+
+    private int _saveFailures;
 
     /// <summary>
     /// Windows tells us when the settings file changes (no polling): that is how in-game calibration nudges show up here
