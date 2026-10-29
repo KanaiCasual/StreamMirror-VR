@@ -57,7 +57,8 @@ public static class CropProfiles
         var text = new StringBuilder("# Crop profiles of StreamMirror VR. The mirror applies a profile at the start of the game whose program file\n# the profile names. Edit them on the app's Mirror page.\n");
         foreach (var profile in profiles)
         {
-            text.Append('\n').Append('[').Append(profile.Name.Replace("]", "")).Append("]\n");
+            // Both readers take everything between the line's first '[' and its last ']', so a name may hold brackets too.
+            text.Append('\n').Append('[').Append(profile.Name).Append("]\n");
             text.Append("game=").Append(profile.Game).Append('\n');
             foreach (var (key, value) in profile.Values.OrderBy(v => v.Key, StringComparer.Ordinal)) text.Append(key).Append('=').Append(value).Append('\n');
         }

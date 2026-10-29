@@ -149,13 +149,17 @@ namespace stream_mirror {
         std::string openProfile;
         while (fgets(line, sizeof(line), file)) {
             std::string text = line;
+            // A profile's name is the user's own text and may hold a '#': that line keeps the rest of it whole.
+            const size_t nameEquals = text.find('=');
+            if (nameEquals != std::string::npos && Trim(text.substr(0, nameEquals)) == "open_crop_profile") {
+                openProfile = Trim(text.substr(nameEquals + 1));
+                continue;
+            }
             const size_t comment = text.find('#');
             if (comment != std::string::npos) text.erase(comment);
             const size_t equals = text.find('=');
             if (equals == std::string::npos) continue;
-            const std::string key = Trim(text.substr(0, equals)), value = Trim(text.substr(equals + 1));
-            if (key == "open_crop_profile") openProfile = value;
-            else ApplyKey(fresh, key, value);
+            ApplyKey(fresh, Trim(text.substr(0, equals)), Trim(text.substr(equals + 1)));
         }
         fclose(file);
         _openProfile = openProfile;

@@ -23,6 +23,13 @@ public static class ConfigFile
         foreach (var rawLine in File.ReadAllLines(path))
         {
             var line = rawLine;
+            // A profile's name is the user's own text and may hold a '#' (the layer reads this line the same way).
+            var nameEquals = line.IndexOf('=');
+            if (nameEquals > 0 && line[..nameEquals].Trim() == "open_crop_profile")
+            {
+                values["open_crop_profile"] = line[(nameEquals + 1)..].Trim();
+                continue;
+            }
             var comment = line.IndexOf('#');
             if (comment >= 0) line = line[..comment];
             var separator = line.IndexOf('=');

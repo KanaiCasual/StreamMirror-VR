@@ -370,7 +370,7 @@ public partial class MainWindow
 
     private void OnProfileSaveConfirm(object sender, RoutedEventArgs e)
     {
-        var name = CropProfileName.Text.Trim().Replace("[", "").Replace("]", "");
+        var name = CropProfileName.Text.Trim();
         if (name.Length == 0) return;
         var naming = _profileNaming;
         _profileNaming = ProfileNaming.SaveAs;

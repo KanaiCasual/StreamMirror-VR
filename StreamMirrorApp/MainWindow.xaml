@@ -204,7 +204,7 @@
                             <Button x:Name="CropProfileSaveAs" Content="Save as..." Margin="0,2,6,2" Click="OnProfileSaveAs"
                                     ToolTip="Saves the current framing as a new profile. The profile you have open keeps its saved framing." />
                             <StackPanel x:Name="CropProfileNamePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,6,0">
-                                <TextBox x:Name="CropProfileName" Width="140" MinWidth="0" Margin="0,2,4,2" VerticalAlignment="Center" ToolTip="Name of the profile. Enter saves, Esc cancels." />
+                                <TextBox x:Name="CropProfileName" Width="140" MinWidth="0" MaxLength="80" Margin="0,2,4,2" VerticalAlignment="Center" ToolTip="Name of the profile. Enter saves, Esc cancels." />
                                 <Button Content="OK" Margin="0,2,0,2" Click="OnProfileSaveConfirm" />
                             </StackPanel>
                             <Button x:Name="CropProfileMore" Margin="0,2,12,2" Padding="8,5" Click="OnProfileMore" ToolTip="Rename or delete this profile"

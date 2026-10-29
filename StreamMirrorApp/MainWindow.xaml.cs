@@ -630,7 +630,7 @@ public partial class MainWindow : Window
         var save = new Button { Content = "Save", Margin = new Thickness(0, 2, 6, 2), ToolTip = WrappedToolTip($"Keeps the current {what} in this preset.\n\nChanges apply at once, but the preset keeps them only when you press Save. Save lights up when there is something to keep.") };
         var reload = new Button { Content = "Reload", Margin = new Thickness(0, 2, 6, 2), ToolTip = WrappedToolTip($"Back to this preset as saved: drops the changes made since.\n\nLights up when the {what} differ from the preset.") };
         var saveAs = new Button { Content = "Save as...", Margin = new Thickness(0, 2, 6, 2), ToolTip = $"Keeps the current {what} as a new preset" };
-        var nameBox = new TextBox { Width = 140, MinWidth = 0, Margin = new Thickness(0, 2, 4, 2), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Name of the preset. Enter saves, Esc cancels." };
+        var nameBox = new TextBox { Width = 140, MinWidth = 0, MaxLength = 80, Margin = new Thickness(0, 2, 4, 2), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Name of the preset. Enter saves, Esc cancels." };
         var ok = new Button { Content = "OK", Margin = new Thickness(0, 2, 0, 2) };
         var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 0, 6, 0), Children = { nameBox, ok } };
         var rename = new MenuItem { Header = "Rename..." };

@@ -508,6 +508,29 @@ public partial class App : Application
             try { Directory.Delete(folder, recursive: true); } catch { /* scratch */ }
             return result;
         }
+        // A profile name with a '#', brackets and '=' comes back whole from both files.
+        bool OddNameSurvives()
+        {
+            const string name = "[DCS] #2 = night";
+            var folder = Path.Combine(Path.GetTempPath(), "streammirror-names-" + Environment.ProcessId);
+            Directory.CreateDirectory(folder);
+            var previous = Environment.GetEnvironmentVariable("STREAMMIRROR_PROFILES_FILE");
+            try
+            {
+                var settings = Path.Combine(folder, "settings.cfg");
+                ConfigFile.Save(settings, new Dictionary<string, string>(Settings.Defaults()) { ["open_crop_profile"] = name });
+                Environment.SetEnvironmentVariable("STREAMMIRROR_PROFILES_FILE", Path.Combine(folder, "crop-profiles.ini"));
+                var profile = new CropProfile { Name = name, Game = "DCS.exe" };
+                profile.Values["crop_height"] = "0.25";
+                CropProfiles.Save([profile]);
+                return ConfigFile.Load(settings)["open_crop_profile"] == name && CropProfiles.Load() is [{ Name: name, Game: "DCS.exe" }];
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("STREAMMIRROR_PROFILES_FILE", previous);
+                try { Directory.Delete(folder, recursive: true); } catch { /* scratch */ }
+            }
+        }
         QuadViewsPixels.Result Logged() => QuadViewsPixels.Compute(session!.StereoWidth, session.StereoHeight, 0.32, 1.225, 0.35, 0.35);
         var before = QuadViewsFile.Evaluate([("test", file)], session);
         var sliders = QuadViewsSetting.All.ToDictionary(s => s.Id, _ => 0.0);
@@ -556,6 +579,7 @@ public partial class App : Application
                 && untouched.InCommon("debug_eye_gaze") != null),
             ("StreamMirror VR's quad views layer must sit above the mirror, and Fix order puts it there", OwnOrderOk()),
             ("a settings file the layer is reading is replaced once the read ends", SwapsInWhileRead()),
+            ("a profile name with #, brackets and = survives both files", OddNameSurvives()),
             ("...and say the sharpness against the headset's", QuadViewsReadout.Sharpness(1.0) == "As sharp as the headset." && QuadViewsReadout.Sharpness(1.414).StartsWith("Draws 200 %")
                 && QuadViewsReadout.Sharpness(0.4) == "Draws 16 % of the headset's pixels: faster, but softer."),
             ("a resolution shows the file's multiplier first", QuadViewsSetting.All.First(s => s.Id == "peripheral_res").Format(16) == "0.4x · 16 %"
