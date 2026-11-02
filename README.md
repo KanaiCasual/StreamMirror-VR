@@ -8,9 +8,12 @@
 [![Downloads, latest version](https://img.shields.io/github/downloads/KanaiCasual/StreamMirror-VR/latest/total?label=downloads%20%28latest%29)](../../releases/latest)
 [![Open issues](https://img.shields.io/github/issues/KanaiCasual/StreamMirror-VR)](../../issues)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/hAy2gTF7R2)
 
 **A clean mirror of your VR headset for OBS and streaming. OpenXR and SteamVR games, one source, no setup.**
 If your headset tracks your eyes, a ring on the mirror shows your viewers where you look.
+
+**Join the [StreamMirror VR Discord](https://discord.gg/hAy2gTF7R2)** for updates, help, bug reports and a chat.
 
 Install it, add the source in OBS, play. You get one eye, cropped and steadied, at the size and rate you choose. The
 headset shows none of it, the game stays untouched, and you have no window to keep on top.
@@ -47,9 +50,9 @@ One installer sets up all of it:
   running game at once.
   The mirror and the ring work without it.
 
-*Up to version 1.2.2 the project was "QuadViews StreamMirror VR", and the ring sat on modified Quad-Views-Foveated and
-OpenXR-Layer-OBSMirror layers. Since 2.0 this project's own code makes the whole picture, and Quad-Views-Foveated is an
-optional extra.*
+*Up to version 1.2.2 the project was "QuadViews Gaze Mirror", and the ring sat on modified Quad-Views-Foveated and
+OpenXR-Layer-OBSMirror layers. Since 2.0 this project's own code makes the whole picture. Version 3.0 renamed it from
+VR Gaze Mirror to StreamMirror VR and brought its own quad views layer.*
 
 **Download:** the latest `StreamMirror-VR-<version>.msi` is on the
 [Releases page](../../releases/latest); the release notes list the changes.
@@ -645,15 +648,15 @@ the checksum.
 
 ## Credits and licence
 
-- [Quad-Views-Foveated](https://github.com/mbucchia/Quad-Views-Foveated) by Matthieu Bucchianeri (MIT): VR Gaze
-  Mirror's quad views layer (`v2\quad-views`) is built on its code. He does not make or support StreamMirror VR's
+- [Quad-Views-Foveated](https://github.com/mbucchia/Quad-Views-Foveated) by Matthieu Bucchianeri (MIT):
+  StreamMirror VR's quad views layer (`v2\quad-views`) is built on its code. He does not make or support StreamMirror VR's
   layer: report its problems here.
 - [OpenXR-Layer-OBSMirror](https://github.com/Jabbah/OpenXR-Layer-OBSMirror) by Jabbah (MIT): the 1.x versions of this
   project built on it, and the 2.0 layer keeps its settings file name so upgrades carry over.
 - [OBS Studio](https://github.com/obsproject/obs-studio) (GPL-2): the OBS plugin builds against its headers and is
   itself GPL-2; the installer puts its licence next to it.
 - [OpenVR](https://github.com/ValveSoftware/openvr) by Valve (BSD-3): the SteamVR helper's library, installed next to it.
-- The layer-order rules on the Status page express the same facts as
+- The layer-order rules on the Layers page express the same facts as
   [OpenXR-API-Layers-GUI](https://github.com/fredemmott/OpenXR-API-Layers-GUI) by Fred Emmott (ISC).
 - The Quad Views page follows the slider logic of TallyMouse's QuadViews Companion; TallyMouse did not make this app.
 - Tobii Ghost inspired the ring.

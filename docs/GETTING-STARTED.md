@@ -175,6 +175,6 @@ and **Fix order** puts it right.
 | No ring | Status top line: does gaze arrive? Is the ring on (Ring page)? |
 | Ring beside what you look at | Gaze page > Where the ring lands, with the marker. |
 | The headset stays black in a game | Switch off the other OpenXR layers on the Layers page one by one, to find the one that game does not like. |
-| Anything else | About page > **Logs**. Send the three log files with a [bug report](https://github.com/KanaiCasual/StreamMirror-VR/issues). |
+| Anything else | Ask on the [StreamMirror VR Discord](https://discord.gg/hAy2gTF7R2), or send the three log files (About page > **Logs**) with a [bug report](https://github.com/KanaiCasual/StreamMirror-VR/issues). |
 
 More cases are in the [README's troubleshooting section](../README.md#troubleshooting).
