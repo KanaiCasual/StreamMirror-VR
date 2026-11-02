@@ -12,10 +12,10 @@
 # Every published build - beta or not - needs its own x.y.z: Windows Installer only upgrades to a higher number, and the
 # app's update check compares those numbers. Whether a release counts as a beta is decided by GitHub's "pre-release" tick.
 param(
-    [string]$Version = '2.3.1',
+    [string]$Version = '3.0.0',
     [string]$Label = '',
     # owner/name of the repository whose releases the app's update check looks at. '' = build without update checks.
-    [string]$GitHubRepository = 'KanaiCasual/VR-Gaze-Mirror',
+    [string]$GitHubRepository = 'KanaiCasual/StreamMirror-VR',
     # A .pfx to sign with (with its password): every file of ours and the MSI. '' = unsigned. For a test certificate, see
     # tools\New-TestSigningCertificate.ps1.
     [string]$SignCertificate = '',
@@ -85,7 +85,7 @@ $timestamp = if ($TimestampUrl) { $TimestampUrl } elseif ($SignThumbprint) { 'ht
 function Sign([string[]]$files) {
     # /d and /du: the name and link Windows' permission prompt shows. Without them it shows the file's name, and for an
     # installer that is the random name of Windows Installer's own copy (ec5b44.msi).
-    & $signtool sign /q /fd SHA256 @signWith /tr $timestamp /td SHA256 /d 'StreamMirror VR' /du 'https://github.com/KanaiCasual/VR-Gaze-Mirror' $files
+    & $signtool sign /q /fd SHA256 @signWith /tr $timestamp /td SHA256 /d 'StreamMirror VR' /du 'https://github.com/KanaiCasual/StreamMirror-VR' $files
     if ($LASTEXITCODE -ne 0) { throw "Signing failed: $files" }
     # What Windows makes of each: Valid with a certificate it trusts; signed but untrusted (a test certificate) warns.
     foreach ($file in $files) {

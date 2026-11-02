@@ -25,8 +25,8 @@ Plan about 15 minutes, with your game installed and the headset at hand.
 ## 1. Install
 
 1. **Close your VR game and OBS.** The installer replaces files they keep open.
-2. Download `VR-Gaze-Mirror-<version>.msi` from the [Releases page](https://github.com/KanaiCasual/VR-Gaze-Mirror/releases/latest) and run it. Windows
-   SmartScreen may warn, because the files carry no code signature yet: **More info > Run anyway**.
+2. Download `StreamMirror-VR-<version>.msi` from the [Releases page](https://github.com/KanaiCasual/StreamMirror-VR/releases/latest) and run it. The files
+   are code-signed; while the certificate is new, Windows SmartScreen may still warn once: **More info > Run anyway**.
 3. Start **StreamMirror VR** from the Start menu.
 
 Quad views (foveated rendering: sharp where you look, cheaper elsewhere) come with it, switched off. The **Quad Views**
@@ -175,6 +175,6 @@ and **Fix order** puts it right.
 | No ring | Status top line: does gaze arrive? Is the ring on (Ring page)? |
 | Ring beside what you look at | Gaze page > Where the ring lands, with the marker. |
 | The headset stays black in a game | Switch off the other OpenXR layers on the Layers page one by one, to find the one that game does not like. |
-| Anything else | About page > **Logs**. Send the three log files with a [bug report](https://github.com/KanaiCasual/VR-Gaze-Mirror/issues). |
+| Anything else | About page > **Logs**. Send the three log files with a [bug report](https://github.com/KanaiCasual/StreamMirror-VR/issues). |
 
 More cases are in the [README's troubleshooting section](../README.md#troubleshooting).

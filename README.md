@@ -2,11 +2,11 @@
 
 # StreamMirror VR
 
-[![Latest release](https://img.shields.io/github/v/release/KanaiCasual/VR-Gaze-Mirror?label=latest%20release&color=4DB2FF)](../../releases/latest)
-[![Released](https://img.shields.io/github/release-date/KanaiCasual/VR-Gaze-Mirror?label=released)](../../releases/latest)
-[![Downloads, all versions](https://img.shields.io/github/downloads/KanaiCasual/VR-Gaze-Mirror/total?label=downloads%20%28all%20versions%29)](../../releases)
-[![Downloads, latest version](https://img.shields.io/github/downloads/KanaiCasual/VR-Gaze-Mirror/latest/total?label=downloads%20%28latest%29)](../../releases/latest)
-[![Open issues](https://img.shields.io/github/issues/KanaiCasual/VR-Gaze-Mirror)](../../issues)
+[![Latest release](https://img.shields.io/github/v/release/KanaiCasual/StreamMirror-VR?label=latest%20release&color=4DB2FF)](../../releases/latest)
+[![Released](https://img.shields.io/github/release-date/KanaiCasual/StreamMirror-VR?label=released)](../../releases/latest)
+[![Downloads, all versions](https://img.shields.io/github/downloads/KanaiCasual/StreamMirror-VR/total?label=downloads%20%28all%20versions%29)](../../releases)
+[![Downloads, latest version](https://img.shields.io/github/downloads/KanaiCasual/StreamMirror-VR/latest/total?label=downloads%20%28latest%29)](../../releases/latest)
+[![Open issues](https://img.shields.io/github/issues/KanaiCasual/StreamMirror-VR)](../../issues)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
 
 **A clean mirror of your VR headset for OBS and streaming. OpenXR and SteamVR games, one source, no setup.**
@@ -90,14 +90,20 @@ World, VRChat, Assetto Corsa EVO, VAIL and Half-Life: Alyx.
 
 ## Installing, updating, removing
 
-1. Close your game and OBS, then run the `.msi`. Windows SmartScreen warns, because the files carry no code signature:
-   "More info" > "Run anyway". A first install offers a desktop shortcut.
+1. Close your game and OBS, then run the `.msi`. The installer and every program in it are code-signed. While the
+   certificate is new, Windows SmartScreen may still warn once: "More info" > "Run anyway". A first install offers a
+   desktop shortcut.
 2. Start **StreamMirror VR** from the Start menu. The **Status** page should say that all parts work: the layer, the
    OBS plugin and the SteamVR helper.
 
+**Coming from VR Gaze Mirror 2.x:** StreamMirror VR is its new name. Run the installer over it: it replaces the old
+install, carries over your settings, profiles, presets and crop pictures, and moves "Start with Windows" and the desktop
+shortcut to the new name. Your OBS scenes keep working, the source is the same one. The 2.x app sees the new release but
+offers only the release page: download the `.msi` there once.
+
 **Coming from 1.x:** run the installer over it. It removes the two modified layers and the old "OpenXR Mirror Capture"
 OBS plugin that 1.x put into OBS, carries over your settings, presets and crop pictures, and cleans up the old
-"QuadViews StreamMirror VR" data folder. Replace the old source in your OBS scenes with the new **StreamMirror VR** source (the
+"QuadViews Gaze Mirror" data folder. Replace the old source in your OBS scenes with the new **StreamMirror VR** source (the
 old one shows black).
 
 **Updating:** the app tells you about a newer release. **Download and install** saves the new installer into your
@@ -580,7 +586,7 @@ File locations:
 - **Quad Views changes do nothing**: is **Quad views** switched on, and did the game start after that? Resolution
   changes need a restart. The layer's log (Quad Views page > Log) says when it stood aside, and why.
 - **A layer is red or the order is wrong**: Layers page > Fix order, or run the installer again > Repair.
-- **The mirror window takes ten seconds to appear the first time**: antivirus software is looking at a new, unsigned
+- **The mirror window takes ten seconds to appear the first time**: antivirus software is looking at a new
   program.
 - **Discord does not list the mirror window**: switch on "Title bar".
 - **Something odd**: About page > Logs; the three log files say what each part did.
@@ -593,7 +599,7 @@ first time).
 ```powershell
 git clone <this repo>
 .\v2\Get-External.ps1              # once: OpenVR SDK, OBS headers, the quad views layer's dependencies (git keeps their licences alone)
-.\Build-Installer.ps1 -Version 2.3.0   # all parts, the offline layer test, and dist\StreamMirror-VR-2.3.0.msi with its .sha256
+.\Build-Installer.ps1 -Version 3.0.0   # all parts, the offline layer test, and dist\StreamMirror-VR-3.0.0.msi with its .sha256
 ```
 
 | Path | What |
@@ -620,8 +626,8 @@ the checksum.
 
 ## Things to know
 
-- **The files carry no code signature.** Windows SmartScreen warns about the installer, and games with anti-cheat may
-  refuse to load the layer.
+- **Release builds are code-signed** (a Certum open-source certificate). Some games' anti-cheat software may still
+  refuse OpenXR layers; Star Citizen's EAC accepts them.
 - Setup is a plain MSI on purpose: antivirus heuristics quarantined an earlier self-installing `.exe` half-way through
   an install.
 - Silent install without the desktop shortcut: `msiexec /i StreamMirror-VR-x.y.z.msi /qn DESKTOPSHORTCUT=0`.

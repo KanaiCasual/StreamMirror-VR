@@ -1,10 +1,11 @@
 # Changelog
 
-## Not released yet
+## 3.0.0 - 2026-11-02
 
 **New**
 - **Quick switches** under the pages in the left column (from a tester): the mirror window, the gaze ring, the desktop cover, quad views, the quad views diagnostics and the debug view, on or off at a glance. Each one works the switch on its page and follows it back. Quad views still asks Windows for permission and takes effect at the game's next start; the switch says so.
-- **StreamMirror VR is the new name** of VR Gaze Mirror, with a new icon: the app streams and records your VR view, and the gaze ring is one of the things it does. Everything carries the new name: the app (StreamMirror.exe), the installer (StreamMirror-VR-x.y.z.msi, installed under Program Files\StreamMirror-VR), the SteamVR helper, the OBS plugin, the OpenXR layers (XR_APILAYER_KANAICASUAL_StreamMirror, _GameLayers, _QuadViews) and the shortcuts.
+- **StreamMirror VR is the new name** of VR Gaze Mirror, with a new icon: the app streams and records your VR view, and the gaze ring is one of the things it does. Everything carries the new name: the app (StreamMirror.exe), the installer (StreamMirror-VR-x.y.z.msi, installed under Program Files\StreamMirror-VR), the SteamVR helper, the OBS plugin, the OpenXR layers (XR_APILAYER_KANAICASUAL_StreamMirror, _GameLayers, _QuadViews) and the shortcuts. The project lives at github.com/KanaiCasual/StreamMirror-VR (the old address forwards there). Your OBS scenes keep working: the source is the same one. A 2.x app sees 3.0 but offers only the release page, so download the installer there once.
+- **Code-signed**: the installer and every program in it carry a code signature (a Certum open-source certificate), so Windows names StreamMirror VR when it asks, and anti-cheat software that wants signed layers accepts them (Star Citizen's EAC does).
 - **Your settings come along**: the data folder is now %LocalAppData%\StreamMirror, with the ring settings in it as settings.cfg. The update copies the old folder and file over by itself and then removes them.
 - **Your OBS scenes keep working**: the source is called StreamMirror VR now, and scenes that use the old one keep it.
 - **Start with Windows stays on**: the update moves the entry over to the new program. The desktop shortcut gets the new name; the old one goes.

@@ -56,18 +56,20 @@ public partial class MainWindow : Window
             "Its parts:\n" +
             "  - the mirror layer (OpenXR games) and the SteamVR helper (SteamVR games) make the picture: cropped, steadied, with the ring;\n" +
             "  - the OBS plugin \"StreamMirror VR\" and the mirror window show it;\n" +
-            "  - this app holds the settings.\n" +
-            "This project wrote all of that code (MIT licence; the OBS plugin under the GPL-2, as OBS plugins are). It modifies no third-party code: " +
-            "Quad-Views-Foveated by Matthieu Bucchianeri is optional and installs unchanged (this app ships his official installer), " +
-            "and the SteamVR helper uses Valve's OpenVR library. Please do not ask those authors for support with this app. " +
+            "  - the quad views layer, if you switch it on, renders sharp where you look and cheaper elsewhere;\n" +
+            "  - this app holds the settings.\n\n" +
+            "This project wrote the mirror, the helper, the OBS plugin and this app (MIT licence; the OBS plugin under the GPL-2, as OBS plugins are). " +
+            "The quad views layer is built on Quad-Views-Foveated by Matthieu Bucchianeri (MIT) and changed by this project. The SteamVR helper uses Valve's OpenVR library. " +
+            "Please do not ask those authors for support with this app.\n\n" +
             "The licence texts are in the install folder under Program Files.\n\n" +
-            "The files carry no code signature, so Windows may warn about the installer, and games with anti-cheat may refuse to load the layers.\n\n" +
+            "Release builds are code-signed. Some games' anti-cheat software may still refuse OpenXR layers.\n\n" +
             "The Quad Views page edits the same settings as QuadViews Companion by TallyMouse and follows its slider logic, so you can use both on the same file. " +
             "TallyMouse did not make this app and does not endorse it.\n\n" +
-            "This app edits the two settings files below. It runs without administrator rights: " +
-            "switch a layer on or off on the Status page and Windows asks for permission, then Windows' own reg.exe changes that one value. An installer (an update, Quad-Views-Foveated) starts at your click, and Windows asks there too.\n\n" +
-            "Ring settings:\n  " + _configPath + "\n" +
-            "Quad-Views-Foveated settings:\n  " + QuadViewsFile.DefaultPath;
+            "This app edits the settings files below. It runs without administrator rights: " +
+            "switch a layer on or off on the Layers page and Windows asks for permission, then Windows' own reg.exe changes that one value.\n\n" +
+            "An installer (an update) starts at your click, and Windows asks there too.\n\n" +
+            "Ring and mirror settings:\n  " + _configPath + "\n" +
+            "Quad views settings:\n  " + QuadViewsFile.DefaultPath;
 
         InitializeUpdateUi();
         InitializeTrayUi();
