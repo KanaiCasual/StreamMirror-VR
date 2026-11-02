@@ -13,7 +13,7 @@
 **A clean mirror of your VR headset for OBS and streaming. OpenXR and SteamVR games, one source, no setup.**
 If your headset tracks your eyes, a ring on the mirror shows your viewers where you look.
 
-**Join the [StreamMirror VR Discord](https://discord.gg/hAy2gTF7R2)** for updates, help, bug reports and a chat.
+**Join the [KanaiCasual Basecamp Discord](https://discord.gg/hAy2gTF7R2)** for updates, help, bug reports and a chat.
 
 Install it, add the source in OBS, play. You get one eye, cropped and steadied, at the size and rate you choose. The
 headset shows none of it, the game stays untouched, and you have no window to keep on top.
