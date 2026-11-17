@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Raw gaze over OSC works with the Pimax Dream Air**: SRanibro sends eye openness -1 ("not reported") for it, and the helper read that as both eyes shut, so the ring never showed. Openness below 0 now counts as open.
+
 ## 3.0.0 - 2026-11-02
 
 **New name, same settings**

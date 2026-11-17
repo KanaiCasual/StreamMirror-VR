@@ -136,7 +136,8 @@ namespace stream_mirror {
         memcpy(eye->dir, dir, sizeof(dir));
         eye->valid = valid;
         eye->seen = true;
-        if (numbers.size() >= 5 && std::isfinite(numbers[4])) eye->openness = float(std::fmin(std::fmax(numbers[4], 0.0), 1.0));
+        // Openness below 0 = not reported (SRanibro sends -1 for the Dream Air): the eye counts as open, not as a blink.
+        if (numbers.size() >= 5 && std::isfinite(numbers[4])) eye->openness = numbers[4] < 0.0 ? 1.f : float(std::fmin(numbers[4], 1.0));
         if (valid && _logged < 1) {
             _logged = 1;
             Log("raw gaze: arriving on the gaze input port (%s: %.3f %.3f %.3f)", which.c_str(), dir[0], dir[1], dir[2]);
