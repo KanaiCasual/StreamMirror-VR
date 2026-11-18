@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.2 - 2026-11-18
+
+- **Ring only: the ring shows in OBS at its full strength.** The see-through picture was drawn the wrong way in OBS, which took the ring's colour down by its own transparency a second time. A faint ring (Light blending, low opacity or solidity, a thin line) all but disappeared. The OBS plugin now draws it the way OBS draws see-through pictures from its own browser source. The normal game picture is unchanged.
+
 ## 3.1.1 - 2026-11-18
 
 - **An update no longer deletes your desktop shortcut** when you untick the desktop-shortcut box. The box only says whether the installer makes a shortcut: unticked, it leaves one you already have alone. Uninstalling still removes it.

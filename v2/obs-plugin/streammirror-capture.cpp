@@ -226,9 +226,15 @@ namespace {
         }
         if (s.textures[slot]) {
             // The default effect keeps the picture's alpha: 1 everywhere for the game picture, and the see-through
-            // ground of the ring alone (output_ring_only, premultiplied as OBS composites sources).
+            // ground of the ring alone (output_ring_only). That picture is premultiplied, and OBS draws a source with
+            // straight-alpha blending (SRCALPHA, INVSRCALPHA): it would multiply the colour by alpha a second time and
+            // all but hide a faint ring. So it is drawn premultiplied, as OBS's own browser source draws its pictures.
+            // The game picture, alpha 1 everywhere, comes out the same either way.
+            gs_blend_state_push();
+            gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
             gs_effect_t* effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
             while (gs_effect_loop(effect, "Draw")) obs_source_draw(s.textures[slot], 0, 0, 0, 0, false);
+            gs_blend_state_pop();
             s.shownFrame = frames.frameNumber;
         }
         me.readingSlot = NoSlot;
