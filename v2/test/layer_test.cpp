@@ -2005,7 +2005,7 @@ int wmain(int argc, wchar_t** argv) {
                 endFrame(session, &panelFrame);
             };
             // What the picture holds at (u, v): read on the reader's device once the game's device has finished.
-            const auto pixelAt = [&](float u, float v, int rgb[3]) {
+            const auto pixelAt = [&](float u, float v, int rgb[3], int* alpha = nullptr) {
                 D3D11_QUERY_DESC queryDesc{D3D11_QUERY_EVENT, 0};
                 ComPtr<ID3D11Query> done;
                 if (SUCCEEDED(gameDevice->CreateQuery(&queryDesc, &done))) {
@@ -2033,6 +2033,7 @@ int wmain(int argc, wchar_t** argv) {
                             rgb[0] = bgra ? px[2] : px[0];
                             rgb[1] = px[1];
                             rgb[2] = bgra ? px[0] : px[2];
+                            if (alpha) *alpha = px[3];
                             readerContext->Unmap(staging.Get(), 0);
                             read = true;
                         }
@@ -2172,6 +2173,33 @@ int wmain(int argc, wchar_t** argv) {
             } else {
                 const bool readOff = pixelAt(0.42f, 0.58f, inside);
                 Check(readOff && !isMagenta(inside), "show_panels=0: the panel stays out of the picture");
+                // Ring only (output_ring_only): the ring alone on a see-through picture, premultiplied - nothing of the game
+                // where the ring is not, the ring's colour at full alpha on its line. Off again: the game's picture, opaque.
+                const auto writeSettings = [&](const char* extra) {
+                    FILE* written = nullptr;
+                    _wfopen_s(&written, settingsFile.c_str(), L"w");
+                    fputs(test.settings, written);
+                    fputs(extra, written);
+                    fclose(written);
+                    if (panelSignal) InterlockedIncrement(&panelSignal[2]); // generation: the settings changed
+                    frameWithPanel();
+                    frameWithPanel();
+                };
+                writeSettings("output_ring_only=1\n");
+                const float gu = frames->gazeU, gv = frames->gazeV;
+                const float radiusU = 0.05f * float(frames->height) / float(frames->width); // radius: a fraction of the image height
+                const float ringU = gu < 0.5f ? gu + radiusU : gu - radiusU, awayU = gu < 0.5f ? 0.95f : 0.05f;
+                int onRing[3] = {}, away[3] = {}, onAlpha = 0, awayAlpha = -1;
+                const bool readRingOnly = pixelAt(ringU, gv, onRing, &onAlpha) && pixelAt(awayU, gv, away, &awayAlpha);
+                printf("       ring only: on the ring %d, %d, %d alpha %d; away %d, %d, %d alpha %d\n", onRing[0], onRing[1], onRing[2], onAlpha,
+                       away[0], away[1], away[2], awayAlpha);
+                Check(readRingOnly && away[0] == 0 && away[1] == 0 && away[2] == 0 && awayAlpha == 0,
+                      "output_ring_only=1: away from the ring the picture is see-through, nothing of the game in it");
+                Check(onRing[0] > 200 && onRing[1] > 90 && onRing[1] < 170 && onRing[2] < 30 && onAlpha > 200,
+                      "and the ring is there in its colour, opaque on its line");
+                writeSettings("");
+                const bool readBack = pixelAt(awayU, gv, away, &awayAlpha);
+                Check(readBack && awayAlpha == 255, "output_ring_only off again: the game's picture is back, opaque");
             }
             if (panelSignal) UnmapViewOfFile(const_cast<LONG*>(panelSignal));
             if (panelSignalMapping) CloseHandle(panelSignalMapping);

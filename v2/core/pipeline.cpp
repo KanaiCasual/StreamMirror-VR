@@ -338,7 +338,7 @@ namespace stream_mirror {
                 ring.stretch = rx / ry;
             }
         }
-        output.rendered = _renderer.render(_publisher, *image, crop, outWidth, outHeight, drawRing ? &ring : nullptr, eye, _framing.roll());
+        output.rendered = _renderer.render(_publisher, *image, crop, outWidth, outHeight, drawRing ? &ring : nullptr, eye, _framing.roll(), s.outputRingOnly);
         return output;
     }
 

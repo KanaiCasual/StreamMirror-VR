@@ -45,7 +45,7 @@ public partial class MainWindow
         PanelQuadViews.SizeChanged += (_, _) =>
         {
             // The drawing beside the switch while the card has room for both, above it otherwise.
-            var wide = PanelQuadViews.ActualWidth >= 760;
+            var wide = PanelQuadViews.ActualWidth >= 640;
             DockPanel.SetDock(QuadViewsSceneFrame, wide ? Dock.Left : Dock.Top);
             QuadViewsSceneFrame.Margin = wide ? new Thickness(0, 0, 18, 0) : new Thickness(0, 0, 0, 14);
             QuadViewsSceneFrame.HorizontalAlignment = HorizontalAlignment.Left;

@@ -50,7 +50,7 @@ public partial class MainWindow
         }
         FillFacts(
         [
-            ("Picture to OBS", size),
+            ("Picture to OBS", RingOnly() ? "Ring only, " + size : size),
             ("Picture rate", ChoiceLabel("output_fps")),
             ("Eye", eye),
             ("Capture", ChoiceLabel("picture_source").Split(" (")[0]),
@@ -299,8 +299,11 @@ public partial class MainWindow
         var producing = _mirrorLiveLast is { Producing: true };
         MirrorObsTally.Visibility = producing ? Visibility.Visible : Visibility.Collapsed;
         if (producing) SetTally(MirrorObsTally, MirrorObsTallyDot, MirrorObsTallyText, producing, _mirrorDeliveries, "Mirroring");
-        MirrorObsFacts.Text = ChoiceLabel("mirror_eye") + (_obsGets is { } gets ? $", {gets.Width} × {gets.Height}" : "");
+        MirrorObsFacts.Text = (RingOnly() ? "Ring only, " : "") + ChoiceLabel("mirror_eye") + (_obsGets is { } gets ? $", {gets.Width} × {gets.Height}" : "");
     }
+
+    /// <summary>output_ring_only: OBS gets the ring alone on a see-through picture, not the game picture.</summary>
+    private bool RingOnly() => _values.GetValueOrDefault("output_ring_only") == "1";
 
     private void OnMirrorObsSize(object sender, SizeChangedEventArgs e)
     {
@@ -334,11 +337,12 @@ public partial class MainWindow
         StatusMonitor.Height = Math.Min(width / Math.Clamp(aspect, 0.6, 3.5), 460);
     }
 
-    /// <summary>The readout beside the picture while there is room for both; under it in a narrow window.</summary>
+    /// <summary>The readout beside the picture while there is room for both (its column follows the page's width); under it in a narrow window.</summary>
     private void LayOutStatusHero()
     {
-        var beside = StatusHero.ActualWidth is 0 or >= 820;
-        StatusReadoutColumn.Width = beside ? new GridLength(330) : new GridLength(0);
+        var width = StatusHero.ActualWidth;
+        var beside = width is 0 or >= 640;
+        StatusReadoutColumn.Width = beside ? new GridLength(Math.Clamp(width * 0.3, 292, 360)) : new GridLength(0);
         Grid.SetColumn(StatusReadout, beside ? 1 : 0);
         Grid.SetRow(StatusReadout, beside ? 0 : 1);
         StatusReadout.Margin = beside ? new Thickness(26, 0, 0, 0) : new Thickness(0, 18, 0, 0);

@@ -49,8 +49,9 @@ namespace stream_mirror {
 
         // Draws one frame: source -> crop -> scale -> ring -> slot. ring may be null (nothing drawn). roll: the crop box
         // is turned by this angle about its middle (radians; see Framing::roll) - the steadying against a tilted head.
+        // ringOnly: the ring alone on a see-through picture (premultiplied alpha), the image not drawn (output_ring_only).
         bool render(Publisher& publisher, const SourceImage& source, const CropRect& crop, uint32_t outWidth, uint32_t outHeight,
-                    const RingConstants* ring, int eye, float roll = 0.f);
+                    const RingConstants* ring, int eye, float roll = 0.f, bool ringOnly = false);
 
         // A small box-filtered copy of the WHOLE eye image, read back to memory (BGRA, top row first) - the settings
         // app's crop tool. Slow (a GPU round trip): only on request.
@@ -68,6 +69,7 @@ namespace stream_mirror {
             float focusRect[4];  // Quad views: where the inner image lies in the output (x0, y0, x1, y1)...
             float focusSource[4]; // ...and where it is in its texture (u0, v0, du, dv). On when output[3] is 1.
             float roll[4];       // Cosine and sine of the angle the picture is turned by about its middle; unused, unused.
+            float mode[4];       // x = 1: the ring alone on a see-through picture; y, z, w unused.
             RingConstants ring;
         };
         ID3D11ShaderResourceView* viewOf(const SourceImage& source, const CropRect& crop, float rect[4]);

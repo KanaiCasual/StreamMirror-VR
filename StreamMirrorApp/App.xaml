@@ -175,6 +175,96 @@
             </Setter>
         </Style>
 
+        <!-- A button of the top bar: an icon on the bar's own ground, a lighter ground under the pointer or the keyboard. -->
+        <Style x:Key="BarButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource Text}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Back" Background="Transparent" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Back" Property="Background" Value="{StaticResource RailHover}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Back" Property="Background" Value="{StaticResource RailSelected}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A quick switch in the top bar: its icon (Tag) and its name, outlined while off, lit in the accent while on.
+             QuickIcon is the same without the name, when the bar has no room for names (the name is the tooltip's first line). -->
+        <Style x:Key="QuickChip" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Back" Background="Transparent" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="8,4,10,4" MinHeight="30">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock x:Name="Glyph" Style="{StaticResource Icon}" Text="{TemplateBinding Tag}" FontSize="14" />
+                                <ContentPresenter x:Name="Words" Margin="7,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Back" Property="BorderBrush" Value="{StaticResource Muted}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Back" Property="Background" Value="#262E9BFF" />
+                                <Setter TargetName="Back" Property="BorderBrush" Value="{StaticResource Accent}" />
+                                <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource Accent}" />
+                                <Setter Property="Foreground" Value="{StaticResource Text}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Back" Property="BorderBrush" Value="{StaticResource Text}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="QuickIcon" TargetType="CheckBox" BasedOn="{StaticResource QuickChip}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Back" Background="Transparent" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Width="32" Height="30">
+                            <TextBlock x:Name="Glyph" Style="{StaticResource Icon}" Text="{TemplateBinding Tag}" FontSize="14" HorizontalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Back" Property="BorderBrush" Value="{StaticResource Muted}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Back" Property="Background" Value="#262E9BFF" />
+                                <Setter TargetName="Back" Property="BorderBrush" Value="{StaticResource Accent}" />
+                                <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource Accent}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Back" Property="BorderBrush" Value="{StaticResource Text}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- The rail's entries: one per page. Selected = lighter ground and full-strength text. -->
         <Style x:Key="RailItem" TargetType="ListBoxItem">
             <Setter Property="Foreground" Value="{StaticResource Muted}" />

@@ -107,7 +107,8 @@ public partial class MainWindow
         var running = program != null && MirrorWindowControl.IsRunning();
         MirrorOpen.IsEnabled = program != null && !running;
         MirrorClose.IsEnabled = running;
-        MirrorToggle.Content = running ? "Close mirror window" : "Open mirror window";
+        MirrorToggleLabel.Text = running ? "Close mirror window" : "Open mirror window";
+        System.Windows.Automation.AutomationProperties.SetName(MirrorToggle, MirrorToggleLabel.Text); // also the name when the button shows its icon alone
         MirrorToggle.IsEnabled = program != null;
         ShowQuickMirror(running, program != null);
         // Closed from its own close button (or any other way): the buttons and the section follow at once.

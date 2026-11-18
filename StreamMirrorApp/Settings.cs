@@ -485,6 +485,12 @@ public static class Settings
         },
         new()
         {
+            Key = "output_ring_only", Group = GroupCrop, Kind = SettingKind.Toggle, Default = "0",
+            Label = "Ring only (see-through)",
+            Description = "OBS gets the ring alone, on a see-through picture: no game picture. Lay the StreamMirror VR source over a capture of the game's window on your monitor, and the ring shows where you look in it.\n\n**Lining it up is up to you.** The ring sits where it would on the crop box's picture. Set the crop box to what the game's window shows, then size and place the source over the window capture in OBS (Edit Transform). It comes close, not exact: the monitor and the headset seldom show quite the same view.\n\nA VR game must be running: the ring follows the mirrored eye. The mirror window shows the ring on black.\n\n**Live:** a running game shows the change at once.",
+        },
+        new()
+        {
             Key = "gaze_source", Group = GroupCrop, Kind = SettingKind.Choice, Default = "auto",
             Label = "Gaze from", Description = "The source of the ring's gaze.\n\n**Headset:** the headset's own eye tracking, through OpenXR or SteamVR. Exact angles, nothing to set up. It comes first.\n\n**Raw gaze over OSC:** any program that has the tracker's gaze can send it to the helper's gaze input port as a direction per eye (SRanibro does, with \"Raw gaze OSC\" in its settings). Exact angles, no calibration, and the ring takes it ahead of VRChat.\n\n**VRChat:** the fallback. Some eye-tracking software takes the eye cameras for itself (SRanibro) or feeds VRChat alone (EyeTrackVR, ALVR); the avatar's eyes are then the one trace of where you look, and VRChat sends them over OSC to the SteamVR helper. Those values are not angles, so this needs the one-time calibration below, and VRChat needs OSC on.\n\n**Headset, else raw gaze, else VRChat (the default):** uses the headset while it gives gaze and falls back otherwise.\n\n**Fixed centre:** for headsets without eye tracking. The ring sits where straight ahead lands in each eye and stays there. Quad-Views-Foveated puts its sharp area at that same spot when it has no eye tracking, so the ring takes that area's size from its settings.\n\nThe app greys this choice out once it knows your headset gives gaze.",
             Choices = [new("auto", "Headset, else raw gaze, else VRChat"), new("headset", "Headset only"), new("sranibro", "Raw gaze over OSC only"), new("vrchat", "VRChat only"), new("fixed", "Fixed centre (no eye tracking)")],

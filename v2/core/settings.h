@@ -90,6 +90,9 @@ namespace stream_mirror {
         int eye = 1;                // mirror_eye=left|right. The right eye unless told otherwise.
         uint32_t outputMaxSide = 3840; // output_max_side: the picture fits this by its 16:9 height, turned the box's way (0 = no limit).
         float outputFps = 0.f;      // output_fps: 0 = every frame the game makes.
+        // output_ring_only: the readers get the ring alone on a see-through picture (premultiplied alpha), no game picture -
+        // for a layer over a capture of the game's window on the monitor; the user lines the two up in OBS.
+        bool outputRingOnly = false;
         int gazeSource = 0;         // gaze_source=auto|headset|vrchat|sranibro|fixed: 0 headset, else SRanibro raw, else VRChat; 1/2/3 that
                                     // one only; 4 a fixed centre (headsets without eye tracking).
         int rawGazePort = 9006;     // raw_gaze_port: the gaze input port, where the helper listens for raw gaze (any sender).

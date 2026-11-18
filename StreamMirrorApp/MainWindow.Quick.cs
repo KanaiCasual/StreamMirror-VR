@@ -21,27 +21,29 @@ public partial class MainWindow
     {
         QuickSwitches.Children.Add(new TextBlock { Text = "Quick switches", Style = (Style)FindResource("Hint"), FontSize = 12, Margin = new Thickness(0, 0, 0, 4) });
 
-        _quickMirror = Quick("Mirror window", "Opens or closes the mirror window, like Open and Close on the Mirror page.");
+        _quickMirror = Quick("Mirror window", "\uE8A7", "Opens or closes the mirror window, like Open and Close on the Mirror page.");
         _quickMirror.Click += (_, e) => { if (_quickMirror.IsChecked == true) OnMirrorOpen(_quickMirror, e); else OnMirrorClose(_quickMirror, e); };
         ShowQuickMirror(_mirrorShown.Running, _mirrorShown.Available);
 
-        Follow(Quick("Gaze ring", "Shows or hides the ring in the mirror, like the switch on the Ring page.\n\n**Live:** a running game shows the change at once."),
+        Follow(Quick("Gaze ring", "\uEA3A", "Shows or hides the ring in the mirror, like the switch on the Ring page.\n\n**Live:** a running game shows the change at once."),
                _toggleBoxes["enabled"], click: false);
-        Follow(Quick("Desktop cover", "Covers the VR game's own window while you play, like the switch on the Desktop cover page."), CoverEnabled, click: true);
+        Follow(Quick("Desktop cover", "\uE7F4", "Covers the VR game's own window while you play, like the switch on the Desktop cover page."), CoverEnabled, click: true);
 
-        var quadViews = Quick("Quad views", "Switches StreamMirror VR's quad views layer on or off, like the switch on the Quad Views page.\n\nWindows asks for permission, and a game takes the change at its **next start**.");
+        var quadViews = Quick("Quad views", "\uE8A9", "Switches StreamMirror VR's quad views layer on or off, like the switch on the Quad Views page.\n\nWindows asks for permission, and a game takes the change at its **next start**.");
         Follow(quadViews, QuadViewsLayerOn, click: true);
         QuickSwitches.Children.Add(new TextBlock { Text = "Next game start", Style = (Style)FindResource("Hint"), FontSize = 10.5, Margin = new Thickness(0, -3, 0, 1) });
 
-        var diagnostics = Quick("Diagnostics", "Tints the view in the headset to check quad views while you play, like the switch on the Quad Views page.\n\nThe mirror shows it too: switch it off before you stream.\n\n**Live:** a running game shows the change at once.");
+        var diagnostics = Quick("Diagnostics", "\uE790", "Tints the view in the headset to check quad views while you play, like the switch on the Quad Views page.\n\nThe mirror shows it too: switch it off before you stream.\n\n**Live:** a running game shows the change at once.");
         Follow(diagnostics, _quadViewsBoxes["diagnostics"], click: false);
-        Follow(Quick("Debug view", "Tints the sharp region in the headset to show its size and place, like Debug: show focus view on the Quad Views page.\n\n**Live:** a running game shows the change at once."),
+        Follow(Quick("Debug view", "\uEBE8", "Tints the sharp region in the headset to show its size and place, like Debug: show focus view on the Quad Views page.\n\n**Live:** a running game shows the change at once."),
                _quadViewsBoxes["debug_focus"], click: false);
     }
 
-    private CheckBox Quick(string label, string tip)
+    /// <summary>A quick switch: its name, its icon (Tag, shown when it sits in the top bar) and a tooltip that starts with
+    /// its name, since the top bar may show the icon alone. Its form follows the window (SetQuickForm).</summary>
+    private CheckBox Quick(string label, string glyph, string tip)
     {
-        var box = new CheckBox { Content = label, FontSize = 12, MinWidth = 0, MinHeight = 0, Height = 22, Margin = new Thickness(0), ToolTip = WrappedToolTip(tip) };
+        var box = new CheckBox { Content = label, Tag = glyph, MinWidth = 0, MinHeight = 0, ToolTip = WrappedToolTip($"**{label}**\n\n{tip}") };
         ShowToolTipsPatiently(box);
         QuickSwitches.Children.Add(box);
         return box;

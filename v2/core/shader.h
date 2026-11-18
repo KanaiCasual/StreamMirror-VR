@@ -13,6 +13,7 @@ cbuffer C : register(b0)
     float4 focusRect;    // Quad views (output.w = 1): where the sharp inner image lies in the output (x0, y0, x1, y1)...
     float4 focusSource;  // ...and where it is in its texture (u0, v0, du, dv).
     float4 roll;         // x, y = cosine and sine of the angle the picture is turned by about its middle.
+    float4 mode;         // x = 1: the ring alone on a see-through picture (output_ring_only).
     // RingConstants:
     float2 center;       // In OUTPUT uv.
     float2 aspect;       // Scales output uv deltas into fractions of the EYE IMAGE height.
@@ -213,6 +214,16 @@ float4 ps(V i) : SV_Target
         float2 p = (uv - 0.5) * float2(output.x, 1.0);
         uv = float2(p.x * roll.x - p.y * roll.y, p.x * roll.y + p.y * roll.x) / float2(output.x, 1.0) + 0.5;
     }
+    bool touched = output.z > 0.5 && (style > 2.5 && style < 3.5 ||
+                   (uv.x >= bounds.x && uv.y >= bounds.y && uv.x <= bounds.z && uv.y <= bounds.w));
+    if (mode.x > 0.5) {
+        // The ring alone, for a layer over a capture of the game's window: premultiplied alpha, as OBS composites
+        // sources, in the encoding the configured colour is in. Screen-like blending keeps its light: the colour adds,
+        // and only alpha * solidity of what is under it gives way (its "1 - scene" factor needs the scene).
+        if (!touched) return float4(0, 0, 0, 0);
+        float4 ring = shade(uv);
+        return float4(ring.rgb * ring.a, premultiply > 0.5 ? ring.a * solidity : ring.a);
+    }
     float3 scene = source.Sample(smooth, float3(sourceRect.xy + uv * sourceRect.zw, 0)).rgb;
     if (output.w > 0.5) {
         // Quad views: the sharp inner image over the wide one, blended in over its outer 4 % so no seam shows.
@@ -224,8 +235,6 @@ float4 ps(V i) : SV_Target
         }
     }
     bool linearLight = output.y > 0.5;
-    bool touched = output.z > 0.5 && (style > 2.5 && style < 3.5 ||
-                   (uv.x >= bounds.x && uv.y >= bounds.y && uv.x <= bounds.z && uv.y <= bounds.w));
     if (touched) {
         float4 ring = shade(uv);
         // The configured colour is what the eye sees (sRGB); composite in the space the scene is in, as 1.x did.

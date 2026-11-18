@@ -47,6 +47,7 @@ public partial class MainWindow : Window
         BuildMirrorUi();
         BuildCoverUi();
         BuildQuickSwitches();
+        BuildShell();
         BuildExplanations();
         BuildTourLayer();
         BuildUndo();
@@ -165,29 +166,10 @@ public partial class MainWindow : Window
         }
         _statusNav = items.FirstOrDefault(i => ReferenceEquals(i.Tab, Tabs.Items[0]));
         if (_statusNav != null) _statusNav.Dot = _liveDot;
+        MenuDot.Fill = _liveDot;
         Nav.ItemsSource = items;
         if (!items.Any(i => i.Tab != null && ReferenceEquals(i.Tab, Tabs.SelectedItem))) Tabs.SelectedIndex = 0;
         Nav.SelectedItem = items.FirstOrDefault(i => ReferenceEquals(i.Tab, Tabs.SelectedItem));
-    }
-
-    private bool _railCompact;
-
-    /// <summary>Below this window width the rail shows the icons alone, so the pages keep their room.</summary>
-    private const double RailNeedsWindowWidth = 720;
-
-    private void UpdateRail()
-    {
-        var compact = ActualWidth < RailNeedsWindowWidth;
-        if (compact == _railCompact && Nav.ItemTemplate != null) return;
-        _railCompact = compact;
-        Nav.ItemTemplate = (DataTemplate)FindResource(compact ? "RailShort" : "RailFull");
-        Nav.MinWidth = compact ? 0 : 158;
-        RailBrand.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        QuickSwitches.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        RailVersion.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        SaveMarkText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        SaveMark.Margin = compact ? new Thickness(13, 6, 0, 0) : new Thickness(10, 6, 0, 0);
-        Rail.Padding = compact ? new Thickness(6, 14, 6, 10) : new Thickness(10, 14, 10, 10);
     }
 
     // ------------------------------------------------------------------ settings UI
@@ -931,7 +913,7 @@ public partial class MainWindow : Window
 
     private void UpdatePanels()
     {
-        UpdateRail();
+        UpdateShell();
         var selected = Tabs.SelectedItem;
         // The preview only means something next to the ring's own settings (the Gaze and Ring pages).
         var ringTab = ReferenceEquals(selected, LookTab) || ReferenceEquals(selected, GazeTab);
@@ -975,14 +957,17 @@ public partial class MainWindow : Window
         UpdatePanels();
     }
 
-    /// <summary>The mark at the foot of the rail: a few words on the last save, the whole sentence as its tooltip; orange when a save failed.</summary>
+    /// <summary>The mark at the foot of the rail (and in the top bar): a few words on the last save, the whole sentence as its tooltip; orange when a save failed.</summary>
     private void SetSaveMark(string brief, string full, bool problem = false)
     {
-        SaveMark.Visibility = Visibility.Visible;
-        SaveMarkText.Text = brief;
-        SaveMarkIcon.Text = problem ? "\uE7BA" : "\uE73E";
-        SaveMarkIcon.Foreground = SaveMarkText.Foreground = (Brush)FindResource(problem ? "Warn" : "Muted");
+        SaveMark.Visibility = _shellForm == ShellForm.Expanded ? Visibility.Visible : Visibility.Collapsed; // the other forms have it in the top bar
+        TopSaveMark.Visibility = Visibility.Visible;
+        if (TopSaveMarkText.Text.Length != brief.Length) _barNeeds = null; // the top bar measures its parts again
+        SaveMarkText.Text = TopSaveMarkText.Text = brief;
+        SaveMarkIcon.Text = TopSaveMarkIcon.Text = problem ? "\uE7BA" : "\uE73E";
+        SaveMarkIcon.Foreground = SaveMarkText.Foreground = TopSaveMarkIcon.Foreground = TopSaveMarkText.Foreground = (Brush)FindResource(problem ? "Warn" : "Muted");
         SaveMark.ToolTip = WrappedToolTip(full);
+        TopSaveMark.ToolTip = WrappedToolTip(full);
     }
 
     private void RestoreWindowPlacement()
@@ -1050,7 +1035,7 @@ public partial class MainWindow : Window
         OnProfileValueChanged(key, value);
         if (key.StartsWith("crop_follow", StringComparison.Ordinal)) DrawCrop();
         if (key.StartsWith("stabilize", StringComparison.Ordinal)) ApplyCropMargin(moveBox: true);
-        if (key == "stabilize_tilt" || key == "output_max_side") DrawCrop();
+        if (key == "stabilize_tilt" || key == "output_max_side" || key == "output_ring_only") DrawCrop();
         if (!_previewTimer.IsEnabled) _previewTimer.Start();
         _saveTimer.Stop(); _saveTimer.Start();
         _ringPresetsChanged?.Invoke();
@@ -1771,6 +1756,7 @@ public partial class MainWindow : Window
         // The rail's dot: a game is being mirrored, whatever page is open.
         _liveDot = state == GazeLiveState.NoGame ? null : (Brush)FindResource("Live");
         if (_statusNav != null) _statusNav.Dot = _liveDot;
+        MenuDot.Fill = _liveDot;
         UpdateStartSteps();
         if (ReferenceEquals(Tabs.SelectedItem, StatusTab)) UpdateStatusHero();
         if (ReferenceEquals(Tabs.SelectedItem, GazeTab)) RefreshGazeNow();

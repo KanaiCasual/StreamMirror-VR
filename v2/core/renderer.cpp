@@ -173,7 +173,7 @@ namespace stream_mirror {
     }
 
     bool Renderer::render(Publisher& publisher, const SourceImage& source, const CropRect& crop, uint32_t outWidth, uint32_t outHeight,
-                          const RingConstants* ring, int eye, float roll) {
+                          const RingConstants* ring, int eye, float roll, bool ringOnly) {
         if (!_device || !source.texture || crop.width < 2 || crop.height < 2) return false;
         const Publisher::Slot slot = publisher.acquire(outWidth, outHeight);
         if (slot.index < 0) return false;
@@ -188,6 +188,7 @@ namespace stream_mirror {
         if (view == _copyView.Get()) roll = 0.f;
         constants.roll[0] = cosf(roll);
         constants.roll[1] = sinf(roll);
+        constants.mode[0] = ringOnly ? 1.f : 0.f;
 
         // Quad views: the sharp inner image goes over the wide one, where the runtime puts it in the headset.
         ID3D11ShaderResourceView* focusView = nullptr;
@@ -268,8 +269,8 @@ namespace stream_mirror {
         _immediate->ExecuteCommandList(commands.Get(), TRUE);
         _immediate->Flush(); // Readers are on other devices: what they are told about must already be on its way.
         publisher.publish(slot, eye, ring != nullptr, gazeU, gazeV);
-        LogFewTimes(_logRender, 3, "renderer: frame -> slot %d, crop %d,%d %d x %d of %d x %d -> %u x %u, ring %s", slot.index, crop.x, crop.y,
-                    crop.width, crop.height, source.fullWidth(), source.fullHeight(), outWidth, outHeight, ring ? "yes" : "no");
+        LogFewTimes(_logRender, 3, "renderer: frame -> slot %d, crop %d,%d %d x %d of %d x %d -> %u x %u, ring %s%s", slot.index, crop.x, crop.y,
+                    crop.width, crop.height, source.fullWidth(), source.fullHeight(), outWidth, outHeight, ring ? "yes" : "no", ringOnly ? " (ring only)" : "");
         if (focusView) {
             LogFewTimes(_logFocus, 3, "renderer: quad views - the wide image is %d x %d, the inner one %d x %d over %.0f..%.0f %% across and %.0f..%.0f %% down",
                         source.width, source.height, source.focus->width, source.focus->height, source.focusWindow[0] * 100.f, source.focusWindow[2] * 100.f,

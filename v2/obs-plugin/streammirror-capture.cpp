@@ -225,7 +225,9 @@ namespace {
             if (!s.textures[slot]) Info("shared texture %ld could not be opened", slot);
         }
         if (s.textures[slot]) {
-            gs_effect_t* effect = obs_get_base_effect(OBS_EFFECT_OPAQUE);
+            // The default effect keeps the picture's alpha: 1 everywhere for the game picture, and the see-through
+            // ground of the ring alone (output_ring_only, premultiplied as OBS composites sources).
+            gs_effect_t* effect = obs_get_base_effect(OBS_EFFECT_DEFAULT);
             while (gs_effect_loop(effect, "Draw")) obs_source_draw(s.textures[slot], 0, 0, 0, 0, false);
             s.shownFrame = frames.frameNumber;
         }

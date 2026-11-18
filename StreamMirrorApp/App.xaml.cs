@@ -120,6 +120,8 @@ public partial class App : Application
                         $"tab{i}: window {window.ActualWidth:0}x{window.ActualHeight:0}, root {root.ActualWidth:0}, tabs {window.Tabs.ActualWidth:0}, preview {window.RingPanel.Visibility} {window.RingPanel.ActualWidth:0}, column {window.PreviewColumn.ActualWidth:0} ({window.PreviewColumn.Width}), inner grid {((FrameworkElement)window.Tabs.Parent).ActualWidth:0}, tabs margin {window.Tabs.Margin}\n");
                     Snapshot($"tab{i}");
                 }
+                // A narrow window's drawer, open over the last page.
+                window.SnapshotDrawer(Snapshot);
                 // STREAMMIRROR_SCREENSHOT_TOUR=1: the guided tour, one picture per step.
                 if (Environment.GetEnvironmentVariable("STREAMMIRROR_SCREENSHOT_TOUR") == "1")
                 {

@@ -3,6 +3,8 @@
 ## Unreleased
 
 - **Raw gaze over OSC works with the Pimax Dream Air**: SRanibro sends eye openness -1 ("not reported") for it, and the helper read that as both eyes shut, so the ring never showed. Openness below 0 now counts as open.
+- **Smaller windows keep everything usable**: the app now scales down instead of cutting things off. The page list shrinks to icons in a medium window and opens from a menu in a narrow one. The quick switches move to a bar along the top, with their names while they fit and their icons when they don't. The Mirror and Status pages keep the settings beside the picture down to a smaller window. In a narrow window the Mirror page's Reload, New and Save as... move into the "..." menu, and its picture buttons show icons.
+- **Ring only (see-through)**: a new switch on the Picture card of the Mirror page. OBS gets the ring alone on a see-through picture instead of the VR picture, to lay over a capture of the game's window on your monitor. Lining the two up is up to you: set the crop box to what the window shows, then size and place the source in OBS. Live.
 
 ## 3.0.0 - 2026-11-02
 

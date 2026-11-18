@@ -4,13 +4,14 @@
         Title="StreamMirror VR" Width="1100" Height="720" MinWidth="460" MinHeight="360"
         WindowStartupLocation="CenterScreen" FontSize="14" UseLayoutRounding="True"
         Background="{StaticResource WindowBack}" FontFamily="{StaticResource BodyFont}" Icon="Assets/icon.ico">
-    <Grid>
+    <Grid x:Name="Root">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- The rail: the pages, and at its foot the mark of the last save and the version. In a small window it narrows to the icons. -->
+        <!-- The rail: the pages, and at its foot the mark of the last save and the version. The window's width picks its
+             form (MainWindow.Shell.cs): names, icons alone, or - in a narrow window - a drawer opened from the top bar. -->
         <Border x:Name="Rail" Background="{StaticResource Rail}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0" Padding="10,14,10,10">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,2,8,18">
@@ -30,14 +31,36 @@
             </DockPanel>
         </Border>
 
-        <Grid Grid.Column="1">
+        <Grid x:Name="ContentArea" Grid.Column="1">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
+            <!-- The top bar, while the rail is icons or a drawer: the menu (a narrow window), the page's name, the quick
+                 switches (they move here from the rail, so they stay one click away) and the save mark. -->
+            <Border x:Name="TopBar" Visibility="Collapsed" Background="{StaticResource Rail}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="6,5,10,5">
+                <DockPanel LastChildFill="True">
+                    <Button x:Name="MenuButton" DockPanel.Dock="Left" Style="{StaticResource BarButton}" Click="OnMenuButton"
+                            AutomationProperties.Name="Pages" ToolTip="Pages">
+                        <Grid>
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE700;" FontSize="16" />
+                            <Ellipse x:Name="MenuDot" Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-5,0" />
+                        </Grid>
+                    </Button>
+                    <StackPanel x:Name="TopSaveMark" DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0" Background="Transparent" VerticalAlignment="Center">
+                        <TextBlock x:Name="TopSaveMarkIcon" Style="{StaticResource Icon}" FontSize="12" Text="&#xE73E;" Foreground="{StaticResource Muted}" />
+                        <TextBlock x:Name="TopSaveMarkText" Style="{StaticResource Hint}" FontSize="12" Margin="6,0,0,0" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel x:Name="QuickBar" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" />
+                    <TextBlock x:Name="TopTitle" FontFamily="{StaticResource DisplayFont}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"
+                               Margin="8,0,8,0" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+            </Border>
+
             <!-- Shown when a newer release exists. It only links to the release page; nothing is downloaded by the app. -->
-            <Border x:Name="UpdateBanner" Visibility="Collapsed" Margin="20,16,20,0" Padding="14,10"
+            <Border x:Name="UpdateBanner" Grid.Row="1" Visibility="Collapsed" Margin="20,16,20,0" Padding="14,10"
                     Background="#1A2C5A" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="10">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -62,7 +85,7 @@
 
             <!-- The pages and the ring preview share this inner grid, so nothing else can influence the preview column's width.
                  The preview stands beside the ring's pages, or - in a narrow window - as a strip under them (see UpdatePanels). -->
-            <Grid Grid.Row="1">
+            <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TabsColumn" Width="*" />
                 <ColumnDefinition x:Name="PreviewColumn" Width="Auto" />
@@ -193,18 +216,21 @@
                     <StackPanel x:Name="MirrorHeader" DockPanel.Dock="Top">
                     <!-- The page's name, and the profile: a saved framing, applied by itself when its game starts. -->
                     <WrapPanel DockPanel.Dock="Top">
-                            <TextBlock Style="{StaticResource PageTitle}" Text="Mirror" Margin="0,0,18,0" />
+                            <TextBlock x:Name="MirrorTitle" Style="{StaticResource PageTitle}" Text="Mirror" Margin="0,0,18,0" />
                             <TextBlock Text="Profile" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,6,0"
                                        ToolTip="A saved framing: crop box, follow, steadying.&#10;&#10;Give it a game's name and the mirror applies it at that game's start." />
                             <ComboBox x:Name="CropProfile" MinWidth="190" Margin="0,2,6,2" VerticalAlignment="Center" DisplayMemberPath="Label" />
                             <Button x:Name="CropProfileSave" Content="Save" Margin="0,2,6,2" Click="OnProfileSave"
                                     ToolTip="Keeps the current framing in this profile" />
-                            <Button x:Name="CropProfileRevert" Content="Reload" Margin="0,2,6,2" Click="OnProfileRevert" Visibility="Collapsed" ToolTipService.ShowOnDisabled="True"
-                                    ToolTip="Drops the unsaved changes: back to this profile as saved" />
-                            <Button x:Name="CropProfileNew" Content="New" Margin="0,2,6,2" Click="OnProfileNew"
-                                    ToolTip="A new profile that starts from the default framing. The profile you have open stays as it is." />
-                            <Button x:Name="CropProfileSaveAs" Content="Save as..." Margin="0,2,6,2" Click="OnProfileSaveAs"
-                                    ToolTip="Saves the current framing as a new profile. The profile you have open keeps its saved framing." />
+                            <!-- In a narrow window these three go into the "..." menu (LayOutMirrorPage). -->
+                            <StackPanel x:Name="CropProfileActions" Orientation="Horizontal">
+                                <Button x:Name="CropProfileRevert" Content="Reload" Margin="0,2,6,2" Click="OnProfileRevert" Visibility="Collapsed" ToolTipService.ShowOnDisabled="True"
+                                        ToolTip="Drops the unsaved changes: back to this profile as saved" />
+                                <Button x:Name="CropProfileNew" Content="New" Margin="0,2,6,2" Click="OnProfileNew"
+                                        ToolTip="A new profile that starts from the default framing. The profile you have open stays as it is." />
+                                <Button x:Name="CropProfileSaveAs" Content="Save as..." Margin="0,2,6,2" Click="OnProfileSaveAs"
+                                        ToolTip="Saves the current framing as a new profile. The profile you have open keeps its saved framing." />
+                            </StackPanel>
                             <StackPanel x:Name="CropProfileNamePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,6,0">
                                 <TextBox x:Name="CropProfileName" Width="140" MinWidth="0" MaxLength="80" Margin="0,2,4,2" VerticalAlignment="Center" ToolTip="Name of the profile. Enter saves, Esc cancels." />
                                 <Button Content="OK" Margin="0,2,0,2" Click="OnProfileSaveConfirm" />
@@ -214,6 +240,10 @@
                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE712;" FontSize="12" />
                                 <Button.ContextMenu>
                                     <ContextMenu>
+                                        <MenuItem x:Name="CropProfileRevertItem" Header="Reload" Click="OnProfileRevert" />
+                                        <MenuItem x:Name="CropProfileNewItem" Header="New" Click="OnProfileNew" />
+                                        <MenuItem x:Name="CropProfileSaveAsItem" Header="Save as..." Click="OnProfileSaveAs" />
+                                        <Separator x:Name="CropProfileMenuSeparator" />
                                         <MenuItem x:Name="CropProfileRename" Header="Rename..." Click="OnProfileRename" />
                                         <MenuItem x:Name="CropProfileDelete" Header="Delete..." Click="OnProfileDelete" />
                                     </ContextMenu>
@@ -289,13 +319,19 @@
                         <DockPanel x:Name="MirrorPictureArea" Margin="0,0,12,0">
                             <!-- The row above the picture: what takes a picture, and what is drawn over it. -->
                             <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-                                <Button x:Name="CropRefresh" Content="Refresh picture" ToolTip="Asks the running game for a new picture of the mirror image" Margin="0,2,6,2" Click="OnCropRefresh" />
+                                <Button x:Name="CropRefresh" ToolTip="Asks the running game for a new picture of the mirror image" Margin="0,2,6,2" Click="OnCropRefresh"
+                                        AutomationProperties.Name="Refresh picture">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="CropRefreshIcon" Style="{StaticResource Icon}" Text="&#xE72C;" FontSize="13" Visibility="Collapsed" />
+                                        <TextBlock x:Name="CropRefreshLabel" Text="Refresh picture" />
+                                    </StackPanel>
+                                </Button>
                                 <!-- The picture taken the way you sit: from inside the headset, by key or by a countdown (the arrow beside it). -->
-                                <Button x:Name="CropCapture" Style="{DynamicResource AccentButtonStyle}" Margin="0,2,2,2" Click="OnCaptureArm"
+                                <Button x:Name="CropCapture" Style="{DynamicResource AccentButtonStyle}" Margin="0,2,2,2" Click="OnCaptureArm" AutomationProperties.Name="Capture from headset"
                                         ToolTip="Takes the picture from inside the headset.&#10;&#10;**How:** arm this, put the headset on, sit the way you play, look straight ahead and press the key.&#10;&#10;It takes one picture of each eye and switches itself off. The app keeps the picture until you press Refresh picture.">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE722;" FontSize="13" Margin="0,0,7,0" />
-                                        <TextBlock Text="Capture from headset" />
+                                        <TextBlock x:Name="CropCaptureIcon" Style="{StaticResource Icon}" Text="&#xE722;" FontSize="13" Margin="0,0,7,0" />
+                                        <TextBlock x:Name="CropCaptureLabel" Text="Capture from headset" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="CaptureOptionsButton" Margin="0,2,6,2" Padding="8,5" Click="OnCaptureOptions" AutomationProperties.Name="Capture options: the key and the countdown">
@@ -314,16 +350,21 @@
                                     </Border>
                                 </Popup>
                                 <!-- What is drawn over the picture: each help can be switched off to see the picture plain. -->
-                                <Button x:Name="ShowMenuButton" Margin="0,2,0,2" Click="OnShowMenu" ToolTip="The helps drawn over the picture: switch each on or off">
+                                <Button x:Name="ShowMenuButton" Margin="0,2,0,2" Click="OnShowMenu" ToolTip="The helps drawn over the picture: switch each on or off" AutomationProperties.Name="Show">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource Icon}" Text="&#xE890;" FontSize="13" Margin="0,0,7,0" />
-                                        <TextBlock Text="Show" />
+                                        <TextBlock x:Name="ShowMenuIcon" Style="{StaticResource Icon}" Text="&#xE890;" FontSize="13" Margin="0,0,7,0" />
+                                        <TextBlock x:Name="ShowMenuLabel" Text="Show" />
                                         <TextBlock Style="{StaticResource Icon}" Text="&#xE70D;" FontSize="9" Margin="7,2,0,0" />
                                     </StackPanel>
                                 </Button>
                                 <!-- The mirror window: open or close it from here; its settings are in the Mirror window section. -->
-                                <Button x:Name="MirrorToggle" Content="Open mirror window" Margin="6,2,0,2" Click="OnMirrorToggle"
-                                        ToolTip="A window with the mirror picture, cropped and with the ring, for OBS Window Capture or Discord.&#10;&#10;Its monitor, size and rate are in the Mirror window section." />
+                                <Button x:Name="MirrorToggle" Margin="6,2,0,2" Click="OnMirrorToggle" AutomationProperties.Name="Open mirror window"
+                                        ToolTip="A window with the mirror picture, cropped and with the ring, for OBS Window Capture or Discord.&#10;&#10;Its monitor, size and rate are in the Mirror window section.">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="MirrorToggleIcon" Style="{StaticResource Icon}" Text="&#xE8A7;" FontSize="13" Visibility="Collapsed" />
+                                        <TextBlock x:Name="MirrorToggleLabel" Text="Open mirror window" />
+                                    </StackPanel>
+                                </Button>
                                 <Popup x:Name="ShowMenu" PlacementTarget="{Binding ElementName=ShowMenuButton}" Placement="Bottom" VerticalOffset="4" StaysOpen="False" AllowsTransparency="True">
                                     <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,8,14,8">
                                         <StackPanel>
@@ -897,6 +938,11 @@
                 </Grid>
             </Border>
             </Grid>
+        </Grid>
+        <!-- The drawer of a narrow window: the rail itself moves in here (MainWindow.Shell.cs), over a shade that closes it. -->
+        <Grid x:Name="DrawerLayer" Grid.ColumnSpan="2" Panel.ZIndex="50" Visibility="Collapsed">
+            <Border x:Name="DrawerShade" Background="#A6050812" MouseDown="OnDrawerShade" />
+            <Border x:Name="DrawerHost" HorizontalAlignment="Left" Width="260" />
         </Grid>
         <!-- The guided tour (MainWindow.Tour.cs): over everything while it runs. -->
         <Canvas x:Name="TourLayer" Grid.ColumnSpan="2" Panel.ZIndex="100" Visibility="Collapsed" />

@@ -28,8 +28,8 @@ public partial class MainWindow
 
     private void BuildOutputAndProfilesUi()
     {
-        // The three settings the mirror itself reads: ordinary rows, placed here rather than on a tab of their own.
-        foreach (var key in new[] { "picture_source", "show_panels", "mirror_eye", "output_max_side", "output_fps" })
+        // The settings the mirror itself reads: ordinary rows, placed here rather than on a tab of their own.
+        foreach (var key in new[] { "picture_source", "show_panels", "mirror_eye", "output_max_side", "output_fps", "output_ring_only" })
         {
             var def = Settings.All.First(d => d.Key == key);
             var row = (Grid)BuildRow(def);
@@ -325,6 +325,13 @@ public partial class MainWindow
     private void OnProfileMore(object sender, RoutedEventArgs e)
     {
         if (CropProfileMore.ContextMenu is not { } menu) return;
+        // In a narrow window Reload, New and Save as... live in this menu, as their buttons do in a wide one.
+        var inMenu = CropProfileActions.Visibility != Visibility.Visible;
+        CropProfileRevertItem.Visibility = inMenu && CropProfileRevert.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+        CropProfileRevertItem.IsEnabled = CropProfileRevert.IsEnabled;
+        CropProfileNewItem.Visibility = CropProfileSaveAsItem.Visibility = CropProfileMenuSeparator.Visibility = inMenu ? Visibility.Visible : Visibility.Collapsed;
+        CropProfileNewItem.IsEnabled = CropProfileNew.IsEnabled;
+        CropProfileSaveAsItem.IsEnabled = CropProfileSaveAs.IsEnabled;
         menu.PlacementTarget = CropProfileMore;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
         menu.IsOpen = true;

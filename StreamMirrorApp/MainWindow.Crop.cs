@@ -66,30 +66,53 @@ public partial class MainWindow
         return row;
     }
 
-    private const double MirrorSideNeedsWidth = 780, MirrorSideWidth = 410;
+    /// <summary>
+    /// Page widths (the page's scroll area) from which the settings stand beside the picture, and under which the page
+    /// goes narrow; the settings column's width follows the page between its least and most.
+    /// </summary>
+    private const double MirrorSideFromWidth = 680, MirrorNarrowBelowWidth = 620, MirrorSideLeast = 292, MirrorSideMost = 440;
     private long _showMenuClosedAt;
 
     /// <summary>
     /// The Mirror page: the picture with its tools, and the settings. Side by side, the two take the height the window
     /// has left under the page's head and the settings scroll on their own; when the head leaves too little (the
     /// explanation open in a small window), they keep a usable height and the page scrolls. One under the other, the
-    /// page scrolls as a whole.
+    /// picture takes the window's height under the head and the settings follow it; the page scrolls as a whole.
+    /// Narrow, the head and the picture's tools keep everything but give up words: Reload, New and Save as... go into
+    /// the "..." menu, the tools show their icons (the tooltips keep the words). The page's name is the shell's (see UpdatePageTitles).
     /// </summary>
     private void LayOutMirrorPage()
     {
-        var beside = MirrorScroll.ActualWidth >= MirrorSideNeedsWidth;
-        const double pageMargins = 30, leastHeight = 470;
-        MirrorBody.Height = beside ? Math.Max(MirrorScroll.ActualHeight - pageMargins - MirrorHeader.ActualHeight, leastHeight) : double.NaN;
+        var width = MirrorScroll.ActualWidth;
+        if (width <= 0) return;
+        var beside = width >= MirrorSideFromWidth;
+        const double pageMargins = 30, leastHeight = 330, pageSides = 56;
+        var headRoom = MirrorScroll.ActualHeight - pageMargins - MirrorHeader.ActualHeight;
+        MirrorBody.Height = beside ? Math.Max(headRoom, leastHeight) : double.NaN;
         MirrorSideScroll.VerticalScrollBarVisibility = beside ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
-        MirrorSideColumn.Width = new GridLength(beside ? MirrorSideWidth : 0);
+        MirrorSideColumn.Width = new GridLength(beside ? Math.Clamp((width - pageSides) * 0.34, MirrorSideLeast, MirrorSideMost) : 0);
         MirrorSide.Margin = new Thickness(0, 0, beside ? 10 : 0, 0); // clear of the column's scroll bar
         Grid.SetColumnSpan(MirrorPictureArea, beside ? 1 : 2);
         MirrorPictureArea.Margin = beside ? new Thickness(0, 0, 12, 0) : new Thickness(0, 0, 0, 12);
-        MirrorPictureArea.MinHeight = beside ? 0 : 440;
+        MirrorPictureArea.Height = beside ? double.NaN : Math.Max(headRoom, leastHeight - 70);
         Grid.SetRow(MirrorSideScroll, beside ? 0 : 1);
         Grid.SetRowSpan(MirrorSideScroll, beside ? 2 : 1);
         Grid.SetColumn(MirrorSideScroll, beside ? 1 : 0);
         Grid.SetColumnSpan(MirrorSideScroll, beside ? 1 : 2);
+
+        var narrow = width < MirrorNarrowBelowWidth;
+        var words = narrow ? Visibility.Collapsed : Visibility.Visible;
+        var icon = narrow ? Visibility.Visible : Visibility.Collapsed;
+        CropProfileActions.Visibility = words;
+        CropProfileMore.ToolTip = narrow ? "Reload, New, Save as..., Rename, Delete" : "Rename or delete this profile";
+        CropRefreshLabel.Visibility = CropCaptureLabel.Visibility = ShowMenuLabel.Visibility = MirrorToggleLabel.Visibility = words;
+        CropRefreshIcon.Visibility = MirrorToggleIcon.Visibility = icon;
+        CropCaptureIcon.Margin = ShowMenuIcon.Margin = new Thickness(0, 0, narrow ? 0 : 7, 0);
+        CropFrameBorder.MinHeight = narrow ? 150 : 240;
+        // The save switch above the profile's note, so the note has the page's width and stays short.
+        DockPanel.SetDock(CropProfileAutoSave, narrow ? Dock.Top : Dock.Right);
+        CropProfileAutoSave.Margin = narrow ? new Thickness(0, 0, 0, 4) : new Thickness(12, 0, 0, 0);
+        CropProfileAutoSave.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
     }
 
     private void OnShowMenu(object sender, RoutedEventArgs e)
