@@ -9,7 +9,8 @@ namespace StreamMirror;
 /// Undo and redo (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z) of the settings, page by page: Ctrl+Z takes back the last change made
 /// on the page you look at, so nothing changes out of sight. One step is one gesture - a drag of the crop box or a
 /// slider, a click, a key press, a run of mouse-wheel ticks - however many values it moved. Typing in a text box keeps
-/// its own undo. Choosing another crop profile starts afresh.
+/// its own undo. Choosing another crop profile starts afresh. The Desktop ring's placement of the headset's picture is
+/// undone the same way, though it is no setting.
 /// </summary>
 public partial class MainWindow
 {
@@ -17,6 +18,7 @@ public partial class MainWindow
     {
         public TabItem? Page { get; } = page;
         public Dictionary<string, (string Before, string After)> Changes { get; } = new(StringComparer.Ordinal);
+        public (RingPlacement Before, RingPlacement After)? Placement { get; set; }
     }
 
     private readonly List<UndoStep> _undo = [], _redo = [];
@@ -53,6 +55,21 @@ public partial class MainWindow
         if (_undoing || _loading) return;
         before ??= DefaultOf(key);
         if (before == after) return;
+        var step = OpenUndoStep();
+        step.Changes[key] = step.Changes.TryGetValue(key, out var earlier) ? (earlier.Before, after) : (before, after);
+    }
+
+    /// <summary>The Desktop ring's headset picture is about to move: it joins the gesture's step.</summary>
+    private void RecordPlacementUndo(RingPlacement before, RingPlacement after)
+    {
+        if (_undoing || before == after) return;
+        var step = OpenUndoStep();
+        step.Placement = step.Placement is { } earlier ? (earlier.Before, after) : (before, after);
+    }
+
+    /// <summary>The gesture's step, begun if it is the first change of the gesture. A new change drops the redo steps.</summary>
+    private UndoStep OpenUndoStep()
+    {
         if (_undoOpen == null)
         {
             _undoOpen = new UndoStep(Tabs.SelectedItem as TabItem);
@@ -60,7 +77,7 @@ public partial class MainWindow
             if (_undo.Count > 200) _undo.RemoveAt(0);
         }
         _redo.Clear();
-        _undoOpen.Changes[key] = _undoOpen.Changes.TryGetValue(key, out var earlier) ? (earlier.Before, after) : (before, after);
+        return _undoOpen;
     }
 
     private static string DefaultOf(string key) => Settings.All.FirstOrDefault(d => d.Key == key)?.Default ?? "";
@@ -86,7 +103,8 @@ public partial class MainWindow
         from.RemoveAt(index);
         to.Add(step);
         _undoOpen = null;
-        ApplyAsSetting(step.Changes.ToDictionary(c => c.Key, c => back ? c.Value.Before : c.Value.After));
+        if (step.Changes.Count > 0) ApplyAsSetting(step.Changes.ToDictionary(c => c.Key, c => back ? c.Value.Before : c.Value.After));
+        if (step.Placement is { } placement) ApplyRingPlacement(back ? placement.Before : placement.After);
         return true;
     }
 

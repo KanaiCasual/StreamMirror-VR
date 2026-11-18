@@ -46,6 +46,7 @@ public partial class MainWindow : Window
         BuildCropUi();
         BuildMirrorUi();
         BuildCoverUi();
+        BuildDesktopRingUi();
         BuildQuickSwitches();
         BuildShell();
         BuildExplanations();
@@ -120,7 +121,7 @@ public partial class MainWindow : Window
     // Glyphs of Segoe Fluent Icons that Segoe MDL2 Assets (Windows 10) has too.
     private static readonly Dictionary<string, string> PageIcons = new()
     {
-        ["Status"] = "\uE9D9", ["Mirror"] = "\uE7A8", ["Gaze"] = "\uE890", ["Ring"] = "\uEA3A",
+        ["Status"] = "\uE9D9", ["Mirror"] = "\uE7A8", ["Gaze"] = "\uE890", ["Ring"] = "\uEA3A", ["Desktop ring"] = "\uE7F8",
         ["Desktop cover"] = "\uE7F4", ["Quad Views"] = "\uE8A9", ["Layers"] = "\uE81E", ["About"] = "\uE946",
     };
 
@@ -155,7 +156,7 @@ public partial class MainWindow : Window
     {
         // The pages in their order, with a heading where a group begins: what goes to the stream comes first (Status,
         // Mirror, Desktop cover); the ring's pages stand together; then what belongs to the headset; About last.
-        TabItem[] order = [StatusTab, CropTab, CoverTab, GazeTab, LookTab, QuadViewsTab, LayersTab, AboutTab];
+        TabItem[] order = [StatusTab, CropTab, CoverTab, GazeTab, LookTab, DesktopRingTab, QuadViewsTab, LayersTab, AboutTab];
         var items = new List<NavItem>();
         foreach (var tab in order.Concat(Tabs.Items.Cast<TabItem>().Except(order)).Where(t => _navQuadViews || !ReferenceEquals(t, QuadViewsTab)))
         {
@@ -1036,6 +1037,7 @@ public partial class MainWindow : Window
         if (key.StartsWith("crop_follow", StringComparison.Ordinal)) DrawCrop();
         if (key.StartsWith("stabilize", StringComparison.Ordinal)) ApplyCropMargin(moveBox: true);
         if (key == "stabilize_tilt" || key == "output_max_side" || key == "output_ring_only") DrawCrop();
+        if (key == "output_ring_only") UpdateDesktopRingInUse();
         if (!_previewTimer.IsEnabled) _previewTimer.Start();
         _saveTimer.Stop(); _saveTimer.Start();
         _ringPresetsChanged?.Invoke();

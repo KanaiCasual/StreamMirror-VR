@@ -240,7 +240,9 @@ namespace stream_mirror {
         if (given.gaze.valid) _headsetGazeAt = gazeNow;
         const bool headsetGaze = _headsetGazeAt.time_since_epoch().count() != 0 && gazeNow - _headsetGazeAt < std::chrono::seconds(2);
         _publisher.setGazeSupport(headsetGaze ? 1 : _handedGazeUsed ? 3 : given.gazeSupport == 1 ? 0 : given.gazeSupport);
-        const int eye = s.eye == 0 ? 0 : 1;
+        // The ring alone, lined up with the game's desktop window: that window's eye and box (see Settings::DesktopBox).
+        const bool desktopBox = s.outputRingOnly && s.desktopBox.valid;
+        const int eye = s.mirroredEye();
         const SourceImage* image = input.images[eye];
         const EyeView& view = input.views[eye];
         if (!image || !view.valid || image->fullWidth() < 64 || image->fullHeight() < 64) return output;
@@ -257,7 +259,17 @@ namespace stream_mirror {
 
         const CropRect placed = Framing::placedBox(s, view.width, view.height);
         _framing.update(s, view, placed, haveTarget, _ring.hasPosition(), _ring.position()[1], dtMs);
-        const CropRect crop = _framing.current();
+        CropRect crop = _framing.current();
+        float roll = _framing.roll();
+        if (desktopBox) {
+            // Fixed where the window is: the game's desktop picture neither follows the gaze nor steadies nor levels.
+            const float height = s.desktopBox.height * view.height, width = height * s.desktopBox.aspect;
+            crop.x = static_cast<int32_t>(std::lround(s.desktopBox.centerX * view.width - width / 2));
+            crop.y = static_cast<int32_t>(std::lround(s.desktopBox.centerY * view.height - height / 2));
+            crop.width = std::max<int32_t>(2, static_cast<int32_t>(std::lround(width)));
+            crop.height = std::max<int32_t>(2, static_cast<int32_t>(std::lround(height)));
+            roll = 0.f;
+        }
 
         // The calibration marker: where the ring is, in each eye, as the headset should show it.
         if (s.headsetMarker && input.gaze.valid) {
@@ -338,7 +350,7 @@ namespace stream_mirror {
                 ring.stretch = rx / ry;
             }
         }
-        output.rendered = _renderer.render(_publisher, *image, crop, outWidth, outHeight, drawRing ? &ring : nullptr, eye, _framing.roll(), s.outputRingOnly);
+        output.rendered = _renderer.render(_publisher, *image, crop, outWidth, outHeight, drawRing ? &ring : nullptr, eye, roll, s.outputRingOnly);
         return output;
     }
 

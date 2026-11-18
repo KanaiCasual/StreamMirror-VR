@@ -1061,7 +1061,7 @@ namespace stream_mirror::layer {
                         any = g->panels.draw(images[eye], input.views[eye].fov, panel) || any;
                         if (innerToo) g->panels.draw(inner[eye], input.views[eye].fov, panel, images[eye].focusWindow);
                     }
-                    if (any && eye == g->pipeline.settings().eye) drawn++;
+                    if (any && eye == g->pipeline.settings().mirroredEye()) drawn++;
                 }
             }
             if (drawn != g->lastPanelCount) {
@@ -1102,7 +1102,7 @@ namespace stream_mirror::layer {
         // are drawn onto a black eye image where the headset shows them, and that goes out as the eye's picture. The image
         // has the size of the eye image last seen (at most 4096 on its long side), so the crop stays where it was.
         void MirrorFlatFrame(const XrFrameEndInfo* frame, const std::vector<const XrCompositionLayerBaseHeader*>& layers) {
-            const int mirrored = g->pipeline.settings().eye == 0 ? 0 : 1;
+            const int mirrored = g->pipeline.settings().mirroredEye();
             const bool snapshotDue = g->pipeline.snapshotDue();
             // The eyes at the frame's time, in the first screen's space: a stand-in for the world the panels go by.
             const XrCompositionLayerBaseHeader* first = layers.front();
@@ -1226,7 +1226,7 @@ namespace stream_mirror::layer {
             // Quad views (Varjo's scheme; Pimax's runtime offers it too): views 0 and 1 are the eyes' wide, coarse images,
             // 2 and 3 the sharp inner ones the runtime lays over part of them. The mirror lays them the same way.
             const bool quad = g->viewConfiguration == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_QUAD_VARJO && projection->viewCount >= 4;
-            const int mirrored = g->pipeline.settings().eye == 0 ? 0 : 1;
+            const int mirrored = g->pipeline.settings().mirroredEye();
             const bool snapshotDue = g->pipeline.snapshotDue();
             LogLayout(frame, projection);
             // What the next hand-backs copy: the slices of the views the mirror reads - the mirrored eye's (wide and inner),

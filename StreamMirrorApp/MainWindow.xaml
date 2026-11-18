@@ -582,6 +582,111 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+            <!-- The ring alone over the game's own desktop window: the switch, lining the headset's picture up with that window
+                 (MainWindow.DesktopRing.cs), and the saved alignments, per game and a default (desktop-ring.ini). -->
+            <TabItem x:Name="DesktopRingTab" Header="Desktop ring">
+                <ScrollViewer x:Name="DesktopRingScroll" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="{StaticResource PageMargin}">
+                        <TextBlock Style="{StaticResource PageTitle}" Text="Desktop ring" Margin="0,0,0,10" />
+                        <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,12" MaxWidth="760" HorizontalAlignment="Left"
+                                   Text="For streaming the game's own window from your monitor: OBS gets the ring alone, and you lay it over a capture of that window. The window and the headset show different parts of the view, so line them up once here." />
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource CardTitle}" Text="What OBS gets" />
+                                <StackPanel x:Name="PanelDesktopRingSwitch" />
+                                <TextBlock x:Name="DesktopRingInUse" Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource CardTitle}" Text="Line up with the game's window" />
+                                <TextBlock Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"
+                                           Text="Run the game in a window or borderless, not exclusive full screen. Press Capture, put the headset on, look ahead and hold still. At zero the app takes a picture of each eye and one of the game's window." />
+                                <WrapPanel Margin="0,0,0,4">
+                                    <Button x:Name="DesktopRingCapture" Style="{DynamicResource AccentButtonStyle}" Margin="0,0,8,6" Click="OnDesktopRingCapture"
+                                            AutomationProperties.Name="Capture"
+                                            ToolTip="Counts down, then takes a picture of each eye and one of the game's window at the same moment.&#10;&#10;The headset shows the countdown too.">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource Icon}" Text="&#xE722;" FontSize="13" Margin="0,0,7,0" />
+                                            <TextBlock Text="Capture" />
+                                        </StackPanel>
+                                    </Button>
+                                    <ComboBox x:Name="DesktopRingTimer" Width="150" Margin="0,0,8,6" VerticalAlignment="Center"
+                                              ToolTip="The time to put the headset on before the pictures are taken." />
+                                    <Button x:Name="DesktopRingCancel" Content="Cancel" Margin="0,0,8,6" Visibility="Collapsed" Click="OnDesktopRingCancel" />
+                                </WrapPanel>
+                                <TextBlock x:Name="DesktopRingStatus" TextWrapping="Wrap" Margin="0,0,0,10">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <Trigger Property="Text" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <Border x:Name="DesktopRingStageFrame" Background="{StaticResource Picture}" CornerRadius="8" ClipToBounds="True" Height="360">
+                                    <Grid>
+                                        <TextBlock x:Name="DesktopRingEmpty" Style="{StaticResource Hint}" TextWrapping="Wrap" TextAlignment="Center" Margin="24"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Text="No pictures yet. Start the game, then press Capture." />
+                                        <Canvas x:Name="DesktopRingStage" ClipToBounds="True" Focusable="True" Background="Transparent" Cursor="SizeAll"
+                                                FocusVisualStyle="{x:Null}" AutomationProperties.Name="Alignment">
+                                            <Image x:Name="DesktopRingWindowImage" Stretch="Fill" IsHitTestVisible="False" />
+                                            <Image x:Name="DesktopRingEyeImage" Stretch="Fill" IsHitTestVisible="False" />
+                                            <Image x:Name="DesktopRingDiffImage" Stretch="Fill" IsHitTestVisible="False" Visibility="Collapsed" />
+                                            <Rectangle x:Name="DesktopRingWindowEdge" Stroke="{StaticResource Ice}" StrokeThickness="1" StrokeDashArray="4 3" IsHitTestVisible="False" />
+                                        </Canvas>
+                                    </Grid>
+                                </Border>
+                                <WrapPanel x:Name="DesktopRingTools" Margin="0,10,0,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,18,6" VerticalAlignment="Center"
+                                                ToolTip="The eye laid over the window. Choose the one that matches it best: games mirror one eye to the monitor.">
+                                        <RadioButton x:Name="DesktopRingEyeLeft" GroupName="DesktopRingEye" Content="Left eye" MinWidth="0" Margin="0,0,12,0" />
+                                        <RadioButton x:Name="DesktopRingEyeRight" GroupName="DesktopRingEye" Content="Right eye" MinWidth="0" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,18,6" VerticalAlignment="Center">
+                                        <TextBlock Text="See-through" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <Slider x:Name="DesktopRingOpacity" Width="140" Minimum="0" Maximum="100" SmallChange="5" LargeChange="10" VerticalAlignment="Center"
+                                                ToolTip="How strongly the headset's picture is drawn over the window's." />
+                                    </StackPanel>
+                                    <CheckBox x:Name="DesktopRingDifference" Content="Difference" MinWidth="0" Margin="0,0,18,6" VerticalAlignment="Center"
+                                              ToolTip="Shows how the two pictures differ, inside the window. Lined up, the picture goes dark; edges that do not meet show bright." />
+                                    <Button x:Name="DesktopRingFit" Content="Start again" Margin="0,0,8,6" Click="OnDesktopRingFit"
+                                            ToolTip="Lays the headset's picture over the window again, as wide as the window." />
+                                </WrapPanel>
+                                <TextBlock x:Name="DesktopRingKeysHint" Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"
+                                           Text="Drag to move the headset's picture, mouse wheel to size it (Shift for fine steps)." />
+                                <WrapPanel>
+                                    <Button x:Name="DesktopRingSaveGame" Style="{DynamicResource AccentButtonStyle}" Margin="0,0,8,6" Click="OnDesktopRingSaveGame" />
+                                    <Button x:Name="DesktopRingSaveDefault" Content="Save for every game" Margin="0,0,8,6" Click="OnDesktopRingSaveDefault"
+                                            ToolTip="The alignment for each game that has none of its own.&#10;&#10;**Live:** a running game takes it at once." />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                        <Grid x:Name="DesktopRingCards" Margin="0,0,-10,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource Card}" Margin="0,0,10,10">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="Saved" />
+                                    <StackPanel x:Name="DesktopRingSaved" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="DesktopRingObsCard" Grid.Column="1" Style="{StaticResource Card}" Margin="0,0,10,10">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="In OBS" />
+                                    <TextBlock Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap"
+                                               Text="1. Add a Window Capture of the game, with Client area ticked.&#10;2. Put the StreamMirror VR source above it.&#10;3. Select each one and press Ctrl+F (Fit to screen).&#10;&#10;Both have the window's shape, so they cover each other exactly." />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
             <TabItem x:Name="CoverTab" Header="Desktop cover">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="{StaticResource PageMargin}">

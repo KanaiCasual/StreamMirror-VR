@@ -97,10 +97,60 @@ namespace stream_mirror {
         return folder.empty() ? std::wstring() : folder + L"\\crop-profiles.ini";
     }
 
+    std::wstring DesktopRingFilePath() {
+        wchar_t overridden[MAX_PATH];
+        const DWORD overriddenLength = GetEnvironmentVariableW(L"STREAMMIRROR_DESKTOP_RING_FILE", overridden, MAX_PATH);
+        if (overriddenLength > 0 && overriddenLength < MAX_PATH) return overridden;
+        const std::wstring folder = DataFolder();
+        return folder.empty() ? std::wstring() : folder + L"\\desktop-ring.ini";
+    }
+
+    // The game's own section of desktop-ring.ini, else [default]; nothing usable leaves the box not valid. A game's own
+    // section can also ask for the ring alone (ring_only=1) whenever that game runs.
+    void SettingsSource::applyDesktopRing(Settings& settings) const {
+        settings.desktopBox = {};
+        const std::wstring path = DesktopRingFilePath();
+        FILE* file = path.empty() ? nullptr : _wfsopen(path.c_str(), L"r", _SH_DENYNO);
+        if (!file) return;
+        const auto sameName = [](const std::string& a, const std::string& b) {
+            return !a.empty() && a.size() == b.size() && _strnicmp(a.c_str(), b.c_str(), a.size()) == 0;
+        };
+        Settings::DesktopBox game, fallback, *current = nullptr;
+        char line[512];
+        while (fgets(line, sizeof(line), file)) {
+            const std::string text = Trim(line);
+            if (text.empty() || text[0] == '#' || text[0] == ';') continue;
+            if (text.front() == '[' && text.back() == ']') {
+                const std::string name = Trim(text.substr(1, text.size() - 2));
+                current = sameName(name, "default") ? &fallback : sameName(name, _program) || sameName(name, _application) ? &game : nullptr;
+                if (current) *current = {true, 1, 0.5f, 0.5f, 0.f, 0.f, name};
+                continue;
+            }
+            const size_t equals = text.find('=');
+            if (!current || equals == std::string::npos) continue;
+            const std::string key = Trim(text.substr(0, equals)), value = Trim(text.substr(equals + 1));
+            if (key == "eye") current->eye = value == "left" ? 0 : 1;
+            else if (key == "center_x") current->centerX = Number(value, 0.5f, -2.f, 3.f);
+            else if (key == "center_y") current->centerY = Number(value, 0.5f, -2.f, 3.f);
+            else if (key == "height") current->height = Number(value, 0.f, 0.f, 4.f);
+            else if (key == "aspect") current->aspect = Number(value, 0.f, 0.f, 10.f);
+            else if (key == "ring_only") current->ringOnly = value == "1";
+        }
+        fclose(file);
+        for (Settings::DesktopBox* box : {&game, &fallback}) {
+            if (box->valid && box->height >= 0.02f && box->aspect >= 0.1f) {
+                settings.desktopBox = *box;
+                if (box == &game && game.ringOnly) settings.outputRingOnly = true;
+                return;
+            }
+        }
+    }
+
     void SettingsSource::setGame(const char* program, const char* application) {
         _program = program ? program : "";
         _application = application ? application : "";
         applyProfile(_settings);
+        applyDesktopRing(_settings);
         if (!_activeProfile.empty())
             Log("settings: crop profile %s for this game%s", _activeProfile.c_str(),
                 _activeProfile == _openProfile ? " (open in the app: the file's framing)" : "");
@@ -164,6 +214,7 @@ namespace stream_mirror {
         fclose(file);
         _openProfile = openProfile;
         applyProfile(fresh);
+        applyDesktopRing(fresh);
         // The tilt choice decides over the older switch, wherever in the file either stands.
         if (fresh.stabilizeTilt == "level") { fresh.levelHorizon = true; fresh.stabilizeRoll = false; }
         else if (fresh.stabilizeTilt == "smooth") fresh.stabilizeRoll = true;
@@ -174,6 +225,13 @@ namespace stream_mirror {
             fresh.cropCenterX, fresh.cropCenterY, fresh.cropFollowVertical ? "on" : "off", fresh.stabilize ? "on" : "off",
             fresh.eye == 0 ? "left" : "right", fresh.outputMaxSide, fresh.outputFps, _activeProfile.empty() ? "" : ", crop profile ",
             _activeProfile.c_str(), !_activeProfile.empty() && _activeProfile == _openProfile ? " (open in the app: the file's framing)" : "");
+        if (fresh.outputRingOnly) {
+            const Settings::DesktopBox& box = fresh.desktopBox;
+            if (box.valid) Log("settings: ring only%s, lined up with the desktop window ([%s]: %s eye, box at (%.3f, %.3f), %.3f high, aspect %.3f)",
+                               box.ringOnly ? " (this game always)" : "", box.section.c_str(), box.eye == 0 ? "left" : "right", box.centerX, box.centerY,
+                               box.height, box.aspect);
+            else Log("settings: ring only, on the crop box (no desktop alignment for this game)");
+        }
     }
 
     // The crop profile made for the running game, if any, on top of the file's values.

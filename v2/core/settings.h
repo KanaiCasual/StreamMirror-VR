@@ -91,8 +91,27 @@ namespace stream_mirror {
         uint32_t outputMaxSide = 3840; // output_max_side: the picture fits this by its 16:9 height, turned the box's way (0 = no limit).
         float outputFps = 0.f;      // output_fps: 0 = every frame the game makes.
         // output_ring_only: the readers get the ring alone on a see-through picture (premultiplied alpha), no game picture -
-        // for a layer over a capture of the game's window on the monitor; the user lines the two up in OBS.
+        // for a layer over a capture of the game's window on the monitor.
         bool outputRingOnly = false;
+        // The desktop ring (desktop-ring.ini, see DesktopRingFilePath): where the game's own desktop window lies in the
+        // eye image, as the app's alignment found it - the game's own section, else [default]. With the ring alone this
+        // box is the picture, fixed: no follow, steadying or tilt, as the game's window has none. Not valid = the crop box.
+        struct DesktopBox {
+            bool valid = false;
+            int eye = 1;                         // eye=left|right: the eye the game's window shows.
+            float centerX = 0.5f, centerY = 0.5f; // center_x/center_y: fractions of the eye image.
+            float height = 1.f;                  // height: a fraction of the eye image's height.
+            float aspect = 16.f / 9.f;           // aspect: the window's width / height.
+            std::string section;                 // Where it came from: the game's name or "default".
+            bool ringOnly = false;               // ring_only=1, in a game's own section: the ring alone whenever that game
+                                                 // runs, whatever output_ring_only says.
+        };
+        DesktopBox desktopBox;
+        // The eye the picture is made from - the one every producer must hand over: the desktop window's while the ring
+        // is alone and lined up with it, else mirror_eye.
+        int mirroredEye() const {
+            return outputRingOnly && desktopBox.valid ? (desktopBox.eye == 0 ? 0 : 1) : eye == 0 ? 0 : 1;
+        }
         int gazeSource = 0;         // gaze_source=auto|headset|vrchat|sranibro|fixed: 0 headset, else SRanibro raw, else VRChat; 1/2/3 that
                                     // one only; 4 a fixed centre (headsets without eye tracking).
         int rawGazePort = 9006;     // raw_gaze_port: the gaze input port, where the helper listens for raw gaze (any sender).
@@ -179,6 +198,7 @@ namespace stream_mirror {
         void read();
 
         void applyProfile(Settings& settings);
+        void applyDesktopRing(Settings& settings) const;
         static void ApplyKey(Settings& settings, const std::string& key, const std::string& value);
 
         Settings _settings;
@@ -192,5 +212,8 @@ namespace stream_mirror {
     // %LocalAppData%\StreamMirror\crop-profiles.ini: "[name]" sections with "game=<program or application>"
     // and any crop_* / stabilize* keys, written by the settings app.
     std::wstring ProfilesFilePath();
+    // %LocalAppData%\StreamMirror\desktop-ring.ini: "[<program or application>]" sections and a "[default]" one, each
+    // with eye, center_x, center_y, height and aspect - written by the settings app's Desktop ring page.
+    std::wstring DesktopRingFilePath();
 
 } // namespace stream_mirror

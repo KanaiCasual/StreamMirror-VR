@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased
+## 3.1.0 - 2026-11-18
 
 - **Raw gaze over OSC works with the Pimax Dream Air**: SRanibro sends eye openness -1 ("not reported") for it, and the helper read that as both eyes shut, so the ring never showed. Openness below 0 now counts as open.
 - **Smaller windows keep everything usable**: the app now scales down instead of cutting things off. The page list shrinks to icons in a medium window and opens from a menu in a narrow one. The quick switches move to a bar along the top, with their names while they fit and their icons when they don't. The Mirror and Status pages keep the settings beside the picture down to a smaller window. In a narrow window the Mirror page's Reload, New and Save as... move into the "..." menu, and its picture buttons show icons.
-- **Ring only (see-through)**: a new switch on the Picture card of the Mirror page. OBS gets the ring alone on a see-through picture instead of the VR picture, to lay over a capture of the game's window on your monitor. Lining the two up is up to you: set the crop box to what the window shows, then size and place the source in OBS. Live.
+- **Desktop ring**: a new page under Gaze ring, for streaming the game's own window from your monitor with the ring on top. Its **Ring only (see-through)** switch sends OBS the ring alone, on a see-through picture, to lay over a Window Capture of the game. To line the ring up with the window, press Capture: after a countdown the app takes a picture of each eye and one of the game's window. Then move and size the headset's picture over the window's, with a see-through slider and a difference view, and pick the eye that matches. Arrow keys move it, Shift+arrow in big jumps, and Ctrl+arrow by one pixel of the game's window; Ctrl+Z undoes a move. Save the result for that game, or for every game without its own. The game you play is found by itself. Each saved game also has **Ring only whenever it runs**, so that game always sends the ring alone while your other games keep the game picture. With an alignment, the ring-only picture has the window's shape and stays still: the Mirror page's follow, steadying and tilt don't move it. In OBS, Fit to screen puts both sources over each other. The switches and saving are Live. The game needs to run in a window or borderless.
+- **Captures from the headset take both eyes in SteamVR games too**: the SteamVR helper used to hand over the mirrored eye alone, so in games such as Elite Dangerous the Mirror page and the Desktop ring got one eye. It now opens the other eye for the moment of the picture.
 
 ## 3.0.0 - 2026-11-02
 

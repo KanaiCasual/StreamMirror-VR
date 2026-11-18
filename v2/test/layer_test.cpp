@@ -892,6 +892,10 @@ int wmain(int argc, wchar_t** argv) {
     // Crop profiles from the test's own file, never the user's.
     const std::wstring profilesFile = folder + L"\\test-crop-profiles.ini";
     SetEnvironmentVariableW(L"STREAMMIRROR_PROFILES_FILE", profilesFile.c_str());
+    // The desktop ring's alignments too.
+    const std::wstring desktopRingFile = folder + L"\\test-desktop-ring.ini";
+    SetEnvironmentVariableW(L"STREAMMIRROR_DESKTOP_RING_FILE", desktopRingFile.c_str());
+    DeleteFileW(desktopRingFile.c_str());
 
     // The thorough VRChat calibration's sums, on made-up eyes: a tracker that reports sines with some cross-talk and
     // trails the target by 120 ms, a little noise, VRChat sending at 50 Hz, two blinks.
@@ -2197,9 +2201,66 @@ int wmain(int argc, wchar_t** argv) {
                       "output_ring_only=1: away from the ring the picture is see-through, nothing of the game in it");
                 Check(onRing[0] > 200 && onRing[1] > 90 && onRing[1] < 170 && onRing[2] < 30 && onAlpha > 200,
                       "and the ring is there in its colour, opaque on its line");
+                // Lined up with the game's desktop window (desktop-ring.ini, [default]): the picture is that box, fixed - a box
+                // half the eye image high, twice as wide as high, centred on the ring, puts the ring in the middle at twice the size.
+                {
+                    FILE* box = nullptr;
+                    _wfopen_s(&box, desktopRingFile.c_str(), L"w");
+                    fprintf(box, "[some-other-game.exe]\neye=right\ncenter_x=0.1\ncenter_y=0.1\nheight=0.2\naspect=1\n\n[default]\neye=left\ncenter_x=%.5f\ncenter_y=%.5f\nheight=0.5\naspect=2\n", gu, gv);
+                    fclose(box);
+                }
+                writeSettings("output_ring_only=1\n");
+                const float boxAspect = float(frames->width) / float(frames->height);
+                const float boxGu = frames->gazeU, boxGv = frames->gazeV;
+                int boxRing[3] = {}, boxAway[3] = {}, boxAlpha = 0, boxAwayAlpha = -1;
+                const float boxRingU = 0.5f + 0.1f / boxAspect; // radius 0.05 of the eye image = 0.1 of a box half as high
+                const bool readBox = pixelAt(boxRingU, 0.5f, boxRing, &boxAlpha) && pixelAt(0.95f, 0.5f, boxAway, &boxAwayAlpha);
+                printf("       desktop box: %u x %u (aspect %.3f), ring at (%.3f, %.3f); on it %d, %d, %d alpha %d; away alpha %d\n", frames->width,
+                       frames->height, boxAspect, boxGu, boxGv, boxRing[0], boxRing[1], boxRing[2], boxAlpha, boxAwayAlpha);
+                Check(std::fabs(boxAspect - 2.f) < 0.02f && std::fabs(boxGu - 0.5f) < 0.01f && std::fabs(boxGv - 0.5f) < 0.01f,
+                      "desktop-ring.ini [default]: the ring alone fills the window's box, with the ring where the box puts it");
+                Check(readBox && boxRing[0] > 200 && boxRing[1] > 90 && boxRing[2] < 30 && boxAlpha > 200 && boxAwayAlpha == 0,
+                      "and the ring is drawn at the box's scale, see-through around it");
+                // The window shows the OTHER eye than mirror_eye (left here): the layer must hand over that eye, or no
+                // picture is made at all and the last one (2:1) stays.
+                {
+                    FILE* box = nullptr;
+                    _wfopen_s(&box, desktopRingFile.c_str(), L"w");
+                    fputs("[default]\neye=right\ncenter_x=0.5\ncenter_y=0.5\nheight=0.5\naspect=1.5\n", box);
+                    fclose(box);
+                }
+                const LONGLONG framesBefore = frames->frameNumber;
+                writeSettings("output_ring_only=1\n");
+                const float otherAspect = float(frames->width) / float(frames->height);
+                printf("       desktop box on the right eye: %u x %u (aspect %.3f), %lld new pictures\n", frames->width, frames->height, otherAspect,
+                       frames->frameNumber - framesBefore);
+                Check(std::fabs(otherAspect - 1.5f) < 0.02f && frames->frameNumber > framesBefore,
+                      "an alignment on the other eye than mirror_eye still gets pictures, of that box");
+                DeleteFileW(desktopRingFile.c_str());
                 writeSettings("");
                 const bool readBack = pixelAt(awayU, gv, away, &awayAlpha);
                 Check(readBack && awayAlpha == 255, "output_ring_only off again: the game's picture is back, opaque");
+                // A game's own alignment that says ring_only=1: the ring alone whenever that game runs, with
+                // output_ring_only off. The same in [default] forces nothing (the main switch is for every game).
+                const auto writeBoxes = [&](const char* text) {
+                    FILE* box = nullptr;
+                    _wfopen_s(&box, desktopRingFile.c_str(), L"w");
+                    fputs(text, box);
+                    fclose(box);
+                };
+                writeBoxes("[layer_test.exe]\neye=left\ncenter_x=0.5\ncenter_y=0.5\nheight=0.5\naspect=1.25\nring_only=1\n");
+                writeSettings("");
+                int forcedAway[3] = {}, forcedAlpha = -1;
+                const bool readForced = pixelAt(0.95f, 0.5f, forcedAway, &forcedAlpha);
+                const float forcedAspect = float(frames->width) / float(frames->height);
+                printf("       this game always ring only: %u x %u (aspect %.3f), away alpha %d\n", frames->width, frames->height, forcedAspect, forcedAlpha);
+                Check(readForced && forcedAlpha == 0 && std::fabs(forcedAspect - 1.25f) < 0.02f,
+                      "ring_only=1 in the game's own alignment: the ring alone in its box, with output_ring_only off");
+                writeBoxes("[default]\neye=left\ncenter_x=0.5\ncenter_y=0.5\nheight=0.5\naspect=1.25\nring_only=1\n");
+                writeSettings("");
+                const bool readDefault = pixelAt(awayU, gv, away, &awayAlpha);
+                Check(readDefault && awayAlpha == 255, "ring_only=1 in [default] forces nothing: the game's picture, opaque");
+                DeleteFileW(desktopRingFile.c_str());
             }
             if (panelSignal) UnmapViewOfFile(const_cast<LONG*>(panelSignal));
             if (panelSignalMapping) CloseHandle(panelSignalMapping);

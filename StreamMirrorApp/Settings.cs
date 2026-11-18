@@ -487,7 +487,7 @@ public static class Settings
         {
             Key = "output_ring_only", Group = GroupCrop, Kind = SettingKind.Toggle, Default = "0",
             Label = "Ring only (see-through)",
-            Description = "OBS gets the ring alone, on a see-through picture: no game picture. Lay the StreamMirror VR source over a capture of the game's window on your monitor, and the ring shows where you look in it.\n\n**Lining it up is up to you.** The ring sits where it would on the crop box's picture. Set the crop box to what the game's window shows, then size and place the source over the window capture in OBS (Edit Transform). It comes close, not exact: the monitor and the headset seldom show quite the same view.\n\nA VR game must be running: the ring follows the mirrored eye. The mirror window shows the ring on black.\n\n**Live:** a running game shows the change at once.",
+            Description = "OBS gets the ring alone, on a see-through picture: no game picture. Lay the StreamMirror VR source over a capture of the game's window on your monitor, and the ring shows where you look in it.\n\n**Lined up:** with an alignment saved below for the game (or for every game), the picture has the window's shape and the ring lands on the window. It stays still: the Mirror page's follow, steadying and tilt do not move it.\n\n**Not lined up yet:** the ring sits where it would on the Mirror page's crop box.\n\nA VR game must be running: the ring follows the eye. The mirror window shows the ring on black.\n\n**Live:** a running game shows the change at once.",
         },
         new()
         {

@@ -75,6 +75,12 @@ public sealed class AppSettings
     public int CaptureKey { get; set; } = 0x13;
     /// <summary>Capture from headset: 0 = only the key takes the picture; otherwise it is taken by itself after this many seconds (the key still works meanwhile).</summary>
     public int CaptureTimerSeconds { get; set; }
+    /// <summary>The Desktop ring page: its capture's countdown, the game its pictures are of ("" = none taken), the eye
+    /// laid over the window, and how see-through that eye's picture is drawn (percent).</summary>
+    public int DesktopRingSeconds { get; set; } = 10;
+    public string DesktopRingGame { get; set; } = "";
+    public int DesktopRingEye { get; set; } = 1;
+    public int DesktopRingOpacity { get; set; } = 50;
     /// <summary>The visible-edge finder's result: left, right, top, bottom as fractions of the eye image, and which eye it was found for.</summary>
     public double[]? VisibleEdges { get; set; }
     public int VisibleEdgesEye { get; set; } = -1;

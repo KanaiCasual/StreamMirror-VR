@@ -124,6 +124,11 @@ namespace {
         return mirror.texture != nullptr;
     }
 
+    void CloseMirror(vr::IVRCompositor* compositor, Mirror& mirror) {
+        if (mirror.view) compositor->ReleaseMirrorTextureD3D11(mirror.view.Get());
+        mirror = {};
+    }
+
     constexpr char AppKey[] = "kanaicasual.streammirror.helper";
     // The key before 3.0. Its manifest went with the old install; registering switches its auto-launch off.
     constexpr char OldAppKey[] = "kanaicasual.quadviewsgazemirror.helper"; // LEGACY-NAME
@@ -333,6 +338,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR commandLine, int) {
     if (pipeline.settings().vrchatCalibrated.rfind("running", 0) == 0) pipeline.persist({{"vrchat_calibrated", "failed: the previous run did not finish"}});
     HeadsetMarker marker; // The Placement tab's calibration marker, as an overlay (the layer draws it into OpenXR games).
     Mirror mirror;
+    // The other eye's mirror: open only while a snapshot is due, as the crop tool and the Desktop ring want both eyes.
+    Mirror otherMirror;
     SceneApp scene;
     std::vector<vr::TrackedDevicePose_t> poses(vr::k_unMaxTrackedDeviceCount);
     bool publishing = false;
@@ -437,8 +444,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR commandLine, int) {
             runtimeGazeTried = false; // The stand-by decides anew whether the game needs the headset's gaze from here.
             pipeline.stop();
             publishing = false;
-            if (mirror.view) compositor->ReleaseMirrorTextureD3D11(mirror.view.Get());
-            mirror = {};
+            CloseMirror(compositor, mirror);
+            CloseMirror(compositor, otherMirror);
             continue;
         }
         const bool wanted = pipeline.wanted(); // Also reloads the settings when the app signalled a change.
@@ -461,13 +468,13 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR commandLine, int) {
             WaitForMultipleObjects(2, handles, FALSE, 500);
             if (++idleTicks % 120 == 0 && publishing && pipeline.settings().enabled) {
                 // Roughly once a minute while idle: let go of the mirror texture, SteamVR need not keep it for us.
-                if (mirror.view) compositor->ReleaseMirrorTextureD3D11(mirror.view.Get());
-                mirror = {};
+                CloseMirror(compositor, mirror);
+                CloseMirror(compositor, otherMirror);
             }
             continue;
         }
         idleTicks = 0;
-        if (publishing && pipeline.settings().eye != mirror.eye) {
+        if (publishing && pipeline.settings().mirroredEye() != mirror.eye) {
             // Once per opened mirror: the eye's geometry, so that where a gaze lands can be checked from the log.
             for (int e = 0; e < 2; e++) {
                 float l = 0, r = 0, t = 0, b = 0;
@@ -477,7 +484,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR commandLine, int) {
                 Log("helper: %s eye fov tangents left %.3f right %.3f top %.3f bottom %.3f; eye-to-head position (%.4f, %.4f, %.4f) rotation (%.4f, %.4f, %.4f, %.4f)",
                     e == 0 ? "left" : "right", l, r, t, b, m.m[0][3], m.m[1][3], m.m[2][3], q.x, q.y, q.z, q.w);
             }
-            if (!OpenMirror(compositor, device.Get(), pipeline.settings().eye, mirror)) {
+            if (!OpenMirror(compositor, device.Get(), pipeline.settings().mirroredEye(), mirror)) {
                 WaitForSingleObject(g_stop, 1000);
                 continue;
             }
@@ -500,6 +507,22 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR commandLine, int) {
         image.height = static_cast<int32_t>(mirror.height);
         const int eye = mirror.eye;
         input.images[eye] = &image;
+        SourceImage otherImage;
+        if (pipeline.snapshotDue()) {
+            // A snapshot wants both eyes: the other eye's mirror too, while it is due. Just opened, SteamVR may not have
+            // drawn into it yet, so the snapshot waits a frame.
+            const bool fresh = !otherMirror.view || otherMirror.eye != 1 - eye;
+            if (OpenMirror(compositor, device.Get(), 1 - eye, otherMirror)) {
+                otherImage = image;
+                otherImage.texture = otherMirror.texture.Get();
+                otherImage.width = static_cast<int32_t>(otherMirror.width);
+                otherImage.height = static_cast<int32_t>(otherMirror.height);
+                input.images[1 - eye] = &otherImage;
+                input.snapshotLater = fresh;
+            }
+        } else if (otherMirror.view) {
+            CloseMirror(compositor, otherMirror); // SteamVR need not keep it for us
+        }
         eyeGeometry(input.views, input.eyeInHead);
         for (int e = 0; e < 2; e++) {
             input.views[e].width = float(mirror.width);
@@ -577,8 +600,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR commandLine, int) {
     }
 
     marker.hide();
-    if (mirror.view) compositor->ReleaseMirrorTextureD3D11(mirror.view.Get());
-    mirror = {};
+    CloseMirror(compositor, mirror);
+    CloseMirror(compositor, otherMirror);
     gazeFeed.stop();
     runtimeGaze.stop();
     rawGaze.stop();

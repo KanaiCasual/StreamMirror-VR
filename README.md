@@ -156,7 +156,7 @@ there); a mark at the foot of the page list says when the app last saved. The ap
 OBS while you tune, and the keyboard reaches all of it.
 
 The page list follows the program's purpose: **Status**, **Mirror** and **Desktop cover** first, and most people need
-no more than Status and Mirror. Then come the two pages of the **gaze ring** (Gaze and Ring), the **headset** pages
+no more than Status and Mirror. Then come the three pages of the **gaze ring** (Gaze, Ring and Desktop ring), the **headset** pages
 (Quad Views and Layers), and About. Each page has an icon, and a narrow window shows the icons alone. A green dot on
 Status means the mirror shows a game right now. Under the pages, **Quick switches** turn the mirror window, the gaze
 ring, the desktop cover, quad views, the quad views diagnostics and the debug view on or off; each one works the switch
@@ -434,6 +434,37 @@ remembers the ones you leave open.
   tell reading from glancing), riding through blinks, fade in and out, and the point at which tracking counts as lost.
 
   ![Ring page, Motion open](docs/page-ring-motion-3.png)
+
+### Desktop ring
+
+For streaming the game's own window from your monitor, with the ring on top. The **Ring only (see-through)** switch
+sends OBS the ring alone, on a see-through picture. Lay the StreamMirror VR source over a Window Capture of the game,
+and the ring shows where you look in the window.
+
+The monitor and the headset show different parts of the view, so the ring has to be lined up with the window once:
+
+1. Run the game in a window or borderless. Exclusive full screen gives no picture of the window.
+2. Press **Capture**, put the headset on, look ahead and hold still. When the countdown ends (the headset shows it
+   too), the app takes a picture of each eye and one of the game's window.
+3. Drag the headset's picture over the window's until they match. The mouse wheel sizes it (Shift for fine steps), and
+   + and − size it too. The arrow keys move it by one pixel of the picture on your screen (a few of the game's window,
+   as the page says), Shift+arrow by ten, and Ctrl+arrow by exactly one pixel of the game's window. Ctrl+Z undoes a
+   move, Ctrl+Y redoes it. **See-through** sets how strongly the headset's picture is drawn. **Difference** shows how
+   the two differ: lined up, the window goes dark. Pick the eye that matches better: a game mirrors one eye to the
+   monitor.
+4. **Save for** the game (the button names it), or **Save for every game**. A game's own alignment comes first; the one for every game
+   covers the rest. The mirror finds the running game by itself, and a running game takes a saved alignment at once.
+
+With an alignment, the ring-only picture has the window's shape and stays still. The Mirror page's follow, steadying
+and tilt don't move it, because the game's window doesn't move either. In OBS, select each source and press Ctrl+F
+(Fit to screen): both have the window's shape, so they cover each other exactly. Without an alignment the ring sits
+where it would on the Mirror page's crop box.
+
+**Ring only whenever it runs:** each game under **Saved** has this switch. With it on, OBS gets the ring alone whenever
+that game runs, even while the main Ring only switch is off; other games keep the game picture. So a game you stream
+from its desktop window can stay ring-only while your other games are mirrored as usual. Live.
+
+The alignments live in `%LocalAppData%\StreamMirror\desktop-ring.ini`.
 
 ### Desktop cover
 

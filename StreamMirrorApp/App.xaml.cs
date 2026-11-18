@@ -304,6 +304,48 @@ public partial class App : Application
         return checks.All(c => c.Ok);
     }
 
+    /// <summary>desktop-ring.ini as the mirror reads it, and the overlay arithmetic against the mirror's own box.</summary>
+    private static bool SelfTestDesktopRing(StreamWriter report)
+    {
+        static bool Near(double a, double b) => Math.Abs(a - b) < 1e-4;
+        var saved = new List<DesktopAlignment>
+        {
+            new("DCS.exe", 0, 0.52, 0.47, 0.55, 16.0 / 9, RingOnly: true),
+            new(DesktopRing.DefaultSection, 1, 0.5, 0.5, 0.6, 21.0 / 9, RingOnly: true), // the default has no such switch: not written
+        };
+        var back = DesktopRing.Parse(DesktopRing.Format(saved).Split('\n'));
+        var dropped = DesktopRing.Parse(["[broken.exe]", "eye=left", "height=0", "aspect=1.7", "[ok.exe]", "height=0.5", "aspect=1.5"]);
+
+        // The mirror's box (pipeline.cpp): height h of the eye image's height, the window's shape, centred at (cx, cy).
+        // Its top-left corner in the eye image must land on the window picture's top-left corner, and its bottom-right
+        // on the bottom-right - for an eye image of another shape than the window's.
+        const double eyeWidth = 640, eyeHeight = 547, windowWidth = 1280, windowHeight = 720;
+        var (cx, cy, h, aspect) = (0.52, 0.47, 0.55, windowWidth / windowHeight);
+        var overlay = DesktopRing.OverlayFromBox(windowWidth, windowHeight, eyeWidth / eyeHeight, cx, cy, h);
+        double boxLeft = cx - h * eyeHeight * aspect / 2 / eyeWidth, boxTop = cy - h / 2; // fractions of the eye image
+        double boxRight = cx + h * eyeHeight * aspect / 2 / eyeWidth, boxBottom = cy + h / 2;
+        var round = DesktopRing.BoxFromOverlay(windowWidth, windowHeight, overlay);
+
+        var checks = new (string Name, bool Ok)[]
+        {
+            ("the file reads back what was written", back.Count == 2 && back.All(b => saved.Any(s => s.Section == b.Section && s.Eye == b.Eye
+                && Near(s.CenterX, b.CenterX) && Near(s.CenterY, b.CenterY) && Near(s.Height, b.Height) && Near(s.Aspect, b.Aspect)
+                && b.RingOnly == (s.RingOnly && s.Section != DesktopRing.DefaultSection)))),
+            ("\"ring only whenever it runs\" counts for the game's own alignment alone",
+                DesktopRing.AlwaysRingOnly(back, "DCS.exe") && !DesktopRing.AlwaysRingOnly(back, "other.exe") && !DesktopRing.AlwaysRingOnly(back, null)),
+            ("a game's own alignment comes before the default, whatever the case of its name", DesktopRing.For(back, "dcs.EXE")?.Section == "DCS.exe"),
+            ("a game without its own takes the default; with no default, none", DesktopRing.For(back, "other.exe")?.Section == DesktopRing.DefaultSection
+                && DesktopRing.For(back.Where(b => b.Section != DesktopRing.DefaultSection), "other.exe") == null),
+            ("a section the mirror would not take is dropped", dropped.Count == 1 && dropped[0].Section == "ok.exe"),
+            ("the eye picture laid over the window puts the box's corners on the window's corners",
+                Near(overlay.X + boxLeft * overlay.Width, 0) && Near(overlay.Y + boxTop * overlay.Height, 0)
+                && Near(overlay.X + boxRight * overlay.Width, windowWidth) && Near(overlay.Y + boxBottom * overlay.Height, windowHeight)),
+            ("and the box comes back from the overlay", Near(round.CenterX, cx) && Near(round.CenterY, cy) && Near(round.Height, h) && Near(round.Aspect, aspect)),
+        };
+        foreach (var (name, ok) in checks) report.WriteLine($"desktop ring - {(ok ? "ok  " : "FAIL")} {name}");
+        return checks.All(c => c.Ok);
+    }
+
     /// <summary>What a settings row does with a typed number, and the settings whose slider runs the other way.</summary>
     private static bool SelfTestSettingRows(StreamWriter report)
     {
@@ -769,6 +811,7 @@ public partial class App : Application
             quadViewsOk &= SelfTestLayerOrder(outputDir, report);
             quadViewsOk &= SelfTestCrop(report);
             quadViewsOk &= SelfTestSettingRows(report);
+            quadViewsOk &= SelfTestDesktopRing(report);
             quadViewsOk &= SelfTestCover(outputDir, report);
 
             // Mirror window: what this PC offers, and the command line the settings turn into.

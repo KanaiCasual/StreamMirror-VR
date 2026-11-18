@@ -302,8 +302,10 @@ public partial class MainWindow
         MirrorObsFacts.Text = (RingOnly() ? "Ring only, " : "") + ChoiceLabel("mirror_eye") + (_obsGets is { } gets ? $", {gets.Width} × {gets.Height}" : "");
     }
 
-    /// <summary>output_ring_only: OBS gets the ring alone on a see-through picture, not the game picture.</summary>
-    private bool RingOnly() => _values.GetValueOrDefault("output_ring_only") == "1";
+    /// <summary>OBS gets the ring alone on a see-through picture, not the game picture: output_ring_only, or the running
+    /// game's Desktop ring alignment asks for it whenever that game runs.</summary>
+    private bool RingOnly() => _values.GetValueOrDefault("output_ring_only") == "1"
+        || (MirrorLive.ReadProducer() is { Kind: not 0 } producer && DesktopRing.AlwaysRingOnly(DesktopRing.Load(), producer.Program));
 
     private void OnMirrorObsSize(object sender, SizeChangedEventArgs e)
     {
