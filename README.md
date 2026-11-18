@@ -94,8 +94,8 @@ World, VRChat, Assetto Corsa EVO, VAIL and Half-Life: Alyx.
 ## Installing, updating, removing
 
 1. Close your game and OBS, then run the `.msi`. The installer and every program in it are code-signed. While the
-   certificate is new, Windows SmartScreen may still warn once: "More info" > "Run anyway". A first install offers a
-   desktop shortcut.
+   certificate is new, Windows SmartScreen may still warn once: "More info" > "Run anyway". The installer offers a
+   desktop shortcut; unticked, it makes none and leaves one you already have alone.
 2. Start **StreamMirror VR** from the Start menu. The **Status** page should say that all parts work: the layer, the
    OBS plugin and the SteamVR helper.
 
@@ -666,7 +666,8 @@ the checksum.
   refuse OpenXR layers; Star Citizen's EAC accepts them.
 - Setup is a plain MSI on purpose: antivirus heuristics quarantined an earlier self-installing `.exe` half-way through
   an install.
-- Silent install without the desktop shortcut: `msiexec /i StreamMirror-VR-x.y.z.msi /qn DESKTOPSHORTCUT=0`.
+- Silent install without making a desktop shortcut: `msiexec /i StreamMirror-VR-x.y.z.msi /qn DESKTOPSHORTCUT=0`
+  (an existing one stays).
 - The mirror shows OpenXR games that render with Direct3D 11, Direct3D 12 or Vulkan, the in-headset aids (the capture
   countdown, the View edges blocks, the calibration marker) included. OpenGL games have no mirror yet.
 - The mirror shows quad views, the four-view foveated mode (Varjo headsets; Pimax Play's own setting), as the headset

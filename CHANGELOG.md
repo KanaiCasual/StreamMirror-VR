@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.1 - 2026-11-18
+
+- **An update no longer deletes your desktop shortcut** when you untick the desktop-shortcut box. The box only says whether the installer makes a shortcut: unticked, it leaves one you already have alone. Uninstalling still removes it.
+
 ## 3.1.0 - 2026-11-18
 
 - **Raw gaze over OSC works with the Pimax Dream Air**: SRanibro sends eye openness -1 ("not reported") for it, and the helper read that as both eyes shut, so the ring never showed. Openness below 0 now counts as open.

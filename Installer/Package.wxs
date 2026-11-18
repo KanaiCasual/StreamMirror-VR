@@ -35,9 +35,11 @@
     <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
 
     <!--
-      Desktop shortcut: ticked by default on a first install. The choice is written to the registry and read back by later
-      versions. Before 3.0 the key had the product's first name (OpenXRGazeOverlay): its choice counts until 3.0 has
-      written its own. Silent installs: DESKTOPSHORTCUT=0 (or DESKTOPSHORTCUT="") switches it off.
+      Desktop shortcut: ticked by default on a first install. The tick only says whether the installer MAKES one: unticked,
+      it makes none and leaves a shortcut you already have alone (deleting it is yours to do; uninstalling removes it).
+      The choice is written to the registry and read back by later versions. Before 3.0 the key had the product's first
+      name (OpenXRGazeOverlay): its choice counts until 3.0 has written its own. Silent installs: DESKTOPSHORTCUT=0 (or
+      DESKTOPSHORTCUT="") switches it off.
     -->
     <Property Id="DESKTOPSHORTCUT" Value="1" Secure="yes" />
     <Property Id="SAVEDDESKTOPSHORTCUT" Secure="yes">
@@ -55,9 +57,10 @@
       The desktop shortcut is made once and then left alone: Windows puts an icon whose file is written again in the first
       free spot of the desktop, wherever you had put it. So the shortcut's component is permanent (an old version's
       removal keeps it) and an update installs it only while the shortcut is missing; RemoveDesktopShortcut takes it away
-      on uninstall, NoDesktopShortcut when the box is unticked. SHORTCUTSKEPT marks an install made this way: before
-      that, the old version owned the shortcut, and the first update installs it once more so the old version's removal
-      leaves it.
+      on uninstall. SHORTCUTSKEPT marks an install made this way: before that, the old version owned the shortcut, and the
+      first update installs it once more so the old version's removal leaves it. (Up to 3.1.0 an unticked box deleted the
+      shortcut on an update, by a component NoDesktopShortcut; it is gone, and its rule ran on install only, so the 3.1.0
+      being replaced cannot delete it either.)
     -->
     <Property Id="DESKTOPLNKFOUND" Secure="yes">
       <DirectorySearch Id="FindDesktop" Path="[DesktopFolder]" Depth="0">
@@ -138,7 +141,6 @@
       <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="DesktopShortcut" />
       <ComponentRef Id="RemoveDesktopShortcut" />
-      <ComponentRef Id="NoDesktopShortcut" />
       <ComponentRef Id="OldDesktopShortcutRemoval" />
       <ComponentRef Id="RememberChoices" />
       <ComponentGroupRef Id="ObsPlugin" />
@@ -280,10 +282,6 @@
     <Component Id="RemoveDesktopShortcut" Directory="INSTALLFOLDER" Guid="4C00C717-8EF2-4F3A-AFE0-EDE03F6689D1">
       <RemoveFile Id="RemoveDesktopShortcutOnUninstall" Directory="DesktopFolder" Name="StreamMirror VR.lnk" On="uninstall" />
       <RegistryValue Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="ShortcutsKept" Type="integer" Value="1" KeyPath="yes" />
-    </Component>
-    <Component Id="NoDesktopShortcut" Directory="INSTALLFOLDER" Guid="8578AF5E-0631-473A-B8E8-64B1FFC72F59" Condition="DESKTOPSHORTCUT &lt;&gt; &quot;1&quot;">
-      <RemoveFile Id="RemoveDesktopShortcutUnticked" Directory="DesktopFolder" Name="StreamMirror VR.lnk" On="install" />
-      <RegistryValue Root="HKLM" Key="SOFTWARE\StreamMirrorVR" Name="DesktopShortcutUnticked" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 
     <!-- The desktop shortcut of before 3.0 ("VR Gaze Mirror") was permanent: its version's removal leaves it, so it goes here. -->
