@@ -7,9 +7,11 @@
 // of game is running.
 //
 // How a frame travels:
-//   1. The producer draws into one of SlotCount shared textures - never the one it published last, never one a
-//      reader has marked as "reading".
-//   2. It writes latestSlot / frameNumber and sets the event of every live reader.
+//   1. The producer draws into one of SlotCount shared textures - never the one it published last, never one still
+//      waiting for the GPU, never one a reader has marked as "reading"; of the rest, the one drawn longest ago.
+//   2. Once the GPU has finished that drawing (the producer looks at each of its frames, it never waits), it writes
+//      latestSlot / frameNumber and sets the event of every live reader. So a reader never needs to wait for the
+//      producer's GPU work: the textures have no keyed mutex, and nothing else would order the two devices' work.
 //   3. A reader wakes, marks the slot, uses the texture on its own device, clears the mark.
 // Nothing here runs on a timer. With no live reader the producer does no work at all.
 //

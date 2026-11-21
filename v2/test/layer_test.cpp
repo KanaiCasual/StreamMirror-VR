@@ -195,6 +195,7 @@ namespace {
         return XR_SUCCESS;
     }
     XrResult XRAPI_CALL StubEndFrame(XrSession, const XrFrameEndInfo* frame) {
+        if (frame->layerCount == 0) return XR_SUCCESS; // The test's own empty frame that publishes a picture: not the game's.
         g_lastLayerCount = frame->layerCount;
         g_lastOverlay = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
         if (frame->layerCount >= 2 && frame->layers[frame->layerCount - 1]->type == XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
@@ -359,7 +360,7 @@ namespace {
     PFN_xrEndFrame g_mirrorEndFrame = nullptr;
     const XrCompositionLayerBaseHeader* g_toolPanel = nullptr;
     XrResult XRAPI_CALL ToolEndFrame(XrSession session, const XrFrameEndInfo* frame) {
-        if (!g_toolPanel) return g_mirrorEndFrame(session, frame);
+        if (!g_toolPanel || frame->layerCount == 0) return g_mirrorEndFrame(session, frame); // (the test's empty frames stay empty)
         std::vector<const XrCompositionLayerBaseHeader*> layers(frame->layers, frame->layers + frame->layerCount);
         layers.push_back(g_toolPanel);
         XrFrameEndInfo withTool = *frame;
@@ -1110,7 +1111,35 @@ int wmain(int argc, wchar_t** argv) {
         const auto release = Get<PFN_xrReleaseSwapchainImage>(get, instance, "xrReleaseSwapchainImage");
         const auto attach = Get<PFN_xrAttachSessionActionSets>(get, instance, "xrAttachSessionActionSets");
         const auto sync = Get<PFN_xrSyncActions>(get, instance, "xrSyncActions");
-        const auto endFrame = Get<PFN_xrEndFrame>(get, instance, "xrEndFrame");
+        const auto endFrameBare = Get<PFN_xrEndFrame>(get, instance, "xrEndFrame");
+        // The layer publishes a picture once the GPU has drawn it, which it looks at in the game's next frame. The checks
+        // look at the picture right after a frame: so a frame with layers is followed by empty ones (nothing is drawn in
+        // them) until a picture comes out, for at most 200 ms (a frame with no reader makes none).
+        const auto published = []() -> LONGLONG {
+            LONGLONG count = -1;
+            if (HANDLE mapping = OpenFileMappingW(FILE_MAP_READ, FALSE, FramesMappingName)) {
+                if (const Frames* block = static_cast<const Frames*>(MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, sizeof(Frames)))) {
+                    count = block->frameNumber;
+                    UnmapViewOfFile(block);
+                }
+                CloseHandle(mapping);
+            }
+            return count;
+        };
+        const auto endFrame = [&](XrSession frameSession, const XrFrameEndInfo* info) {
+            const XrResult result = endFrameBare(frameSession, info);
+            if (info && info->layerCount > 0) {
+                const LONGLONG before = published();
+                XrFrameEndInfo nothing = *info;
+                nothing.layerCount = 0;
+                nothing.layers = nullptr;
+                for (int i = 0; i < 40 && published() == before; i++) {
+                    Sleep(5);
+                    endFrameBare(frameSession, &nothing);
+                }
+            }
+            return result;
+        };
         const auto destroySwapchain = Get<PFN_xrDestroySwapchain>(get, instance, "xrDestroySwapchain");
         const auto destroySession = Get<PFN_xrDestroySession>(get, instance, "xrDestroySession");
         const auto destroyInstance = Get<PFN_xrDestroyInstance>(get, instance, "xrDestroyInstance");
@@ -1354,7 +1383,8 @@ int wmain(int argc, wchar_t** argv) {
             slots[i] = frames->latestSlot;
         }
         Check(g_syncedSets == 2, "sync: the game's action set + ours reach the runtime");
-        Check(frames->frameNumber - framesBefore == 3, "three frames were published");
+        printf("       %lld pictures published\n", frames->frameNumber - framesBefore);
+        Check(frames->frameNumber - framesBefore == 3, "three frames were published, each once the GPU had drawn it");
         Check(WaitForSingleObject(frameReady, 0) == WAIT_OBJECT_0, "the reader's event was set");
         Check(slots[0] != slots[1] && slots[1] != slots[2], "consecutive frames use different slots");
         Check(frames->width == test.expectWidth && frames->height == test.expectHeight, "the picture has the expected size");
@@ -2286,7 +2316,7 @@ int wmain(int argc, wchar_t** argv) {
                 me.heartbeatMs = static_cast<LONGLONG>(GetTickCount64());
                 acquire(swapchain, nullptr, &index);
                 release(swapchain, nullptr);
-                endFrame(session, &frameEnd);
+                endFrameBare(session, &frameEnd); // No empty frame after it: that would take a place of the cap's.
                 gameFrames++;
                 next += std::chrono::microseconds(16667);
                 while (std::chrono::steady_clock::now() < next) Sleep(0);

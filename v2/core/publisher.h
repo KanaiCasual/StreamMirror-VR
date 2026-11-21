@@ -36,8 +36,9 @@ namespace stream_mirror {
         // A reader is there and alive right now: its heartbeat only, no asking (no side effects, unlike wanted()).
         bool readerLive() const;
 
-        // A slot to draw the next frame into, of this size (textures are made on demand). Null when every slot is in
-        // use by a reader right now - then skip the frame rather than wait.
+        // A slot to draw the next frame into, of this size (textures are made on demand): never the published one, one
+        // still waiting for the GPU or one a reader holds, and of the rest the one drawn longest ago. Null when there is
+        // none - then skip the frame rather than wait.
         struct Slot {
             int index = -1;
             ID3D11Texture2D* texture = nullptr;
@@ -45,8 +46,14 @@ namespace stream_mirror {
         };
         Slot acquire(uint32_t width, uint32_t height);
 
-        // The frame in that slot is finished (on the GPU's queue): tell the readers.
-        void publish(const Slot& slot, int eye, bool gazeValid, float gazeU, float gazeV);
+        // The frame in that slot is recorded: sends it to the GPU. The readers hear of it only once the GPU has drawn it
+        // (publishFinished). They read on devices of their own, and nothing orders their reading after our drawing - for
+        // a Direct3D 12 game, whose queue our drawing goes down, not even Windows - so a reader told at once could show
+        // what the slot held before: a picture a few frames old.
+        void submit(const Slot& slot, int eye, bool gazeValid, float gazeU, float gazeV);
+        // Tells the readers of the newest submitted frame the GPU has drawn, if there is one. Once a producer frame; it
+        // only looks, never waits.
+        void publishFinished();
         // What the producer knows about the headset's eye tracking (Frames::gazeSupport).
         void setGazeSupport(LONG support) {
             if (_frames) _frames->gazeSupport = support;
@@ -70,11 +77,27 @@ namespace stream_mirror {
         struct SlotState {
             Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
             Microsoft::WRL::ComPtr<ID3D11RenderTargetView> target;
+            Microsoft::WRL::ComPtr<ID3D11Query> drawn; // Ends after the slot's drawing; done = drawn on the GPU.
+            uint64_t order = 0;                          // When it was last drawn into (0: never).
         };
+        // A drawn frame waiting for the GPU, with what the readers are told along with it.
+        struct Waiting {
+            int slot = -1;
+            int eye = 0;
+            bool gazeValid = false;
+            float gazeU = 0.f, gazeV = 0.f;
+        };
+        static constexpr int WaitingMax = 2; // With the published slot that leaves one of the four for a reader.
         void resize(uint32_t width, uint32_t height);
+        bool waiting(int slot) const;
+        void publish(const Waiting& frame);
 
         Microsoft::WRL::ComPtr<ID3D11Device> _device;
+        Microsoft::WRL::ComPtr<ID3D11DeviceContext> _immediate;
         SlotState _slots[SlotCount];
+        Waiting _waiting[WaitingMax];
+        int _waitingCount = 0;
+        uint64_t _drawn = 0;
         uint32_t _width = 0, _height = 0;
         HANDLE _mapping = nullptr;
         Frames* _frames = nullptr;
@@ -84,6 +107,7 @@ namespace stream_mirror {
         ULONGLONG _lastPing[ReaderCount] = {};
         int _unansweredPings[ReaderCount] = {};
         int _logProblem = 0;
+        int _logNoSlot = 0;
     };
 
 } // namespace stream_mirror

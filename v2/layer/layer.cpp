@@ -909,6 +909,9 @@ namespace stream_mirror::layer {
         // list says which they are. Every frame, mirrored or not, so the hand-backs know which pictures are panels.
         std::vector<const XrCompositionLayerBaseHeader*> PanelLayers(const XrFrameEndInfo* frame) {
             std::vector<const XrCompositionLayerBaseHeader*> panels;
+            // A frame that shows nothing (a moment of a loading game) says nothing about which pictures are panels: the
+            // marks stay, or a panel handed back next while nobody watches would not be kept.
+            if (frame->layerCount == 0) return panels;
             uint32_t worldIndex = 0;
             const bool showAll = g->pipeline.settings().showPanels;
             const GameFrame* game = showAll ? nullptr : GameFrameOf(frame);
@@ -1388,7 +1391,9 @@ namespace stream_mirror::layer {
                 if (any) Log("copy: nobody needs the eye images - the copies are let go");
             }
             if (!g->overlay.ready) {
-                DestroyOverlay(); // Nothing to show (any more): its images go too.
+                // Nothing to show (any more): its images go too - unless the frame shows nothing at all (a moment of a
+                // loading game), when the aids are made again the next frame for nothing.
+                if (!frame || frame->layerCount > 0) DestroyOverlay();
                 return g->next.xrEndFrame(session, frame);
             }
             // The aids' layer goes on top of the game's.

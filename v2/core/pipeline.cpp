@@ -49,6 +49,8 @@ namespace stream_mirror {
         if (_settings.get().headsetMarker || _calibrationDirty) nudgeKeys();
         if (_snapshot.wanted(_settings.signal())) _snapshotDue = true;
         watchCoverKey();
+        // The frames drawn before, once the GPU has them done (a look, every producer frame: frame-rate cap or not).
+        _publisher.publishFinished();
         _readersPresent = _publisher.started() && _publisher.wanted();
         _renderDue = _readersPresent;
         // The frame-rate cap: a schedule, so that 90 -> 60 means two of every three frames, not a stutter. A frame that

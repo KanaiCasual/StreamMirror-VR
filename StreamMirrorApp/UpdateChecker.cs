@@ -48,11 +48,11 @@ public sealed class AppSettings
     public bool StartInTray { get; set; }
     public string? SkippedVersion { get; set; }
     public bool ShowPreview { get; set; } = true;
-    /// <summary>Where the window was, so it comes back beside the game where it was left. 0 = not remembered yet.</summary>
-    public double WindowLeft { get; set; }
-    public double WindowTop { get; set; }
-    public double WindowWidth { get; set; }
-    public double WindowHeight { get; set; }
+    /// <summary>Where the window was, so it comes back beside the game where it was left: left, top, right, bottom in screen
+    /// pixels. Null = not remembered yet.</summary>
+    public int[]? WindowBounds { get; set; }
+    /// <summary>The window was maximized (on the monitor WindowBounds lies on) when the app closed.</summary>
+    public bool WindowMaximized { get; set; }
     /// <summary>Size of the mirror image the last crop-tool picture was taken from (the picture itself is a file next to this one).</summary>
     public int MirrorWidth { get; set; }
     public int MirrorHeight { get; set; }

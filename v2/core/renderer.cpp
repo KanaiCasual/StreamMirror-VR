@@ -267,8 +267,7 @@ namespace stream_mirror {
             return false;
         }
         _immediate->ExecuteCommandList(commands.Get(), TRUE);
-        _immediate->Flush(); // Readers are on other devices: what they are told about must already be on its way.
-        publisher.publish(slot, eye, ring != nullptr, gazeU, gazeV);
+        publisher.submit(slot, eye, ring != nullptr, gazeU, gazeV); // The readers hear of it once the GPU has drawn it.
         LogFewTimes(_logRender, 3, "renderer: frame -> slot %d, crop %d,%d %d x %d of %d x %d -> %u x %u, ring %s%s", slot.index, crop.x, crop.y,
                     crop.width, crop.height, source.fullWidth(), source.fullHeight(), outWidth, outHeight, ring ? "yes" : "no", ringOnly ? " (ring only)" : "");
         if (focusView) {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.1.3 - 2026-11-21
+
+- **No more jumps back in the stream when the GPU is busy** (seen in Microsoft Flight Simulator 2024 on a Pimax Dream Air): OBS could get a picture before the GPU had finished drawing it, and show what that picture held a few frames earlier. Each picture now reaches OBS and the mirror window only once it is drawn, one game frame later than before, and the mirror takes turns over all four of its pictures.
+- **The window opens where you left it**: on the same monitor, at the same size, maximized if it was. It keeps its place as soon as you stop moving it, so even after an End task in Task Manager or a crash. With monitors at different scaling (say 100 % beside 150 %) it used to open partly off the screen. If the place no longer fits (a monitor unplugged), it opens on the nearest monitor, within the screen. The first start after the update opens in the middle once.
+
 ## 3.1.2 - 2026-11-18
 
 - **Ring only: the ring shows in OBS at its full strength.** The see-through picture was drawn the wrong way in OBS, which took the ring's colour down by its own transparency a second time. A faint ring (Light blending, low opacity or solidity, a thin line) all but disappeared. The OBS plugin now draws it the way OBS draws see-through pictures from its own browser source. The normal game picture is unchanged.

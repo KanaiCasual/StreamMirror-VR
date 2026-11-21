@@ -23,6 +23,9 @@ public partial class MainWindow : Window
     private FileSystemWatcher? _configWatcher;
     private DateTime _ownWriteUntil = DateTime.MinValue;
     private readonly DispatcherTimer _outsideChangeTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    // The window's place is saved this long after it last moved, changed size or was maximized: not only at closing, which
+    // an app ended in Task Manager, a crash or a power cut never reaches.
+    private readonly DispatcherTimer _placementSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly AppSettings _appSettings = AppSettings.Load();
     private ReleaseInfo? _availableUpdate;
 
@@ -38,7 +41,6 @@ public partial class MainWindow : Window
         _liveTimer.Tick += (_, _) => UpdateLive();
         _outsideChangeTimer.Tick += (_, _) => { _outsideChangeTimer.Stop(); ApplyOutsideChange(); };
 
-        RestoreWindowPlacement();
         BuildNav();
         BuildSettingsUi();
         BuildAboutRows();
@@ -82,7 +84,18 @@ public partial class MainWindow : Window
         Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs)) { UpdateLiveTimer(); UpdatePanels(); if (ReferenceEquals(Tabs.SelectedItem, CoverTab)) UpdateCoverDrawing(); } };
         SizeChanged += (_, _) => Dispatcher.BeginInvoke(UpdatePanels); // after the layout pass that raised it
         Loaded += (_, _) => UpdatePanels();
-        Closing += (_, _) => { SaveWindowPlacement(); AppLog.Write("Closing."); };
+        // The saved place in screen pixels, once the window has a handle and before it shows (or stays in the tray).
+        SourceInitialized += (_, _) => RestoreWindowPlacement();
+        // The window's own place while it is neither maximized nor minimized: what a maximized window comes back down to.
+        _placementSaveTimer.Tick += (_, _) => { _placementSaveTimer.Stop(); SaveWindowPlacement(); };
+        LocationChanged += (_, _) => PlacementChanged();
+        SizeChanged += (_, _) => PlacementChanged();
+        StateChanged += (_, _) =>
+        {
+            if (WindowState != WindowState.Minimized) _wasMaximized = WindowState == WindowState.Maximized;
+            PlacementChanged();
+        };
+        Closing += (_, _) => { _placementSaveTimer.Stop(); SaveWindowPlacement(); AppLog.Write("Closing."); };
         Activated += (_, _) => UpdateLiveTimer();
         Deactivated += (_, _) => UpdateLiveTimer();
         UpdateLiveTimer();
@@ -971,24 +984,74 @@ public partial class MainWindow : Window
         TopSaveMark.ToolTip = WrappedToolTip(full);
     }
 
+    // The normal (not maximized) place, and whether a minimized window was maximized before.
+    private int[]? _normalBounds;
+    private bool _wasMaximized;
+
+    // The window's place is kept in screen pixels. In units of the window (1/96 inch) it came back wrong across monitors
+    // of different scaling: WPF turns them into pixels at the main monitor's scaling before the window is on its own
+    // monitor, so a window left on a 100 % monitor beside a 150 % one came back half past that monitor's edge.
     private void RestoreWindowPlacement()
     {
-        if (App.Headless || _appSettings.WindowWidth < MinWidth || _appSettings.WindowHeight < MinHeight) return;
-        // Only if it still lands on a screen (a monitor may have gone since).
-        var screen = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
-        var wanted = new Rect(_appSettings.WindowLeft, _appSettings.WindowTop, _appSettings.WindowWidth, _appSettings.WindowHeight);
-        var visible = Rect.Intersect(screen, wanted);
-        if (visible.IsEmpty || visible.Width < 200 || visible.Height < 120) return;
-        WindowStartupLocation = WindowStartupLocation.Manual;
-        Left = wanted.Left; Top = wanted.Top; Width = wanted.Width; Height = wanted.Height;
+        if (App.Headless || _appSettings.WindowBounds is not [var left, var top, var right, var bottom] || right - left < 200 || bottom - top < 120) return;
+        // Where it was, on the monitor it was on. Only if that no longer fits (a monitor gone, another resolution): on the
+        // monitor the place lies on most, or the nearest, inside its work area, shrunk to fit it if need be.
+        var wanted = new NativeRect { Left = left, Top = top, Right = right, Bottom = bottom };
+        var info = new MonitorInfo { Size = System.Runtime.InteropServices.Marshal.SizeOf<MonitorInfo>() };
+        if (!GetMonitorInfo(MonitorFromRect(ref wanted, MonitorDefaultToNearest), ref info)) return;
+        var work = info.Work;
+        var width = Math.Min(right - left, work.Right - work.Left);
+        var height = Math.Min(bottom - top, work.Bottom - work.Top);
+        var x = Math.Clamp(left, work.Left, work.Right - width);
+        var y = Math.Clamp(top, work.Top, work.Bottom - height);
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        // Twice: moving onto a monitor of another scaling has Windows rescale the window on the way; the second lands it
+        // at the exact size. Neither shows a window that is to stay hidden (the tray).
+        for (var i = 0; i < 2; i++) SetWindowPos(handle, IntPtr.Zero, x, y, width, height, SwpNoZOrder | SwpNoActivate);
+        _normalBounds = [x, y, x + width, y + height];
+        // Maximized on that monitor, as it was left.
+        if (_appSettings.WindowMaximized) WindowState = WindowState.Maximized;
+    }
+
+    private void PlacementChanged()
+    {
+        if (App.Headless) return;
+        RememberNormalBounds();
+        _placementSaveTimer.Stop();
+        _placementSaveTimer.Start();
+    }
+
+    private void RememberNormalBounds()
+    {
+        if (App.Headless) return;
+        // Windows' own state, not WindowState: a window that maximizes has moved and grown before WPF says Maximized, and
+        // that rectangle is not the one to come back to.
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero || IsZoomed(handle) || IsIconic(handle)) return;
+        if (GetWindowRect(handle, out var bounds)) _normalBounds = [bounds.Left, bounds.Top, bounds.Right, bounds.Bottom];
     }
 
     private void SaveWindowPlacement()
     {
-        if (App.Headless || WindowState != WindowState.Normal) return;
-        _appSettings.WindowLeft = Left; _appSettings.WindowTop = Top; _appSettings.WindowWidth = Width; _appSettings.WindowHeight = Height;
+        if (App.Headless) return;
+        RememberNormalBounds();
+        if (_normalBounds == null) return;
+        // Closed minimized, it opens as it was before that (a window that opens minimized looks as if it never opened).
+        _appSettings.WindowBounds = _normalBounds;
+        _appSettings.WindowMaximized = WindowState == WindowState.Maximized || WindowState == WindowState.Minimized && _wasMaximized;
         _appSettings.Save();
     }
+
+    private const uint MonitorDefaultToNearest = 2, SwpNoZOrder = 0x0004, SwpNoActivate = 0x0010;
+    private struct NativeRect { public int Left, Top, Right, Bottom; }
+    private struct MonitorInfo { public int Size; public NativeRect Monitor, Work; public uint Flags; }
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr MonitorFromRect(ref NativeRect rect, uint flags);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out NativeRect rect);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool IsZoomed(IntPtr window);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
 
     private void ApplyValues(IReadOnlyDictionary<string, string> changes)
     {

@@ -39,6 +39,7 @@ namespace stream_mirror {
     bool Publisher::start(ID3D11Device* device, LONG producerKind, const char* program, const char* application, bool yieldToOpenVR, bool takeOver) {
         stop();
         _device = device;
+        _device->GetImmediateContext(&_immediate);
         _mapping = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(Frames), FramesMappingName);
         if (_mapping) _frames = static_cast<Frames*>(MapViewOfFile(_mapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(Frames)));
         if (!_frames) {
@@ -130,7 +131,9 @@ namespace stream_mirror {
             event = nullptr;
         }
         for (auto& slot : _slots) slot = {};
+        _waitingCount = 0;
         _width = _height = 0;
+        _immediate.Reset();
         _device.Reset();
     }
 
@@ -191,6 +194,7 @@ namespace stream_mirror {
 
     void Publisher::resize(uint32_t width, uint32_t height) {
         for (auto& slot : _slots) slot = {};
+        _waitingCount = 0;
         for (auto& handle : _frames->textureHandle) handle = 0;
         _frames->latestSlot = NoSlot;
         _width = width;
@@ -206,23 +210,29 @@ namespace stream_mirror {
         if (!_frames || width < 2 || height < 2) return none;
         if (width != _width || height != _height) resize(width, height);
 
+        // Two frames still on the GPU: leave this one out, so those get done and shown (pushing them aside for newer
+        // ones could leave a GPU that runs behind with nothing ever shown).
+        if (_waitingCount >= WaitingMax) {
+            LogFewTimes(_logNoSlot, 3, "publisher: %d frames are still on the GPU - this frame is left out", _waitingCount);
+            return none;
+        }
         const LONG latest = _frames->latestSlot;
-        int chosen = -1, unused = -1;
+        int chosen = -1;
         for (int i = 0; i < static_cast<int>(SlotCount); i++) {
-            if (i == latest) continue;
+            if (i == latest || waiting(i)) continue;
             bool busy = false;
             for (const Reader& reader : _frames->readers) {
                 if (reader.pid != 0 && reader.readingSlot == i) busy = true;
             }
             if (busy) continue;
-            if (_slots[i].texture) {
-                chosen = i; // Prefer one that exists: a slot nobody ever needs is never made.
-                break;
-            }
-            if (unused < 0) unused = i;
+            // The one drawn longest ago (one never made counts as oldest): a reader lets go of a slot when its own
+            // drawing from it is queued, not done, so the longer ago it was shown, the surer that drawing is over.
+            if (chosen < 0 || _slots[i].order < _slots[chosen].order) chosen = i;
         }
-        if (chosen < 0) chosen = unused;
-        if (chosen < 0) return none;
+        if (chosen < 0) {
+            LogFewTimes(_logNoSlot, 3, "publisher: no slot free - this frame is left out");
+            return none;
+        }
 
         SlotState& state = _slots[chosen];
         if (!state.texture) {
@@ -238,9 +248,10 @@ namespace stream_mirror {
             desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
             ComPtr<IDXGIResource> resource;
             HANDLE handle = nullptr;
+            const D3D11_QUERY_DESC queryDesc{D3D11_QUERY_EVENT, 0};
             if (FAILED(_device->CreateTexture2D(&desc, nullptr, &state.texture)) ||
-                FAILED(_device->CreateRenderTargetView(state.texture.Get(), nullptr, &state.target)) || FAILED(state.texture.As(&resource)) ||
-                FAILED(resource->GetSharedHandle(&handle))) {
+                FAILED(_device->CreateRenderTargetView(state.texture.Get(), nullptr, &state.target)) || FAILED(_device->CreateQuery(&queryDesc, &state.drawn)) ||
+                FAILED(state.texture.As(&resource)) || FAILED(resource->GetSharedHandle(&handle))) {
                 LogFewTimes(_logProblem, 3, "publisher: shared texture %d (%u x %u) could not be made", chosen, width, height);
                 state = {};
                 return none;
@@ -256,13 +267,45 @@ namespace stream_mirror {
         return slot;
     }
 
-    void Publisher::publish(const Slot& slot, int eye, bool gazeValid, float gazeU, float gazeV) {
-        if (!_frames || slot.index < 0) return;
-        _frames->eye = eye;
-        _frames->gazeU = gazeU;
-        _frames->gazeV = gazeV;
-        _frames->gazeValid = gazeValid ? 1 : 0;
-        _frames->latestSlot = slot.index;
+    bool Publisher::waiting(int slot) const {
+        for (int i = 0; i < _waitingCount; i++) {
+            if (_waiting[i].slot == slot) return true;
+        }
+        return false;
+    }
+
+    void Publisher::submit(const Slot& slot, int eye, bool gazeValid, float gazeU, float gazeV) {
+        if (!_frames || slot.index < 0 || !_immediate) return;
+        SlotState& state = _slots[slot.index];
+        state.order = ++_drawn;
+        _immediate->End(state.drawn.Get());
+        _immediate->Flush(); // On its way to the GPU now: the readers wait for it.
+        if (_waitingCount == WaitingMax) { // acquire() keeps this from happening; should it, the oldest gives way.
+            for (int i = 1; i < WaitingMax; i++) _waiting[i - 1] = _waiting[i];
+            _waitingCount--;
+        }
+        _waiting[_waitingCount++] = {slot.index, eye, gazeValid, gazeU, gazeV};
+    }
+
+    void Publisher::publishFinished() {
+        if (!_frames || !_immediate) return;
+        for (int i = _waitingCount - 1; i >= 0; i--) {
+            // DONOTFLUSH: a look only, it never pushes the game's queue (submit has sent the drawing on already).
+            if (_immediate->GetData(_slots[_waiting[i].slot].drawn.Get(), nullptr, 0, D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK) continue;
+            // The GPU runs one queue in order: what waited before this frame is drawn too, and older than it - left out.
+            publish(_waiting[i]);
+            for (int j = i + 1; j < _waitingCount; j++) _waiting[j - i - 1] = _waiting[j];
+            _waitingCount -= i + 1;
+            return;
+        }
+    }
+
+    void Publisher::publish(const Waiting& frame) {
+        _frames->eye = frame.eye;
+        _frames->gazeU = frame.gazeU;
+        _frames->gazeV = frame.gazeV;
+        _frames->gazeValid = frame.gazeValid ? 1 : 0;
+        _frames->latestSlot = frame.slot;
         InterlockedIncrement64(&_frames->frameNumber);
         const ULONGLONG now = GetTickCount64();
         for (uint32_t i = 0; i < ReaderCount; i++) {
